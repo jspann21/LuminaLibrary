@@ -34,6 +34,7 @@ src-tauri/gen/
 # Test and coverage artifacts
 coverage/
 playwright-report/
+.playwright-mcp/
 test-results/
 
 # OS files
