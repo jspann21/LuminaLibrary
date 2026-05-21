@@ -1,0 +1,18 @@
+packages:
+  - .
+
+overrides:
+  'brace-expansion@>=5.0.0 <5.0.6': 5.0.6
+
+savePrefix: ''
+minimumReleaseAge: 10080
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+minimumReleaseAgeExclude: []
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 10080
+strictDepBuilds: true
+allowBuilds: {}
+verifyDepsBeforeRun: error
+blockExoticSubdeps: true
+dangerouslyAllowAllBuilds: false
