@@ -10,6 +10,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-windows:
     name: Build Windows release
@@ -50,3 +53,4 @@ jobs:
           releaseBody: See the assets below to download the Windows installer.
           releaseDraft: true
           prerelease: false
+          includeUpdaterJson: false
