@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - "app-v*"
+      - "LuminaLibrary-v*"
       - "v*"
 
 permissions:
@@ -48,9 +48,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'app-v__VERSION__' }}
-          releaseName: Lumina Library v__VERSION__
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'LuminaLibrary-v__VERSION__' }}
+          releaseName: LuminaLibrary v__VERSION__
           releaseBody: See the assets below to download the Windows installer.
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           includeUpdaterJson: false
