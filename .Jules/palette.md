@@ -1,0 +1,3 @@
+## 2025-05-22 - Consistent Keyboard Navigation Focus Rings
+**Learning:** Found that while some interactive elements like the clear search button and view mode toggles have proper keyboard focus styles (`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500`), main action buttons like Add Books, Sort, and Filter were missing them, creating an inconsistent keyboard navigation experience.
+**Action:** Added focus ring utilities to main header action buttons and ARIA attributes for dropdown states to ensure keyboard users have clear visual feedback on all interactive header elements.
