@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { BookCard } from '../../../lib/types'
 import { cx } from '../lib/cx'
@@ -15,7 +15,17 @@ type VirtualizedLibraryBooksProps = {
   onSelectBook: (bookId: string) => void
 }
 
-export function VirtualizedLibraryBooks({
+function areSetsEqual(left: Set<string>, right: Set<string>) {
+  if (left === right) return true
+  if (left.size !== right.size) return false
+
+  for (const value of left) {
+    if (!right.has(value)) return false
+  }
+  return true
+}
+
+export const VirtualizedLibraryBooks = memo(function VirtualizedLibraryBooks({
   books,
   viewMode,
   coverScale,
@@ -58,7 +68,6 @@ export function VirtualizedLibraryBooks({
 
   // TanStack Virtual returns methods that React Compiler cannot memoize safely.
   // The hook is the intended integration point, so keep it local and unwrapped.
-  // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => scrollContainerRef.current,
@@ -133,4 +142,14 @@ export function VirtualizedLibraryBooks({
       </div>
     </div>
   )
-}
+}, (previous, next) => {
+  return (
+    previous.books === next.books &&
+    previous.viewMode === next.viewMode &&
+    previous.coverScale === next.coverScale &&
+    previous.scrollContainerRef === next.scrollContainerRef &&
+    previous.onToggleBookSelection === next.onToggleBookSelection &&
+    previous.onSelectBook === next.onSelectBook &&
+    areSetsEqual(previous.selectedBookIds, next.selectedBookIds)
+  )
+})

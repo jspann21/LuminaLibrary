@@ -78,10 +78,13 @@ export function LibraryHeader({
       <div className="flex items-center gap-2">
         <div className="relative">
           <button
+            type="button"
             onClick={onToggleFilterOpen}
             onBlur={() => setTimeout(onCloseFilterOpen, 200)}
+            aria-expanded={isFilterOpen}
+            aria-haspopup="menu"
             className={cx(
-              'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors',
+              'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
               filterType !== 'all'
                 ? 'border-accent-200 bg-accent-50 text-accent-700 dark:border-accent-800 dark:bg-accent-900/20 dark:text-accent-300'
                 : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700',
@@ -112,9 +115,12 @@ export function LibraryHeader({
 
         <div className="relative">
           <button
+            type="button"
             onClick={onToggleSortOpen}
             onBlur={() => setTimeout(onCloseSortOpen, 200)}
-            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            aria-expanded={isSortOpen}
+            aria-haspopup="menu"
+            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-900"
           >
             <ArrowUpDown size={16} className="text-slate-400" />
             <span>
@@ -187,9 +193,10 @@ export function LibraryHeader({
 
         <span className="flex" title={isScanning ? 'Library scan in progress' : 'Add Books'}>
           <button
+            type="button"
             onClick={onQuickAddBooks}
             disabled={isScanning}
-            className="flex items-center gap-2 rounded-xl bg-accent-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-accent-500/25 transition-colors hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-60"
+            className="flex items-center gap-2 rounded-xl bg-accent-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-accent-500/25 transition-colors hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-60 dark:focus-visible:ring-offset-slate-900"
           >
             {isScanning ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
             {isScanning ? 'Scanning...' : 'Add Books'}

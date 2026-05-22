@@ -218,11 +218,14 @@ export function useLibraryAppController() {
   }, [matchNotice, setMatchNotice])
 
   // Book selection
-  const toggleLibraryBookSelection = (bookId: string) => {
+  const toggleLibraryBookSelection = useCallback((bookId: string) => {
     setSelectedLibraryBookIds((current) =>
       current.includes(bookId) ? current.filter((id) => id !== bookId) : [...current, bookId],
     )
-  }
+  }, [])
+  const selectLibraryBook = useCallback((bookId: string) => {
+    setSelectedBookId(bookId)
+  }, [setSelectedBookId])
   const selectAllLibraryBooks = () => {
     setSelectedLibraryBookIds(books.map((book) => book.id))
   }
@@ -399,7 +402,7 @@ export function useLibraryAppController() {
       onHideSelectedBooks: hideSelectedBooks,
       onRestoreBook: restoreHiddenBook,
       onRestoreAllHiddenBooks: restoreAllHiddenBooks,
-      onSelectBook: (bookId: string) => setSelectedBookId(bookId),
+      onSelectBook: selectLibraryBook,
       onQuickAddBooks: () => {
         void settingsMutations.quickAddBooks()
       },
