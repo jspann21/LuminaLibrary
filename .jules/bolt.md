@@ -1,0 +1,3 @@
+## 2024-05-22 - Prevented heavy list re-renders during scan progress updates
+**Learning:** `App.tsx` maintains state for multiple popups and progress overlays, including `scanProgress` which updates at high frequency. Because `App` manages the top-level layout (including rendering `LibraryView` and the heavy `VirtualizedLibraryBooks`), any progress updates were causing the entire virtualized list to re-render.
+**Action:** Always verify if expensive list components (`VirtualizedLibraryBooks`, `CoverThumb`) are safely memoized with `React.memo` or a custom `arePropsEqual` function when they reside within a view that receives high-frequency updates from its parent container (`App`).

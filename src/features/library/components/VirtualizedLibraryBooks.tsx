@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { BookCard } from '../../../lib/types'
 import { cx } from '../lib/cx'
@@ -15,7 +15,7 @@ type VirtualizedLibraryBooksProps = {
   onSelectBook: (bookId: string) => void
 }
 
-export function VirtualizedLibraryBooks({
+export const VirtualizedLibraryBooks = memo(function VirtualizedLibraryBooks({
   books,
   viewMode,
   coverScale,
@@ -58,7 +58,6 @@ export function VirtualizedLibraryBooks({
 
   // TanStack Virtual returns methods that React Compiler cannot memoize safely.
   // The hook is the intended integration point, so keep it local and unwrapped.
-  // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => scrollContainerRef.current,
@@ -133,4 +132,4 @@ export function VirtualizedLibraryBooks({
       </div>
     </div>
   )
-}
+})

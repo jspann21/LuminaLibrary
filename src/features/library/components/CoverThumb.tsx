@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { BookOpen } from 'lucide-react'
 import { cx } from '../lib/cx'
 import type { CoverThumbProps } from '../model/types'
 
-export function CoverThumb({
+export const CoverThumb = memo(function CoverThumb({
   coverUrl,
   coverLocalPath,
   loading = 'lazy',
@@ -54,4 +54,4 @@ export function CoverThumb({
       />
     </div>
   )
-}
+})
