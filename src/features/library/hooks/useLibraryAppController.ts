@@ -189,6 +189,7 @@ export function useLibraryAppController() {
   useEventListeners({
     scanProgress,
     setScanProgress,
+    setBulkMatchProgress,
     csvImportProgress,
     setCsvImportProgress,
     scanStatus,

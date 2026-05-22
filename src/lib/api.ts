@@ -9,6 +9,7 @@ import type {
   BookFilters,
   BookPatch,
   BulkMatchInput,
+  BulkMatchProgressEvent,
   BulkMatchResult,
   CoverCandidate,
   CsvImportProgressEvent,
@@ -195,6 +196,13 @@ export async function onCsvImportProgress(
 ): Promise<UnlistenFn | undefined> {
   if (!isTauri()) return undefined
   return listen<CsvImportProgressEvent>('csv_import_progress', (event) => cb(event.payload))
+}
+
+export async function onBulkMatchProgress(
+  cb: (event: BulkMatchProgressEvent) => void,
+): Promise<UnlistenFn | undefined> {
+  if (!isTauri()) return undefined
+  return listen<BulkMatchProgressEvent>('bulk_match_progress', (event) => cb(event.payload))
 }
 
 export async function onGoogleBooksQuotaNotice(

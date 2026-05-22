@@ -315,17 +315,43 @@ impl LibraryService {
   pub fn batch_attempt_match(
     &self,
     items: Vec<crate::library::types::BulkMatchInput>,
+    app_handle: Option<AppHandle>,
   ) -> anyhow::Result<crate::library::types::BulkMatchResult> {
     use crate::library::types::{BulkMatchResult, MatchResult as MR};
 
+    let total_files = items.len();
     let mut results: Vec<MR> = Vec::with_capacity(items.len());
     let mut matched_count: usize = 0;
     let mut failed_count: usize = 0;
     let mut skipped_count: usize = 0;
     let mut error_count: usize = 0;
+    let mut processed_files: usize = 0;
+
+    if let Some(app) = app_handle.as_ref() {
+      emit_bulk_match_progress(
+        app,
+        "progress",
+        total_files,
+        processed_files,
+        matched_count,
+        failed_count,
+        skipped_count,
+        error_count,
+        None,
+      );
+    }
 
     for item in items {
-      match self.attempt_match_single(&item.file_id, item.isbn, item.title, item.author) {
+      let file_id = item.file_id;
+      let current_path = self
+        .repository
+        .get_file_by_id(&file_id)
+        .ok()
+        .flatten()
+        .map(|file| file.abs_path)
+        .unwrap_or_else(|| file_id.clone());
+
+      match self.attempt_match_single(&file_id, item.isbn, item.title, item.author) {
         Ok(result) => {
           if result.matched {
             matched_count += 1;
@@ -339,7 +365,7 @@ impl LibraryService {
         Err(err) => {
           error_count += 1;
           results.push(MR {
-            file_id: item.file_id,
+            file_id,
             matched: false,
             book_id: None,
             confidence: None,
@@ -347,10 +373,38 @@ impl LibraryService {
           });
         }
       }
+      processed_files += 1;
+      if let Some(app) = app_handle.as_ref() {
+        emit_bulk_match_progress(
+          app,
+          "progress",
+          total_files,
+          processed_files,
+          matched_count,
+          failed_count,
+          skipped_count,
+          error_count,
+          Some(current_path.clone()),
+        );
+      }
     }
 
     // Run maintenance once after the entire batch instead of per-file
     self.run_post_match_maintenance()?;
+
+    if let Some(app) = app_handle.as_ref() {
+      emit_bulk_match_progress(
+        app,
+        "completed",
+        total_files,
+        processed_files,
+        matched_count,
+        failed_count,
+        skipped_count,
+        error_count,
+        None,
+      );
+    }
 
     Ok(BulkMatchResult {
       results,
@@ -1217,6 +1271,42 @@ fn emit_csv_import_progress(
       "errors": errors,
       "progressPercent": progress_percent,
       "message": message,
+    }),
+  );
+}
+
+fn emit_bulk_match_progress(
+  app_handle: &AppHandle,
+  phase: &str,
+  total_files: usize,
+  processed_files: usize,
+  matched_files: usize,
+  failed_files: usize,
+  skipped_files: usize,
+  error_files: usize,
+  current_path: Option<String>,
+) {
+  let unresolved_files = failed_files + error_files;
+  let progress_percent = if phase == "completed" {
+    100
+  } else if total_files == 0 {
+    0
+  } else {
+    (((processed_files as f64 / total_files as f64) * 100.0).round() as i64).clamp(0, 99) as u8
+  };
+
+  let _ = app_handle.emit(
+    "bulk_match_progress",
+    json!({
+      "phase": phase,
+      "totalFiles": total_files,
+      "processedFiles": processed_files,
+      "matchedFiles": matched_files,
+      "unresolvedFiles": unresolved_files,
+      "skippedFiles": skipped_files,
+      "errorFiles": error_files,
+      "currentPath": current_path,
+      "progressPercent": progress_percent,
     }),
   );
 }

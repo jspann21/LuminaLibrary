@@ -1,4 +1,4 @@
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::library::types::{
   ApiKeyTestResult, AppSettings, AppState, BookCard, BookDetail, BookFilters, BookPatch, BulkMatchInput,
@@ -166,11 +166,12 @@ pub fn attempt_match(
 
 #[tauri::command]
 pub async fn batch_attempt_match(
+  app_handle: AppHandle,
   state: State<'_, AppState>,
   items: Vec<BulkMatchInput>,
 ) -> Result<BulkMatchResult, String> {
   let service = state.service.clone();
-  tauri::async_runtime::spawn_blocking(move || service.batch_attempt_match(items))
+  tauri::async_runtime::spawn_blocking(move || service.batch_attempt_match(items, Some(app_handle)))
     .await
     .map_err(|err| format!("batch match task join error: {err}"))?
     .map_err(|err| err.to_string())

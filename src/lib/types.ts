@@ -152,6 +152,18 @@ export type BulkMatchResult = {
   errorCount: number
 }
 
+export type BulkMatchProgressEvent = {
+  phase?: 'progress' | 'completed'
+  totalFiles?: number
+  processedFiles?: number
+  matchedFiles?: number
+  unresolvedFiles?: number
+  skippedFiles?: number
+  errorFiles?: number
+  currentPath?: string
+  progressPercent?: number
+}
+
 export type BookPatch = Partial<{
   title: string
   subtitle: string

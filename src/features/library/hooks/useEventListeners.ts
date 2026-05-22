@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react'
-import { onCsvImportProgress, onGoogleBooksQuotaNotice, onScanCompleted, onScanProgress } from '../../../lib/api'
+import { onBulkMatchProgress, onCsvImportProgress, onGoogleBooksQuotaNotice, onScanCompleted, onScanProgress } from '../../../lib/api'
 import { formatDisplayMessagePaths, formatDisplayPath } from '../../../lib/format'
 import type { ScanSummary } from '../../../lib/types'
 
-import type { CsvImportProgressState, KeyTestNotice, ScanProgressState } from '../model/types'
+import type { BulkMatchProgressState, CsvImportProgressState, KeyTestNotice, ScanProgressState } from '../model/types'
 
 const UI_STATUS_UPDATE_INTERVAL_MS = 250
 const PHASE_LABELS: Partial<Record<ScanProgressState['phase'], string>> = {
@@ -54,6 +54,7 @@ function shouldResetScanProgressPath(event: { phase?: ScanProgressState['phase']
 export type EventListenerState = {
     scanProgress: ScanProgressState
     setScanProgress: React.Dispatch<React.SetStateAction<ScanProgressState>>
+    setBulkMatchProgress: React.Dispatch<React.SetStateAction<BulkMatchProgressState>>
     csvImportProgress: CsvImportProgressState
     setCsvImportProgress: React.Dispatch<React.SetStateAction<CsvImportProgressState>>
     scanStatus: string
@@ -66,6 +67,7 @@ export type EventListenerState = {
 export function useEventListeners(state: EventListenerState) {
     const {
         setScanProgress,
+        setBulkMatchProgress,
         setCsvImportProgress,
         setScanStatus,
         setKeyTestNotice,
@@ -235,6 +237,38 @@ export function useEventListeners(state: EventListenerState) {
             )
         }))
 
+        register(onBulkMatchProgress((event) => {
+            if (disposed) return
+            setBulkMatchProgress((previous) => {
+                const phase = event.phase ?? previous.phase
+                return {
+                    active: phase !== 'idle',
+                    phase,
+                    totalFiles: event.totalFiles ?? previous.totalFiles,
+                    processedFiles: event.processedFiles ?? previous.processedFiles,
+                    matchedFiles: event.matchedFiles ?? previous.matchedFiles,
+                    unresolvedFiles: event.unresolvedFiles ?? previous.unresolvedFiles,
+                    skippedFiles: event.skippedFiles ?? previous.skippedFiles,
+                    currentPath: event.currentPath ?? (phase === 'completed' ? undefined : previous.currentPath),
+                }
+            })
+
+            const phase = event.phase ?? 'progress'
+            if (phase === 'completed') {
+                const matchedFiles = event.matchedFiles ?? 0
+                const unresolvedFiles = event.unresolvedFiles ?? 0
+                const skippedFiles = event.skippedFiles ?? 0
+                setScanStatus(
+                    `Match All complete: ${matchedFiles} matched, ${unresolvedFiles} unresolved${skippedFiles > 0 ? `, ${skippedFiles} skipped` : ''}`,
+                )
+                return
+            }
+
+            if (typeof event.processedFiles === 'number' && typeof event.totalFiles === 'number') {
+                setScanStatus(`Matching All ${event.processedFiles}/${event.totalFiles}...`)
+            }
+        }))
+
         register(onGoogleBooksQuotaNotice((event) => {
             if (disposed) return
             setScanStatus(formatDisplayMessagePaths(event.message))
@@ -250,5 +284,5 @@ export function useEventListeners(state: EventListenerState) {
                 unlisten()
             }
         }
-    }, [invalidateLibraryData, setScanProgress, setCsvImportProgress, setScanStatus, setKeyTestNotice])
+    }, [invalidateLibraryData, setScanProgress, setBulkMatchProgress, setCsvImportProgress, setScanStatus, setKeyTestNotice])
 }
