@@ -330,7 +330,10 @@ export function RescanMetadataModal({
 
     // Build selection list from field picks
     const selection: MetadataFieldSelection[] = []
-    const candidateById = new Map(preview.candidates.map((candidate) => [candidate.id, candidate]))
+    const candidateById = new Map<string, (typeof preview.candidates)[number]>()
+    for (const candidate of preview.candidates) {
+      candidateById.set(candidate.id, candidate)
+    }
     for (const field of RESCAN_FIELDS) {
       const candidateId = fieldPicks[field]
       if (!candidateId) continue // null or undefined = keep current
