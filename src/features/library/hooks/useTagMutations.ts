@@ -18,7 +18,13 @@ export function useTagMutations(deps: {
     const [tagManagerSelection, setTagManagerSelection] = useState<string[]>([])
     const [tagMergeTarget, setTagMergeTarget] = useState('')
 
-    const availableTagSet = useMemo(() => new Set(tags.map((item) => item.tag)), [tags])
+    const availableTagSet = useMemo(() => {
+        const set = new Set<string>()
+        for (const item of tags) {
+            set.add(item.tag)
+        }
+        return set
+    }, [tags])
     const effectiveTagManagerSelection = useMemo(
         () => tagManagerSelection.filter((item) => availableTagSet.has(item)),
         [tagManagerSelection, availableTagSet],

@@ -332,7 +332,10 @@ export function useLibraryAppController() {
     }
   }, [activeView, books, booksQuery.isLoading, queryClient])
 
-  const visibleBookIdSet = new Set(books.map((book) => book.id))
+  const visibleBookIdSet = new Set<string>()
+  for (const book of books) {
+    visibleBookIdSet.add(book.id)
+  }
   const visibleSelectedLibraryBookIds = selectedLibraryBookIds.filter((id) => visibleBookIdSet.has(id))
   const selectedLibraryBookIdSet = new Set(visibleSelectedLibraryBookIds)
 
