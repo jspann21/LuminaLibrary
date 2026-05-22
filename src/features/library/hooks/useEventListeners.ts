@@ -5,10 +5,14 @@ import type { ScanSummary } from '../../../lib/types'
 
 import type { CsvImportProgressState, KeyTestNotice, ScanProgressState } from '../model/types'
 
+const UI_STATUS_UPDATE_INTERVAL_MS = 250
+const PHASE_LABELS: Partial<Record<ScanProgressState['phase'], string>> = {
+    local_scan: 'Indexing files (1/2)',
+    enrichment_queue: 'Matching metadata (2/2)',
+}
+
 function phaseLabel(phase: ScanProgressState['phase']) {
-    if (phase === 'local_scan') return 'Indexing files (1/2)'
-    if (phase === 'enrichment_queue') return 'Matching metadata (2/2)'
-    return 'Scanning'
+    return PHASE_LABELS[phase] ?? 'Scanning'
 }
 
 function buildScanCompletedMessage(summary: ScanSummary): string {
@@ -113,25 +117,29 @@ export function useEventListeners(state: EventListenerState) {
             })
 
             const now = Date.now()
-            if (event.error || now - lastProgressUiUpdateAt.current >= 250) {
-                if (event.error) {
-                    setScanStatus(`Error: ${formatDisplayMessagePaths(event.error)}`)
-                } else if (typeof event.processedFiles === 'number' && typeof event.totalFound === 'number') {
-                    const phase = event.phase ?? 'progress'
-                    if (phase === 'local_scan' || phase === 'enrichment_queue') {
-                        setScanStatus(`${phaseLabel(phase)} ${event.processedFiles}/${event.totalFound}...`)
-                    } else {
-                        setScanStatus(`Scanning ${event.processedFiles}/${event.totalFound} files...`)
-                    }
-                } else if (event.path) {
-                    const phase = event.phase ?? 'progress'
-                    if (phase === 'local_scan' || phase === 'enrichment_queue') {
-                        setScanStatus(`${phaseLabel(phase)}: ${formatDisplayPath(event.path)}`)
-                    } else {
-                        setScanStatus(`Scanning: ${formatDisplayPath(event.path)}`)
-                    }
-                }
-                lastProgressUiUpdateAt.current = now
+            if (!event.error && now - lastProgressUiUpdateAt.current < UI_STATUS_UPDATE_INTERVAL_MS) {
+                return
+            }
+
+            lastProgressUiUpdateAt.current = now
+
+            if (event.error) {
+                setScanStatus(`Error: ${formatDisplayMessagePaths(event.error)}`)
+                return
+            }
+
+            const phase = event.phase ?? 'progress'
+            const isDetailedPhase = phase === 'local_scan' || phase === 'enrichment_queue'
+            const label = phaseLabel(phase)
+
+            if (typeof event.processedFiles === 'number' && typeof event.totalFound === 'number') {
+                const suffix = isDetailedPhase ? '' : ' files'
+                setScanStatus(`${label} ${event.processedFiles}/${event.totalFound}${suffix}...`)
+                return
+            }
+
+            if (event.path) {
+                setScanStatus(`${label}: ${formatDisplayPath(event.path)}`)
             }
         }))
 
@@ -192,14 +200,14 @@ export function useEventListeners(state: EventListenerState) {
             })
 
             const phase = event.phase ?? 'progress'
-            const processedRows = event.processedRows ?? 0
-            const matchedRows = event.matchedRows ?? 0
-            const updatedRows = event.updatedRows ?? 0
             if (phase === 'error') {
                 setScanStatus(event.message ? `CSV import failed: ${formatDisplayMessagePaths(event.message)}` : 'CSV import failed')
                 return
             }
             if (phase === 'completed') {
+                const processedRows = event.processedRows ?? 0
+                const matchedRows = event.matchedRows ?? 0
+                const updatedRows = event.updatedRows ?? 0
                 setScanStatus(
                     (event.message ? formatDisplayMessagePaths(event.message) : undefined) ??
                     `CSV import complete: ${processedRows} rows processed, ${matchedRows} matched, ${updatedRows} updated`,
@@ -208,7 +216,11 @@ export function useEventListeners(state: EventListenerState) {
             }
 
             const now = Date.now()
-            if (now - lastCsvImportUiUpdateAt.current < 250) return
+            if (now - lastCsvImportUiUpdateAt.current < UI_STATUS_UPDATE_INTERVAL_MS) return
+
+            lastCsvImportUiUpdateAt.current = now
+
+            const processedRows = event.processedRows ?? 0
             const totalBytes = event.totalBytes
             const bytesRead = event.bytesRead ?? 0
             const progressPercent =
@@ -221,7 +233,6 @@ export function useEventListeners(state: EventListenerState) {
                 (event.message ? formatDisplayMessagePaths(event.message) : undefined) ??
                 `Importing enrichment CSV: ${processedRows} rows processed (${progressPercent}%)`,
             )
-            lastCsvImportUiUpdateAt.current = now
         }))
 
         register(onGoogleBooksQuotaNotice((event) => {
