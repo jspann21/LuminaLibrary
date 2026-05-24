@@ -524,17 +524,19 @@ impl Scanner {
       .into_iter()
       .map(|file| (file.abs_path.clone(), file))
       .collect();
-    let mut total_found = 0u64;
-    let mut prepare_error_known = 0u64;
-    let mut unchanged_known = 0u64;
+    let mut candidates: Vec<ScanCandidate> = Vec::new();
     self.for_each_scan_candidate(folder, &existing_by_path, |candidate| {
-      total_found += 1;
-      if candidate.prepare_error.is_some() {
-        prepare_error_known += 1;
-      } else if candidate.is_unchanged() {
-        unchanged_known += 1;
-      }
+      candidates.push(candidate);
     });
+    let total_found = candidates.len() as u64;
+    let prepare_error_known = candidates
+      .iter()
+      .filter(|candidate| candidate.prepare_error.is_some())
+      .count() as u64;
+    let unchanged_known = candidates
+      .iter()
+      .filter(|candidate| candidate.prepare_error.is_none() && candidate.is_unchanged())
+      .count() as u64;
     let pending_files = total_found.saturating_sub(unchanged_known + prepare_error_known);
     log::info!(
       "scan_folder_local_index folder_id={} total_found={} pending={} unchanged={} prep_errors={}",
@@ -605,7 +607,7 @@ impl Scanner {
     }
 
     let mut queued_for_processing = 0u64;
-    self.for_each_scan_candidate(folder, existing_by_path.as_ref(), |candidate| {
+    for candidate in candidates {
       seen_paths.insert(candidate.abs_path.clone());
       summary.scanned_files += 1;
 
@@ -632,7 +634,7 @@ impl Scanner {
         );
         processed_since_emit = 0;
         last_emit = Instant::now();
-        return;
+        continue;
       }
 
       if candidate.is_unchanged() {
@@ -660,7 +662,7 @@ impl Scanner {
           processed_since_emit = 0;
           last_emit = Instant::now();
         }
-        return;
+        continue;
       }
 
       let path_for_error = candidate.abs_path.clone();
@@ -718,7 +720,7 @@ impl Scanner {
           last_emit = Instant::now();
         }
       }
-    });
+    }
 
     drop(work_tx);
 
