@@ -234,8 +234,8 @@ export function useLibraryAppController() {
     setSelectedLibraryBookIds([])
   }
   const hideSelectedBooks = () => {
-    if (visibleSelectedLibraryBookIds.length === 0) return
-    const targetBookIds = [...visibleSelectedLibraryBookIds]
+    if (selectedLibraryBookIdSet.size === 0) return
+    const targetBookIds = [...selectedLibraryBookIdSet]
     openConfirmDialog({
       title: 'Hide selected books from library?',
       message: `Hide ${targetBookIds.length} selected book(s)? Files remain indexed and can be restored from Hidden Books.`,
@@ -336,15 +336,16 @@ export function useLibraryAppController() {
     }
   }, [activeView, books, booksQuery.isLoading, queryClient])
 
-  const visibleBookIdSet = useMemo(() => new Set(books.map((book) => book.id)), [books])
-  const visibleSelectedLibraryBookIds = useMemo(
-    () => selectedLibraryBookIds.filter((id) => visibleBookIdSet.has(id)),
-    [selectedLibraryBookIds, visibleBookIdSet],
-  )
-  const selectedLibraryBookIdSet = useMemo(
-    () => new Set(visibleSelectedLibraryBookIds),
-    [visibleSelectedLibraryBookIds],
-  )
+  const visibleBookIds = new Set<string>()
+  for (const book of books) {
+    visibleBookIds.add(book.id)
+  }
+  const selectedLibraryBookIdSet = new Set<string>()
+  for (const bookId of selectedLibraryBookIds) {
+    if (visibleBookIds.has(bookId)) {
+      selectedLibraryBookIdSet.add(bookId)
+    }
+  }
 
   // Sync delete mutation with selected book
   useEffect(() => {

@@ -1,23 +1,44 @@
 /* eslint-disable react-hooks/refs */
+import { lazy, Suspense } from 'react'
 import { AnimatePresence } from 'motion/react'
 import { Minus, Plus } from 'lucide-react'
-import {
-  BookDetailsPanel,
-  BulkMatchProgressOverlay,
-  ConfirmDialog,
-  CoverRefreshOverlay,
-  CsvImportProgressOverlay,
-  LibraryHeader,
-  LibrarySidebar,
-  LibraryView,
-  ScanProgressOverlay,
-  SettingsView,
-  TagManagerView,
-  useLibraryAppController,
-} from './features/library'
+import { ConfirmDialog } from './features/library/components/ConfirmDialog'
+import { LibraryHeader } from './features/library/components/LibraryHeader'
+import { LibrarySidebar } from './features/library/components/LibrarySidebar'
+import { LibraryView } from './features/library/views/LibraryView'
+import { useLibraryAppController } from './features/library/hooks/useLibraryAppController'
 import { cx } from './features/library/lib/cx'
 
 const BOTTOM_OVERLAY_CLASSES = ['bottom-6', 'bottom-32', 'bottom-[14.5rem]', 'bottom-[21rem]'] as const
+const BookDetailsPanel = lazy(() =>
+  import('./features/library/components/BookDetailsPanel').then((module) => ({ default: module.BookDetailsPanel })),
+)
+const BulkMatchProgressOverlay = lazy(() =>
+  import('./features/library/components/overlays/BulkMatchProgressOverlay').then((module) => ({
+    default: module.BulkMatchProgressOverlay,
+  })),
+)
+const CoverRefreshOverlay = lazy(() =>
+  import('./features/library/components/overlays/CoverRefreshOverlay').then((module) => ({
+    default: module.CoverRefreshOverlay,
+  })),
+)
+const CsvImportProgressOverlay = lazy(() =>
+  import('./features/library/components/overlays/CsvImportProgressOverlay').then((module) => ({
+    default: module.CsvImportProgressOverlay,
+  })),
+)
+const ScanProgressOverlay = lazy(() =>
+  import('./features/library/components/overlays/ScanProgressOverlay').then((module) => ({
+    default: module.ScanProgressOverlay,
+  })),
+)
+const SettingsView = lazy(() =>
+  import('./features/library/views/SettingsView').then((module) => ({ default: module.SettingsView })),
+)
+const TagManagerView = lazy(() =>
+  import('./features/library/views/TagManagerView').then((module) => ({ default: module.TagManagerView })),
+)
 
 function App() {
   const controller = useLibraryAppController()
@@ -51,9 +72,13 @@ function App() {
           {activeView === 'library' ? (
             <LibraryView {...libraryView} />
           ) : activeView === 'tags' ? (
-            <TagManagerView {...tagView} />
+            <Suspense fallback={<ViewFallback />}>
+              <TagManagerView {...tagView} />
+            </Suspense>
           ) : (
-            <SettingsView {...settingsView} />
+            <Suspense fallback={<ViewFallback />}>
+              <SettingsView {...settingsView} />
+            </Suspense>
           )}
         </div>
 
@@ -90,70 +115,80 @@ function App() {
 
         <AnimatePresence>
           {overlays.showBulkMatchProgressPopup ? (
-            <BulkMatchProgressOverlay
-              progress={overlays.bulkMatchProgress}
-              progressPercent={overlays.bulkMatchProgressPercent}
-              bottomClassName={bottomClassFor('bulk-match')}
-              onDismiss={overlays.onDismissBulkMatchProgress}
-            />
+            <Suspense fallback={null}>
+              <BulkMatchProgressOverlay
+                progress={overlays.bulkMatchProgress}
+                progressPercent={overlays.bulkMatchProgressPercent}
+                bottomClassName={bottomClassFor('bulk-match')}
+                onDismiss={overlays.onDismissBulkMatchProgress}
+              />
+            </Suspense>
           ) : null}
         </AnimatePresence>
 
         <AnimatePresence>
           {overlays.showScanProgressPopup ? (
-            <ScanProgressOverlay
-              scanStatus={overlays.scanStatus}
-              progressPercent={overlays.progressPercent}
-              scanProgress={overlays.scanProgress}
-              bottomClassName={bottomClassFor('scan')}
-              onDismiss={overlays.onDismissScanProgress}
-            />
+            <Suspense fallback={null}>
+              <ScanProgressOverlay
+                scanStatus={overlays.scanStatus}
+                progressPercent={overlays.progressPercent}
+                scanProgress={overlays.scanProgress}
+                bottomClassName={bottomClassFor('scan')}
+                onDismiss={overlays.onDismissScanProgress}
+              />
+            </Suspense>
           ) : null}
         </AnimatePresence>
 
         <AnimatePresence>
           {overlays.showCsvImportProgressPopup ? (
-            <CsvImportProgressOverlay
-              csvImportProgress={overlays.csvImportProgress}
-              bottomClassName={bottomClassFor('csv-import')}
-              onDismiss={overlays.onDismissCsvImportProgress}
-            />
+            <Suspense fallback={null}>
+              <CsvImportProgressOverlay
+                csvImportProgress={overlays.csvImportProgress}
+                bottomClassName={bottomClassFor('csv-import')}
+                onDismiss={overlays.onDismissCsvImportProgress}
+              />
+            </Suspense>
           ) : null}
         </AnimatePresence>
 
         <AnimatePresence>
           {overlays.coverRefreshNotice ? (
-            <CoverRefreshOverlay
-              coverRefreshNotice={overlays.coverRefreshNotice}
-              scanStatus={overlays.scanStatus}
-              progressPercent={overlays.progressPercent}
-              scanProgress={overlays.scanProgress}
-              bottomClassName={bottomClassFor('cover-refresh')}
-              onDismiss={overlays.onDismissCoverRefreshNotice}
-            />
+            <Suspense fallback={null}>
+              <CoverRefreshOverlay
+                coverRefreshNotice={overlays.coverRefreshNotice}
+                scanStatus={overlays.scanStatus}
+                progressPercent={overlays.progressPercent}
+                scanProgress={overlays.scanProgress}
+                bottomClassName={bottomClassFor('cover-refresh')}
+                onDismiss={overlays.onDismissCoverRefreshNotice}
+              />
+            </Suspense>
           ) : null}
         </AnimatePresence>
       </main>
 
       <AnimatePresence>
         {detailsPanel.isOpen && detailsPanel.book ? (
-          <BookDetailsPanel
-            key={detailsPanel.book.id}
-            book={detailsPanel.book}
-            onClose={detailsPanel.onClose}
-            onSave={detailsPanel.onSave}
-            onPreviewRescan={detailsPanel.onPreviewRescan}
-            onApplyCuratedMetadata={detailsPanel.onApplyCuratedMetadata}
-            onOpenFile={detailsPanel.onOpenFile}
-            onOpenFolder={detailsPanel.onOpenFolder}
-            onRequestHide={detailsPanel.onRequestHide}
-            onRequestDelete={detailsPanel.onRequestDelete}
-            isSaving={detailsPanel.isSaving}
-            isHiding={detailsPanel.isHiding}
-            isRescanPreviewing={detailsPanel.isRescanPreviewing}
-            isApplyingCuratedMetadata={detailsPanel.isApplyingCuratedMetadata}
-            isDeleting={detailsPanel.isDeleting}
-          />
+          <Suspense fallback={null}>
+            <BookDetailsPanel
+              key={detailsPanel.book.id}
+              book={detailsPanel.book}
+              onClose={detailsPanel.onClose}
+              onSave={detailsPanel.onSave}
+              onPreviewRescan={detailsPanel.onPreviewRescan}
+              onApplyCuratedMetadata={detailsPanel.onApplyCuratedMetadata}
+              onOpenFile={detailsPanel.onOpenFile}
+              onOpenFolder={detailsPanel.onOpenFolder}
+              onRequestHide={detailsPanel.onRequestHide}
+              onRequestDelete={detailsPanel.onRequestDelete}
+              isSaving={detailsPanel.isSaving}
+              isHiding={detailsPanel.isHiding}
+              isRescanPreviewing={detailsPanel.isRescanPreviewing}
+              isApplyingCuratedMetadata={detailsPanel.isApplyingCuratedMetadata}
+              isDeleting={detailsPanel.isDeleting}
+            />
+          </Suspense>
         ) : null}
       </AnimatePresence>
 
@@ -162,6 +197,14 @@ function App() {
           <ConfirmDialog dialog={confirmDialog.dialog} onCancel={confirmDialog.onCancel} onConfirm={confirmDialog.onConfirm} />
         ) : null}
       </AnimatePresence>
+    </div>
+  )
+}
+
+function ViewFallback() {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+      Loading...
     </div>
   )
 }
