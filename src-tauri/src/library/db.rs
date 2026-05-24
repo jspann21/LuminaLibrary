@@ -1760,8 +1760,12 @@ impl Repository {
     let sort_direction = if sort.direction.eq_ignore_ascii_case("desc") { "DESC" } else { "ASC" };
     let where_sql = where_clauses.join(" AND ");
 
-    let total_sql = format!("SELECT COUNT(*) FROM books b WHERE {where_sql}");
-    let total: i64 = conn.query_row(&total_sql, params_from_iter(values.iter()), |row| row.get(0))?;
+    let total = if pagination.is_some() {
+      let total_sql = format!("SELECT COUNT(*) FROM books b WHERE {where_sql}");
+      Some(conn.query_row(&total_sql, params_from_iter(values.iter()), |row| row.get(0))?)
+    } else {
+      None
+    };
 
     let mut list_values = values;
     let mut list_sql = format!(
@@ -1825,6 +1829,8 @@ impl Repository {
         },
       )
     };
+
+    let total = total.unwrap_or_else(|| i64::try_from(items.len()).unwrap_or(i64::MAX));
 
     Ok(Paged {
       items,
