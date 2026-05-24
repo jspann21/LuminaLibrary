@@ -158,60 +158,60 @@ export function ManualBookModal({
                 <div className="flex-1 overflow-y-auto px-6 py-5">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div className="md:col-span-2">
-                            <label className={labelClass}>Title</label>
-                            <input className={inputClass} value={form.title} onChange={(event) => updateField('title', event.target.value)} />
+                            <label htmlFor="manual-book-title" className={labelClass}>Title <span className="text-rose-500">*</span></label>
+                            <input id="manual-book-title" className={inputClass} value={form.title} onChange={(event) => updateField('title', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
-                            <label className={labelClass}>Subtitle</label>
-                            <input className={inputClass} value={form.subtitle} onChange={(event) => updateField('subtitle', event.target.value)} />
+                            <label htmlFor="manual-book-subtitle" className={labelClass}>Subtitle</label>
+                            <input id="manual-book-subtitle" className={inputClass} value={form.subtitle} onChange={(event) => updateField('subtitle', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
-                            <label className={labelClass}>Author(s)</label>
-                            <input className={inputClass} value={form.authors} onChange={(event) => updateField('authors', event.target.value)} />
+                            <label htmlFor="manual-book-authors" className={labelClass}>Author(s)</label>
+                            <input id="manual-book-authors" className={inputClass} value={form.authors} onChange={(event) => updateField('authors', event.target.value)} />
                         </div>
                         <div>
-                            <label className={labelClass}>Publisher</label>
-                            <input className={inputClass} value={form.publisher} onChange={(event) => updateField('publisher', event.target.value)} />
+                            <label htmlFor="manual-book-publisher" className={labelClass}>Publisher</label>
+                            <input id="manual-book-publisher" className={inputClass} value={form.publisher} onChange={(event) => updateField('publisher', event.target.value)} />
                         </div>
                         <div>
-                            <label className={labelClass}>Published</label>
-                            <input type="date" className={inputClass} value={form.publishDate} onChange={(event) => updateField('publishDate', event.target.value)} />
+                            <label htmlFor="manual-book-publishDate" className={labelClass}>Published</label>
+                            <input id="manual-book-publishDate" type="date" className={inputClass} value={form.publishDate} onChange={(event) => updateField('publishDate', event.target.value)} />
                         </div>
                         <div>
-                            <label className={labelClass}>ISBN-13</label>
-                            <input className={inputClass} value={form.isbn13} onChange={(event) => updateField('isbn13', event.target.value)} />
+                            <label htmlFor="manual-book-isbn13" className={labelClass}>ISBN-13</label>
+                            <input id="manual-book-isbn13" className={inputClass} value={form.isbn13} onChange={(event) => updateField('isbn13', event.target.value)} />
                         </div>
                         <div>
-                            <label className={labelClass}>ISBN-10</label>
-                            <input className={inputClass} value={form.isbn10} onChange={(event) => updateField('isbn10', event.target.value)} />
+                            <label htmlFor="manual-book-isbn10" className={labelClass}>ISBN-10</label>
+                            <input id="manual-book-isbn10" className={inputClass} value={form.isbn10} onChange={(event) => updateField('isbn10', event.target.value)} />
                         </div>
                         <div>
-                            <label className={labelClass}>Language</label>
-                            <input className={inputClass} value={form.language} onChange={(event) => updateField('language', event.target.value)} />
+                            <label htmlFor="manual-book-language" className={labelClass}>Language</label>
+                            <input id="manual-book-language" className={inputClass} value={form.language} onChange={(event) => updateField('language', event.target.value)} />
                         </div>
                         <div>
-                            <label className={labelClass}>Pages</label>
-                            <input type="number" className={inputClass} value={form.pageCount} onChange={(event) => updateField('pageCount', event.target.value)} />
+                            <label htmlFor="manual-book-pageCount" className={labelClass}>Pages</label>
+                            <input id="manual-book-pageCount" type="number" className={inputClass} value={form.pageCount} onChange={(event) => updateField('pageCount', event.target.value)} />
                         </div>
                         <div>
-                            <label className={labelClass}>Series</label>
-                            <input className={inputClass} value={form.series} onChange={(event) => updateField('series', event.target.value)} />
+                            <label htmlFor="manual-book-series" className={labelClass}>Series</label>
+                            <input id="manual-book-series" className={inputClass} value={form.series} onChange={(event) => updateField('series', event.target.value)} />
                         </div>
                         <div>
-                            <label className={labelClass}>Series #</label>
-                            <input type="number" className={inputClass} value={form.seriesIndex} onChange={(event) => updateField('seriesIndex', event.target.value)} />
+                            <label htmlFor="manual-book-seriesIndex" className={labelClass}>Series #</label>
+                            <input id="manual-book-seriesIndex" type="number" className={inputClass} value={form.seriesIndex} onChange={(event) => updateField('seriesIndex', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
-                            <label className={labelClass}>Cover URL</label>
-                            <input className={inputClass} value={form.coverUrl} onChange={(event) => updateField('coverUrl', event.target.value)} />
+                            <label htmlFor="manual-book-coverUrl" className={labelClass}>Cover URL</label>
+                            <input id="manual-book-coverUrl" className={inputClass} value={form.coverUrl} onChange={(event) => updateField('coverUrl', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
-                            <label className={labelClass}>Tags</label>
-                            <input className={inputClass} value={form.tags} onChange={(event) => updateField('tags', event.target.value)} />
+                            <label htmlFor="manual-book-tags" className={labelClass}>Tags</label>
+                            <input id="manual-book-tags" className={inputClass} value={form.tags} onChange={(event) => updateField('tags', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
-                            <label className={labelClass}>Description</label>
-                            <textarea
+                            <label htmlFor="manual-book-description" className={labelClass}>Description</label>
+                            <textarea id="manual-book-description"
                                 className={`${inputClass} h-32 resize-none`}
                                 value={form.description}
                                 onChange={(event) => updateField('description', event.target.value)}
