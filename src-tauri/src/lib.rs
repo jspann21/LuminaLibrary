@@ -2,6 +2,7 @@ use std::fs;
 use tauri::Manager;
 
 mod library;
+mod theme;
 
 use library::{
   commands::{
@@ -19,6 +20,7 @@ use library::{
   service::LibraryService,
   types::AppState,
 };
+use theme::set_window_theme;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -37,6 +39,19 @@ pub fn run() {
         .map_err(|err| err.to_string())?
         .join("lumina-library");
       fs::create_dir_all(&app_data_dir).map_err(|err| err.to_string())?;
+
+      let mut window_config = app
+        .config()
+        .app
+        .windows
+        .first()
+        .cloned()
+        .ok_or_else(|| "missing main window config".to_string())?;
+      window_config.background_color = Some(theme::read_window_theme(&app_data_dir).background_color());
+      tauri::WebviewWindowBuilder::from_config(app, &window_config)
+        .map_err(|err| err.to_string())?
+        .build()
+        .map_err(|err| err.to_string())?;
 
       let service = LibraryService::new(app_data_dir, app.handle().clone())
         .map_err(|err| err.to_string())?;
@@ -85,6 +100,7 @@ pub fn run() {
       open_local_file,
       open_local_file_folder,
       search_cover_candidates,
+      set_window_theme,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

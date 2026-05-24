@@ -244,6 +244,16 @@
   box-sizing: border-box;
 }
 
+html {
+  background: #f8fafc;
+  color-scheme: light;
+}
+
+html.dark {
+  background: #020617;
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -252,6 +262,10 @@ body {
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+html.dark body {
+  background: #020617;
 }
 
 body:where(.dark, .dark *) {
@@ -271,6 +285,7 @@ select {
 
 #root {
   min-height: 100vh;
+  background: inherit;
 }
 
 /* ── Custom Scrollbars ────────────────────────────────────── */

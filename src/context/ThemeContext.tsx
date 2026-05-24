@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 
 type Theme = 'light' | 'dark' | 'system'
 export type AccentColor =
@@ -75,7 +76,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const resolvedTheme = theme === 'system' ? (mediaQuery.matches ? 'dark' : 'light') : theme
       root.classList.remove('light', 'dark')
       root.classList.add(resolvedTheme)
+      root.style.backgroundColor = resolvedTheme === 'dark' ? '#020617' : '#f8fafc'
+      root.style.colorScheme = resolvedTheme
       setIsDark(resolvedTheme === 'dark')
+      if ('__TAURI_INTERNALS__' in window) {
+        void invoke('set_window_theme', { resolvedTheme }).catch((error: unknown) => {
+          console.warn('Failed to persist window theme', error)
+        })
+      }
     }
 
     applyTheme()
