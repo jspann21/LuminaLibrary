@@ -3,6 +3,8 @@ use std::{
   fs::{self, File},
   path::Path,
   process::Command,
+  sync::{mpsc, Arc, Mutex as StdMutex},
+  thread,
   time::{Duration, Instant, SystemTime},
 };
 #[cfg(target_os = "windows")]
@@ -37,6 +39,7 @@ const MAX_METADATA_FIELD_UPDATES: usize = 32;
 const MAX_SEARCH_QUERY_CHARS: usize = 256;
 const MAX_TAGS_PER_REQUEST: usize = 100;
 const MAX_TAG_LABEL_CHARS: usize = 80;
+const COVER_CACHE_WORKERS: usize = 4;
 
 #[derive(Clone)]
 pub struct LibraryService {
@@ -263,12 +266,56 @@ impl LibraryService {
 
   pub fn cache_book_covers(&self, book_ids: Vec<String>) -> anyhow::Result<u32> {
     validate_book_id_batch(&book_ids)?;
+    if book_ids.is_empty() {
+      return Ok(0);
+    }
+
+    let worker_count = COVER_CACHE_WORKERS.min(book_ids.len()).max(1);
+    let work_queue = Arc::new(StdMutex::new(book_ids.into_iter()));
+    let (result_tx, result_rx) = mpsc::channel::<anyhow::Result<bool>>();
+    let mut handles = Vec::with_capacity(worker_count);
+
+    for _ in 0..worker_count {
+      let work_queue = Arc::clone(&work_queue);
+      let result_tx = result_tx.clone();
+      let repository = self.repository.clone();
+      let cover_cache = self.cover_cache.clone();
+      handles.push(thread::spawn(move || loop {
+        let next = {
+          let mut guard = match work_queue.lock() {
+            Ok(guard) => guard,
+            Err(_) => return,
+          };
+          guard.next()
+        };
+        let Some(book_id) = next else {
+          return;
+        };
+        let _ = result_tx.send(cache_book_cover_if_needed_with(&repository, &cover_cache, &book_id));
+      }));
+    }
+    drop(result_tx);
+
     let mut updated = 0;
-    for book_id in book_ids {
-      if self.cache_book_cover_if_needed(&book_id)? {
-        updated += 1;
+    let mut first_error: Option<anyhow::Error> = None;
+    for result in result_rx {
+      match result {
+        Ok(true) => updated += 1,
+        Ok(false) => {}
+        Err(err) => {
+          if first_error.is_none() {
+            first_error = Some(err);
+          }
+        }
       }
     }
+    for handle in handles {
+      let _ = handle.join();
+    }
+    if let Some(err) = first_error {
+      return Err(err);
+    }
+
     Ok(updated)
   }
 
@@ -1092,30 +1139,7 @@ impl LibraryService {
   }
 
   fn cache_book_cover_if_needed(&self, book_id: &str) -> anyhow::Result<bool> {
-    let detail = self.repository.get_book_detail(book_id)?;
-    if detail
-      .cover_local_path
-      .as_deref()
-      .map(CoverCache::cached_file_exists)
-      .unwrap_or(false)
-    {
-      return Ok(false);
-    }
-    let Some(cover_url) = detail.cover_url.as_deref().filter(|value| !value.trim().is_empty()) else {
-      return Ok(false);
-    };
-
-    match self.cover_cache.cache_cover(book_id, cover_url) {
-      Ok(Some(local_path)) => {
-        self.repository.set_book_cover_local_path(book_id, &local_path)?;
-        Ok(true)
-      }
-      Ok(None) => Ok(false),
-      Err(err) => {
-        log::warn!("cover_cache_failed book_id={} error={err}", book_id);
-        Ok(false)
-      }
-    }
+    cache_book_cover_if_needed_with(&self.repository, &self.cover_cache, book_id)
   }
 
   fn get_detail_after_duplicate_consolidation(&self, book_id: &str) -> anyhow::Result<BookDetail> {
@@ -1229,7 +1253,36 @@ impl LibraryService {
   }
 }
 
+fn cache_book_cover_if_needed_with(
+  repository: &Repository,
+  cover_cache: &CoverCache,
+  book_id: &str,
+) -> anyhow::Result<bool> {
+  let detail = repository.get_book_detail(book_id)?;
+  if detail
+    .cover_local_path
+    .as_deref()
+    .map(CoverCache::cached_file_exists)
+    .unwrap_or(false)
+  {
+    return Ok(false);
+  }
+  let Some(cover_url) = detail.cover_url.as_deref().filter(|value| !value.trim().is_empty()) else {
+    return Ok(false);
+  };
 
+  match cover_cache.cache_cover(book_id, cover_url) {
+    Ok(Some(local_path)) => {
+      repository.set_book_cover_local_path(book_id, &local_path)?;
+      Ok(true)
+    }
+    Ok(None) => Ok(false),
+    Err(err) => {
+      log::warn!("cover_cache_failed book_id={} error={err}", book_id);
+      Ok(false)
+    }
+  }
+}
 
 pub(crate) fn now_iso() -> String {
   Utc::now().to_rfc3339()
