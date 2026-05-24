@@ -1804,7 +1804,18 @@ impl FolderWatcher {
             json!({ "folderId": folder_id, "path": changed }),
           );
           if let Ok(Some(folder)) = repository_for_thread.get_folder(&folder_id) {
-            if let Ok(summary) = scanner_for_thread.scan_folder(&folder) {
+            let changed_path = Path::new(&changed);
+            if looks_like_supported_file && changed_path.is_file() {
+              match scanner_for_thread.scan_single_file(changed_path, &folder, false, true, None) {
+                Ok(outcome) => {
+                  let summary = scan_summary_for_single_file_outcome(&outcome);
+                  let _ = app_for_thread.emit("scan_completed", summary);
+                }
+                Err(err) => {
+                  log::warn!("watcher_single_file_scan_failed path={} error={err}", changed);
+                }
+              }
+            } else if let Ok(summary) = scanner_for_thread.scan_folder(&folder) {
               let _ = app_for_thread.emit("scan_completed", summary);
             }
           }
@@ -1838,6 +1849,26 @@ impl FolderWatcher {
     Ok(())
   }
 }
+
+fn scan_summary_for_single_file_outcome(outcome: &FileProcessingOutcome) -> ScanSummary {
+  let mut summary = ScanSummary::default();
+  summary.scanned_files = 1;
+  match outcome.reason.as_str() {
+    "unchanged" => summary.unchanged_files = 1,
+    "new" => summary.new_files = 1,
+    "updated" => summary.updated_files = 1,
+    _ => {}
+  }
+  if outcome.reason != "unchanged" {
+    if outcome.book_id.is_some() {
+      summary.matched_files = 1;
+    } else {
+      summary.discovered_files = 1;
+    }
+  }
+  summary
+}
+
 fn merge_with_filename_guess(
   path: &Path,
   parsed_metadata: ParsedMetadata,
