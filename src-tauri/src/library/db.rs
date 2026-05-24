@@ -241,6 +241,14 @@ impl Repository {
     ensure_column(&conn, "books", "series", "TEXT")?;
     ensure_column(&conn, "books", "series_index", "INTEGER")?;
     ensure_column(&conn, "books", "hidden", "INTEGER NOT NULL DEFAULT 0")?;
+    conn.execute_batch(
+      r#"
+      CREATE INDEX IF NOT EXISTS idx_books_hidden_created_at ON books(hidden, created_at);
+      CREATE INDEX IF NOT EXISTS idx_books_hidden_updated_at ON books(hidden, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_book_files_format_book_id ON book_files(lower(format), book_id);
+      CREATE INDEX IF NOT EXISTS idx_files_status_last_seen ON files(status, last_seen_at);
+      "#,
+    )?;
     Ok(())
   }
 
@@ -553,7 +561,7 @@ impl Repository {
        FROM tags t
        JOIN book_tags bt ON bt.tag_id = t.id
        JOIN books b ON b.id = bt.book_id
-       WHERE COALESCE(b.hidden, 0) = 0
+       WHERE b.hidden = 0
        GROUP BY t.id, t.label
        ORDER BY lower(t.label) ASC",
     )?;
@@ -1695,7 +1703,7 @@ impl Repository {
     });
 
     let mut where_clauses = vec![
-      "COALESCE(b.hidden, 0) = 0".to_string(),
+      "b.hidden = 0".to_string(),
       "EXISTS (SELECT 1 FROM book_files bf0 WHERE bf0.book_id = b.id)".to_string(),
     ];
     let mut values: Vec<Value> = Vec::new();
@@ -1858,7 +1866,7 @@ impl Repository {
     let offset = pagination_offset(page, page_size);
 
     let mut where_clauses = vec![
-      "COALESCE(b.hidden, 0) = 1".to_string(),
+      "b.hidden = 1".to_string(),
       "EXISTS (SELECT 1 FROM book_files bf0 WHERE bf0.book_id = b.id)".to_string(),
     ];
     let mut values: Vec<Value> = Vec::new();
