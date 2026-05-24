@@ -336,12 +336,15 @@ export function useLibraryAppController() {
     }
   }, [activeView, books, booksQuery.isLoading, queryClient])
 
-  const visibleBookIdSet = new Set<string>()
-  for (const book of books) {
-    visibleBookIdSet.add(book.id)
-  }
-  const visibleSelectedLibraryBookIds = selectedLibraryBookIds.filter((id) => visibleBookIdSet.has(id))
-  const selectedLibraryBookIdSet = new Set(visibleSelectedLibraryBookIds)
+  const visibleBookIdSet = useMemo(() => new Set(books.map((book) => book.id)), [books])
+  const visibleSelectedLibraryBookIds = useMemo(
+    () => selectedLibraryBookIds.filter((id) => visibleBookIdSet.has(id)),
+    [selectedLibraryBookIds, visibleBookIdSet],
+  )
+  const selectedLibraryBookIdSet = useMemo(
+    () => new Set(visibleSelectedLibraryBookIds),
+    [visibleSelectedLibraryBookIds],
+  )
 
   // Sync delete mutation with selected book
   useEffect(() => {
