@@ -70,7 +70,7 @@ export function LibrarySidebar({
                     onSetSelectedTag(active ? undefined : tagItem.tag)
                   }}
                   className={cx(
-                    'group flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    'group flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900',
                     active
                       ? 'bg-accent-50 text-accent-700 dark:bg-accent-900/20 dark:text-accent-300'
                       : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800',

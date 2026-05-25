@@ -1,0 +1,3 @@
+## 2024-05-25 - Focus-visible for Keyboard Navigation
+**Learning:** Found that custom interactive components (like `<button>`s wrapping complex layout) often lack default focus indicators or have cropped ones if `overflow-hidden` is applied to inner containers without accounting for outer focus rings. Using `focus-visible` ensures accessibility without degrading the mouse/touch experience.
+**Action:** Always apply `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2` (and dark mode variants) to custom interactive components, ensuring the focus ring wraps the entire clickable area cleanly.
