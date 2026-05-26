@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTheme } from '../../../context/ThemeContext'
 import { api } from '../../../lib/api'
@@ -30,6 +30,7 @@ import { useSettingsMutations } from './useSettingsMutations'
 import { useCsvTransferMutations } from './useCsvTransferMutations'
 import { useBookMutations } from './useBookMutations'
 import { useTagMutations } from './useTagMutations'
+import { useDebounce } from './useDebounce'
 
 const DYNAMIC_QUERY_GC_TIME_MS = 2 * 60 * 1000
 const COVER_CACHE_STARTUP_BATCH_SIZE = 48
@@ -74,8 +75,8 @@ export function useLibraryAppController() {
     setDiscoveredQuery,
     setDiscoveredPage,
   } = useLibraryUi()
-  const deferredQuery = useDeferredValue(query)
-  const deferredDiscoveredQuery = useDeferredValue(discoveredQuery)
+  const deferredQuery = useDebounce(query, 300)
+  const deferredDiscoveredQuery = useDebounce(discoveredQuery, 300)
 
   const invalidateLibraryData = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['books'] })

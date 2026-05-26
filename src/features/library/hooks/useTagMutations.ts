@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import type { TagCount } from '../../../lib/types'
 import type { ConfirmDialogState } from '../model/types'
+import { useDebounce } from './useDebounce'
 
 export function useTagMutations(deps: {
     tags: TagCount[]
@@ -17,6 +18,7 @@ export function useTagMutations(deps: {
     const [tagManagerQuery, setTagManagerQuery] = useState('')
     const [tagManagerSelection, setTagManagerSelection] = useState<string[]>([])
     const [tagMergeTarget, setTagMergeTarget] = useState('')
+    const debouncedTagManagerQuery = useDebounce(tagManagerQuery, 200)
 
     const availableTagSet = useMemo(() => {
         const set = new Set<string>()
@@ -30,10 +32,10 @@ export function useTagMutations(deps: {
         [tagManagerSelection, availableTagSet],
     )
     const tagManagerFiltered = useMemo(() => {
-        const search = tagManagerQuery.trim().toLowerCase()
+        const search = debouncedTagManagerQuery.trim().toLowerCase()
         if (!search) return tags
         return tags.filter((item) => item.tag.toLowerCase().includes(search))
-    }, [tags, tagManagerQuery])
+    }, [tags, debouncedTagManagerQuery])
     const tagManagerSelectionSet = useMemo(
         () => new Set(effectiveTagManagerSelection),
         [effectiveTagManagerSelection],
