@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   ArrowUpDown,
   ChevronDown,
@@ -49,12 +50,26 @@ export function LibraryHeader({
   onSetViewMode,
   onQuickAddBooks,
 }: LibraryHeaderProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+        event.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white/60 px-6 backdrop-blur-md transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900/60">
       <div className="flex flex-1 items-center gap-4">
         <div className="relative w-full max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input
+            ref={searchInputRef}
             type="text"
             aria-label="Search your library"
             placeholder="Search your library..."
@@ -62,7 +77,13 @@ export function LibraryHeader({
             value={query}
             onChange={(event) => onSetQuery(event.target.value)}
           />
-          {query ? (
+          {!query ? (
+            <div className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center">
+              <kbd className="hidden sm:inline-block rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
+                <span className="font-sans text-[11px] mr-0.5">⌘</span>F
+              </kbd>
+            </div>
+          ) : (
             <button
               type="button"
               aria-label="Clear library search"
@@ -72,7 +93,7 @@ export function LibraryHeader({
             >
               <X size={14} />
             </button>
-          ) : null}
+          )}
         </div>
       </div>
       <div className="flex items-center gap-2">
