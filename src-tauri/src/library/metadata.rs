@@ -2327,8 +2327,19 @@ fn normalize_google_cover_url(url: &str) -> Option<String> {
 }
 
 fn is_google_books_cover_url(url: &str) -> bool {
-  let normalized = url.trim().to_ascii_lowercase();
-  normalized.contains("books.google.") && normalized.contains("/books/content")
+  let Ok(parsed_url) = url::Url::parse(url.trim()) else {
+    return false;
+  };
+  let Some(host) = parsed_url.host_str() else {
+    return false;
+  };
+  let host_lower = host.to_ascii_lowercase();
+  let is_google_host = host_lower == "books.google.com"
+    || host_lower.ends_with(".books.google.com")
+    || host_lower == "books.googleapis.com"
+    || host_lower.ends_with(".books.googleapis.com");
+
+  is_google_host && parsed_url.path().starts_with("/books/content")
 }
 
 fn is_known_google_placeholder_image(bytes: &[u8]) -> bool {
@@ -2675,5 +2686,15 @@ mod tests {
       StatusCode::UNAUTHORIZED,
       r#"{"error":{"message":"Invalid API key"}}"#
     ));
+  }
+
+  #[test]
+  fn test_is_google_books_cover_url() {
+    assert!(super::is_google_books_cover_url("http://books.google.com/books/content?id=xyz"));
+    assert!(super::is_google_books_cover_url("https://books.googleapis.com/books/content"));
+    assert!(super::is_google_books_cover_url("https://anything.books.google.com/books/content/foo"));
+    assert!(!super::is_google_books_cover_url("http://attacker.com/?books.google.&/books/content"));
+    assert!(!super::is_google_books_cover_url("http://attacker.com/books/content?books.google.com"));
+    assert!(!super::is_google_books_cover_url("https://google.com/books/content"));
   }
 }
