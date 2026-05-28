@@ -94,7 +94,12 @@ export function LibraryHeader({
             >
               <X size={14} />
             </button>
-          ) : null}
+          ) : (
+            <div className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+              <kbd className="min-w-[1.2rem] rounded-md border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-center font-sans dark:border-slate-700 dark:bg-slate-800">Ctrl</kbd>
+              <kbd className="min-w-[1.2rem] rounded-md border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-center font-sans dark:border-slate-700 dark:bg-slate-800">F</kbd>
+            </div>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-2">
