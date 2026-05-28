@@ -43,7 +43,7 @@ export const LibraryBookCard = memo(function LibraryBookCard({
     return (
       <button
         onClick={() => onClick(id)}
-        className="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-accent-400/40 hover:shadow-md dark:border-slate-700/60 dark:bg-slate-800"
+        className="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-accent-400/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-slate-700/60 dark:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
       >
         <input
           type="checkbox"
@@ -86,8 +86,8 @@ export const LibraryBookCard = memo(function LibraryBookCard({
   }
 
   return (
-    <button onClick={() => onClick(id)} className="group flex cursor-pointer flex-col gap-1.5 text-left">
-      <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:shadow-xl dark:border-slate-700/60 dark:bg-slate-800">
+    <button onClick={() => onClick(id)} className="group flex cursor-pointer flex-col gap-1.5 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900">
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:shadow-xl dark:border-slate-700/60 dark:bg-slate-800">
         <input
           type="checkbox"
           checked={selected}

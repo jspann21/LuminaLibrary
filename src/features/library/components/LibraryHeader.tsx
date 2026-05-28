@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   ArrowUpDown,
   ChevronDown,
@@ -31,6 +32,11 @@ type LibraryHeaderProps = {
   onQuickAddBooks: () => void
 }
 
+function isEditableElement(element: EventTarget | null): boolean {
+  if (!(element instanceof HTMLElement)) return false
+  return element.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName)
+}
+
 export function LibraryHeader({
   query,
   filterType,
@@ -49,12 +55,28 @@ export function LibraryHeader({
   onSetViewMode,
   onQuickAddBooks,
 }: LibraryHeaderProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || isEditableElement(event.target)) return
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+        event.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white/60 px-6 backdrop-blur-md transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900/60">
       <div className="flex flex-1 items-center gap-4">
         <div className="relative w-full max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input
+            ref={searchInputRef}
             type="text"
             aria-label="Search your library"
             placeholder="Search your library..."
