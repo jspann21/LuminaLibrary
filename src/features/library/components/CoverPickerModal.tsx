@@ -319,6 +319,7 @@ export function CoverPickerModal({ bookId, currentCoverUrl, bookTitle, bookAutho
                     <div className="border-b border-slate-100 px-6 py-3 dark:border-slate-800">
                         <div className="flex items-center gap-2">
                             <input
+                                aria-label="Cover image URL"
                                 type="url"
                                 value={customUrl}
                                 onChange={(e) => handleCustomUrlChange(e.target.value)}

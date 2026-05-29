@@ -282,6 +282,7 @@ export function UnresolvedFilesSection({
                                         {/* Title input */}
                                         <td className="border-b border-slate-50 px-1.5 py-1.5 dark:border-slate-800/60">
                                             <input
+                                                aria-label={`Title for ${file.fileName}`}
                                                 className="w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-300 hover:border-slate-200 focus:border-accent-400 focus:ring-1 focus:ring-accent-400/30 dark:text-slate-200 dark:placeholder:text-slate-600 dark:hover:border-slate-600 dark:focus:border-accent-500"
                                                 placeholder="Title"
                                                 value={titleValue}
@@ -292,6 +293,7 @@ export function UnresolvedFilesSection({
                                         {/* Author input */}
                                         <td className="border-b border-slate-50 px-1.5 py-1.5 dark:border-slate-800/60">
                                             <input
+                                                aria-label={`Author for ${file.fileName}`}
                                                 className="w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-300 hover:border-slate-200 focus:border-accent-400 focus:ring-1 focus:ring-accent-400/30 dark:text-slate-200 dark:placeholder:text-slate-600 dark:hover:border-slate-600 dark:focus:border-accent-500"
                                                 placeholder="Author"
                                                 value={authorValue}
@@ -302,6 +304,7 @@ export function UnresolvedFilesSection({
                                         {/* ISBN input */}
                                         <td className="border-b border-slate-50 px-1.5 py-1.5 dark:border-slate-800/60">
                                             <input
+                                                aria-label={`ISBN for ${file.fileName}`}
                                                 className="w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-300 hover:border-slate-200 focus:border-accent-400 focus:ring-1 focus:ring-accent-400/30 dark:text-slate-200 dark:placeholder:text-slate-600 dark:hover:border-slate-600 dark:focus:border-accent-500"
                                                 placeholder="ISBN"
                                                 value={isbnValue}
