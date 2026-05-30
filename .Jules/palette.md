@@ -1,0 +1,3 @@
+## 2026-05-30 - Safe Defaults for Alert Dialogs
+**Learning:** Defaulting focus in alert dialogs based on the destructive nature of the action prevents accidental destructive acts while smoothing the UX of non-destructive actions. Screen readers need proper labeling (`role="alertdialog"`, `aria-modal="true"`, `aria-labelledby`, `aria-describedby`) for these critical components.
+**Action:** When implementing modal dialogs, ensure `autoFocus` correctly sets focus on the "Cancel" action for destructive changes, and the "Confirm" action for standard confirmations. Use IDs on the title and description elements for standard ARIA labeling.
