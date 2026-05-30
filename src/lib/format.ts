@@ -29,13 +29,8 @@ export function formatDisplayMessagePaths(message: string): string {
 export function sanitizeDisplayText(value?: string): string | undefined {
   if (!value) return undefined
   const normalized = value
-    .split('')
-    .map((char) => {
-      const code = char.charCodeAt(0)
-      return code <= 31 || code === 127 ? ' ' : char
-    })
-    .join('')
-    .replace(/\s+/g, ' ')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1F\x7F\s]+/g, ' ')
     .trim()
   if (!normalized) return undefined
   const replacementCount = (normalized.match(/\uFFFD/g) ?? []).length
