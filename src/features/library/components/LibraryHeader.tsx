@@ -56,6 +56,7 @@ export function LibraryHeader({
   onQuickAddBooks,
 }: LibraryHeaderProps) {
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const isMac = typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac')
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -94,7 +95,16 @@ export function LibraryHeader({
             >
               <X size={14} />
             </button>
-          ) : null}
+          ) : (
+            <div className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center gap-1 sm:flex">
+              <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800">
+                {isMac ? '⌘' : 'Ctrl'}
+              </kbd>
+              <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800">
+                F
+              </kbd>
+            </div>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-2">
