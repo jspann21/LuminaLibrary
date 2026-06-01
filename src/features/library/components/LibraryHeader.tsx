@@ -57,6 +57,9 @@ export function LibraryHeader({
 }: LibraryHeaderProps) {
   const searchInputRef = useRef<HTMLInputElement>(null)
 
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent)
+  const cmdOrCtrl = isMac ? '⌘' : 'Ctrl'
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || isEditableElement(event.target)) return
@@ -79,11 +82,18 @@ export function LibraryHeader({
             ref={searchInputRef}
             type="text"
             aria-label="Search your library"
+            aria-keyshortcuts="Control+F Meta+F"
             placeholder="Search your library..."
-            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-10 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-14 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={query}
             onChange={(event) => onSetQuery(event.target.value)}
           />
+          {!query ? (
+            <div aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+              <kbd className="font-sans">{cmdOrCtrl}</kbd>
+              <kbd className="font-sans">F</kbd>
+            </div>
+          ) : null}
           {query ? (
             <button
               type="button"
