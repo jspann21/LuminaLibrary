@@ -2534,6 +2534,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-log",
  "thiserror 2.0.18",
+ "url",
  "uuid",
  "walkdir",
  "windows-native-keyring-store",

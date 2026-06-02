@@ -2327,8 +2327,20 @@ fn normalize_google_cover_url(url: &str) -> Option<String> {
 }
 
 fn is_google_books_cover_url(url: &str) -> bool {
-  let normalized = url.trim().to_ascii_lowercase();
-  normalized.contains("books.google.") && normalized.contains("/books/content")
+  let Ok(parsed_url) = url::Url::parse(url.trim()) else {
+    return false;
+  };
+  let Some(host) = parsed_url.host_str() else {
+    return false;
+  };
+
+  let host = host.to_ascii_lowercase();
+  let is_google_books_host = host == "books.google.com"
+    || host.ends_with(".books.google.com")
+    || host == "books.googleapis.com"
+    || host.ends_with(".books.googleapis.com");
+
+  is_google_books_host && parsed_url.path().starts_with("/books/content")
 }
 
 fn is_known_google_placeholder_image(bytes: &[u8]) -> bool {
@@ -2556,8 +2568,23 @@ mod tests {
     assert!(is_google_books_cover_url(
       "https://books.google.com/books/content?id=abc&printsec=frontcover&img=1"
     ));
+    assert!(is_google_books_cover_url(
+      "https://books.googleapis.com/books/content?id=abc"
+    ));
+    assert!(is_google_books_cover_url(
+      "https://content.books.google.com/books/content?id=abc"
+    ));
     assert!(!is_google_books_cover_url(
       "https://covers.openlibrary.org/b/isbn/9780060600631-M.jpg?default=false"
+    ));
+    assert!(!is_google_books_cover_url(
+      "https://attacker.example/books/content?host=books.google.com"
+    ));
+    assert!(!is_google_books_cover_url(
+      "https://books.google.com.attacker.example/books/content?id=abc"
+    ));
+    assert!(!is_google_books_cover_url(
+      "https://books.google.com/other/content?id=abc"
     ));
   }
 
