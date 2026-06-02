@@ -75,16 +75,24 @@ export function LibraryHeader({
       <div className="flex flex-1 items-center gap-4">
         <div className="relative w-full max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+
           <input
             ref={searchInputRef}
             type="text"
             aria-label="Search your library"
+            aria-keyshortcuts={navigator.userAgent.includes('Mac') ? "Meta+f" : "Control+f"}
             placeholder="Search your library..."
-            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-10 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-16 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={query}
             onChange={(event) => onSetQuery(event.target.value)}
           />
-          {query ? (
+          {!query ? (
+            <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center pointer-events-none">
+              <kbd className="hidden rounded border border-slate-200 bg-slate-50 px-1.5 font-sans text-[10px] font-medium text-slate-400 sm:inline-block dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">
+                {navigator.userAgent.includes('Mac') ? '⌘F' : 'Ctrl+F'}
+              </kbd>
+            </div>
+          ) : (
             <button
               type="button"
               aria-label="Clear library search"
@@ -94,7 +102,7 @@ export function LibraryHeader({
             >
               <X size={14} />
             </button>
-          ) : null}
+          )}
         </div>
       </div>
       <div className="flex items-center gap-2">
