@@ -1,0 +1,3 @@
+## 2024-06-03 - Search Shortcut Accessibility
+**Learning:** Adding dynamic keyboard shortcut hints (`⌘F` on Mac, `Ctrl F` on Windows/Linux) inside the search bar significantly improves discoverability without cluttering the UI. When checking for platform (`navigator.platform`), adding a `typeof navigator !== 'undefined'` safety check is vital to prevent potential SSR crashes, even if the app is currently a SPA.
+**Action:** Next time I add OS-specific visual hints, I will ensure proper SSR-safe navigator checks are included, and ensure padding adjustments are made for interactive elements replacing placeholders.
