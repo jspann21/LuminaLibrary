@@ -2196,6 +2196,9 @@ impl Repository {
   }
 
   fn get_book_field(&self, book_id: &str, field_name: &str) -> anyhow::Result<Option<String>> {
+    if !field_name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+      return Err(anyhow!("Invalid field name"));
+    }
     let conn = self.conn()?;
     let query = format!("SELECT {field_name} FROM books WHERE id = ?1");
     Ok(
@@ -2207,6 +2210,9 @@ impl Repository {
   }
 
   fn get_book_i64_field(&self, book_id: &str, field_name: &str) -> anyhow::Result<Option<i64>> {
+    if !field_name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+      return Err(anyhow!("Invalid field name"));
+    }
     let conn = self.conn()?;
     let query = format!("SELECT {field_name} FROM books WHERE id = ?1");
     Ok(
@@ -2315,6 +2321,9 @@ fn get_book_field_value_for_lock(
   book_id: &str,
   field_name: &str,
 ) -> anyhow::Result<Option<String>> {
+  if !field_name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+    return Err(anyhow!("Invalid field name"));
+  }
   let query = format!("SELECT {field_name} FROM books WHERE id = ?1 LIMIT 1");
   if matches!(field_name, "page_count" | "series_index") {
     let numeric = tx
