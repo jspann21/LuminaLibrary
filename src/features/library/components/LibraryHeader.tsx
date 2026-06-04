@@ -80,7 +80,7 @@ export function LibraryHeader({
             type="text"
             aria-label="Search your library"
             placeholder="Search your library..."
-            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-10 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-16 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={query}
             onChange={(event) => onSetQuery(event.target.value)}
           />
@@ -94,7 +94,12 @@ export function LibraryHeader({
             >
               <X size={14} />
             </button>
-          ) : null}
+          ) : (
+            <div className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-60 transition-opacity">
+              <kbd className="flex h-5 items-center justify-center rounded border border-slate-300 bg-slate-50 px-1.5 font-sans text-[10px] font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">Ctrl</kbd>
+              <kbd className="flex h-5 items-center justify-center rounded border border-slate-300 bg-slate-50 px-1.5 font-sans text-[10px] font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">F</kbd>
+            </div>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-2">
