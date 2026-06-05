@@ -2196,6 +2196,11 @@ impl Repository {
   }
 
   fn get_book_field(&self, book_id: &str, field_name: &str) -> anyhow::Result<Option<String>> {
+    anyhow::ensure!(
+      is_safe_book_column(field_name),
+      "Invalid column name: {}",
+      field_name
+    );
     let conn = self.conn()?;
     let query = format!("SELECT {field_name} FROM books WHERE id = ?1");
     Ok(
@@ -2207,6 +2212,11 @@ impl Repository {
   }
 
   fn get_book_i64_field(&self, book_id: &str, field_name: &str) -> anyhow::Result<Option<i64>> {
+    anyhow::ensure!(
+      is_safe_book_column(field_name),
+      "Invalid column name: {}",
+      field_name
+    );
     let conn = self.conn()?;
     let query = format!("SELECT {field_name} FROM books WHERE id = ?1");
     Ok(
@@ -2310,11 +2320,23 @@ fn metadata_field_to_override_name(field: &MetadataField) -> Option<&'static str
   metadata_field_to_book_column(field)
 }
 
+fn is_safe_book_column(field_name: &str) -> bool {
+  matches!(
+    field_name,
+    "id" | "title" | "subtitle" | "authors_json" | "publisher" | "publish_date" | "isbn10" | "isbn13" | "description" | "language" | "page_count" | "series" | "series_index" | "cover_url" | "cover_local_path"
+  )
+}
+
 fn get_book_field_value_for_lock(
   tx: &rusqlite::Transaction<'_>,
   book_id: &str,
   field_name: &str,
 ) -> anyhow::Result<Option<String>> {
+  anyhow::ensure!(
+    is_safe_book_column(field_name),
+    "Invalid column name: {}",
+    field_name
+  );
   let query = format!("SELECT {field_name} FROM books WHERE id = ?1 LIMIT 1");
   if matches!(field_name, "page_count" | "series_index") {
     let numeric = tx
