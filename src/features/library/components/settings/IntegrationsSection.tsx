@@ -35,12 +35,13 @@ export function IntegrationsSection({
             </div>
             <div className="space-y-4 p-6">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/30">
-                    <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">Google Books API Key</h4>
+                    <label htmlFor="google-books-api-key" className="block text-sm font-medium text-slate-900 dark:text-slate-100">Google Books API Key</label>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                         Stored in your OS credential manager (Windows Credential Manager, macOS Keychain, or Linux Secret Service). The key is never shown after save.
                     </p>
                     <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto_auto]">
                         <input
+                            id="google-books-api-key"
                             type="password"
                             autoComplete="off"
                             spellCheck={false}

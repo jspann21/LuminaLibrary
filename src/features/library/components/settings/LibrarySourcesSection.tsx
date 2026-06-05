@@ -64,7 +64,7 @@ export function LibrarySourcesSection({
             </div>
             <div className="space-y-4 p-6">
                 <div className="grid gap-2 md:grid-cols-[1fr_auto_auto]">
-                    <input className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900/30" placeholder="Add folder path (e.g. C:\\Books)" value={folderPath} onChange={(event) => onSetFolderPath(event.target.value)} />
+                    <input aria-label="Folder path" className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900/30" placeholder="Add folder path (e.g. C:\\Books)" value={folderPath} onChange={(event) => onSetFolderPath(event.target.value)} />
                     <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700" onClick={onBrowseForFolder}><FolderOpen className="mr-2 inline-block" size={14} />Browse</button>
                     <DisabledTooltip className="grid" reason={addFolderDisabledReason}>
                         <button className="rounded-lg bg-accent-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-50" disabled={!folderPath.trim() || isAddingFolder} onClick={onAddFolder}>Add Folder</button>
