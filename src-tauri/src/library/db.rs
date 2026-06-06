@@ -1768,16 +1768,16 @@ impl Repository {
     };
 
     let mut list_values = values;
+    // Optimization: Replaced LEFT JOINs and GROUP BY with scalar subqueries to avoid an N+1 Cartesian product issue
+    // and significantly improve performance during sorting and pagination for large libraries.
     let mut list_sql = format!(
-      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence, COALESCE(group_concat(DISTINCT bf.format),''), COUNT(DISTINCT bf.file_id), COUNT(DISTINCT CASE WHEN f.status='missing' THEN f.id END),
-        COALESCE(group_concat(DISTINCT t.label), '')
+      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence,
+        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = b.id),
+        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id),
+        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = b.id AND f.status='missing'),
+        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id)
        FROM books b
-       LEFT JOIN book_files bf ON bf.book_id = b.id
-       LEFT JOIN files f ON f.id = bf.file_id
-       LEFT JOIN book_tags bt ON bt.book_id = b.id
-       LEFT JOIN tags t ON t.id = bt.tag_id
        WHERE {where_sql}
-       GROUP BY b.id
        ORDER BY {sort_column} {sort_direction}, b.title ASC"
     );
     if let Some((_, normalized_page_size, offset)) = pagination {
@@ -1889,16 +1889,16 @@ impl Repository {
     list_values.push(Value::from(page_size as i64));
     list_values.push(Value::from(offset as i64));
 
+    // Optimization: Replaced LEFT JOINs and GROUP BY with scalar subqueries to avoid an N+1 Cartesian product issue
+    // and significantly improve performance during sorting and pagination for large libraries.
     let list_sql = format!(
-      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence, COALESCE(group_concat(DISTINCT bf.format),''), COUNT(DISTINCT bf.file_id), COUNT(DISTINCT CASE WHEN f.status='missing' THEN f.id END),
-        COALESCE(group_concat(DISTINCT t.label), '')
+      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence,
+        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = b.id),
+        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id),
+        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = b.id AND f.status='missing'),
+        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id)
        FROM books b
-       LEFT JOIN book_files bf ON bf.book_id = b.id
-       LEFT JOIN files f ON f.id = bf.file_id
-       LEFT JOIN book_tags bt ON bt.book_id = b.id
-       LEFT JOIN tags t ON t.id = bt.tag_id
        WHERE {where_sql}
-       GROUP BY b.id
        ORDER BY b.updated_at DESC, b.title ASC
        LIMIT ? OFFSET ?"
     );
