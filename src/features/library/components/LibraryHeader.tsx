@@ -80,10 +80,16 @@ export function LibraryHeader({
             type="text"
             aria-label="Search your library"
             placeholder="Search your library..."
-            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-10 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="peer w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-10 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={query}
             onChange={(event) => onSetQuery(event.target.value)}
           />
+          {!query && (
+            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-1 opacity-100 transition-opacity peer-focus:opacity-0">
+              <kbd className="inline-flex h-5 items-center justify-center rounded border border-slate-200 bg-slate-50 px-1.5 text-[10px] font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">Ctrl</kbd>
+              <kbd className="inline-flex h-5 items-center justify-center rounded border border-slate-200 bg-slate-50 px-1.5 text-[10px] font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">F</kbd>
+            </div>
+          )}
           {query ? (
             <button
               type="button"
