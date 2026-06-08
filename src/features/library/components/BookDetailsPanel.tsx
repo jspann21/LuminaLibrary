@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
-import { Check, ExternalLink, EyeOff, FolderOpen, ImagePlus, RefreshCw, Trash2, X } from 'lucide-react'
+import { Check, Loader2, ExternalLink, EyeOff, FolderOpen, ImagePlus, RefreshCw, Trash2, X } from 'lucide-react'
 import { formatBytes, formatDate, formatDisplayPath } from '../../../lib/format'
 import type { BookDetail, BookPatch } from '../../../lib/types'
 import { cx } from '../lib/cx'
@@ -229,7 +229,7 @@ export function BookDetailsPanel({
 
           <div className="space-y-6">
             <div className="flex items-center gap-3">
-              {isEditing ? <span className="flex flex-1" title={isSaving ? 'Saving changes' : 'Save changes'}><button onClick={saveChanges} disabled={isSaving} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent-600 py-2.5 font-medium text-white transition-colors hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"><Check size={16} />{isSaving ? 'Saving...' : 'Save Changes'}</button></span> : <button onClick={startEdit} className={cx('flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 font-medium text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300', detailSecondaryButtonClass)}>Edit Metadata</button>}
+              {isEditing ? <span className="flex flex-1" title={isSaving ? 'Saving changes' : 'Save changes'}><button onClick={saveChanges} disabled={isSaving} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent-600 py-2.5 font-medium text-white transition-colors hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500">{isSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}{isSaving ? 'Saving...' : 'Save Changes'}</button></span> : <button onClick={startEdit} className={cx('flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 font-medium text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300', detailSecondaryButtonClass)}>Edit Metadata</button>}
               <span className="flex" title={primaryFile ? 'Rescan metadata' : 'Requires a linked local file'}>
                 <button aria-label="Rescan metadata" onClick={() => { if (isEditing) { setRescanNotice({ tone: 'warning', message: 'Save changes first. Rescan uses saved metadata and does not include unsaved edits.' }); return } setShowRescanModal(true) }} disabled={!primaryFile} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-slate-700', detailSecondaryButtonClass)}><RefreshCw size={20} /></button>
               </span>
