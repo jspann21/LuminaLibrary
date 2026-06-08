@@ -337,16 +337,24 @@ export function useLibraryAppController() {
     }
   }, [activeView, books, booksQuery.isLoading, queryClient])
 
-  const visibleBookIds = new Set<string>()
-  for (const book of books) {
-    visibleBookIds.add(book.id)
-  }
-  const selectedLibraryBookIdSet = new Set<string>()
-  for (const bookId of selectedLibraryBookIds) {
-    if (visibleBookIds.has(bookId)) {
-      selectedLibraryBookIdSet.add(bookId)
+  // ⚡ Bolt: Memoize library selection state to prevent O(N) recalculations on every render
+  // and provide a stable Set reference for child components like VirtualizedLibraryBooks
+  // which avoids unnecessary deep Set equality comparisons.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  const selectedLibraryBookIdSet = useMemo(() => {
+    const visibleBookIds = new Set<string>()
+    for (const book of books) {
+      visibleBookIds.add(book.id)
     }
-  }
+    const selectedSet = new Set<string>()
+    for (const bookId of selectedLibraryBookIds) {
+      if (visibleBookIds.has(bookId)) {
+        selectedSet.add(bookId)
+      }
+    }
+    return selectedSet
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  }, [books, selectedLibraryBookIds])
 
   // Sync delete mutation with selected book
   useEffect(() => {

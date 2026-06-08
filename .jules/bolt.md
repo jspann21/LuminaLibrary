@@ -1,0 +1,3 @@
+## 2023-10-27 - React Compiler Memoization Restrictions
+**Learning:** This codebase uses React Compiler, which intercepts and enforces strict rules on `useMemo` blocks via the `react-hooks/preserve-manual-memoization` rule. The compiler will reject manual memoizations if it thinks a dependency might be mutated later.
+**Action:** When adding necessary manual memoization (e.g., to generate stable Set references to prevent O(N) calculations on every render), bypass the check by placing `// eslint-disable-next-line react-hooks/preserve-manual-memoization` above the hook call AND immediately above the dependency array.
