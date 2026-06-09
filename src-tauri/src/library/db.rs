@@ -2445,7 +2445,7 @@ fn pagination_offset(page: u32, page_size: u32) -> u32 {
 fn search_prefix_query(input: &str) -> Option<String> {
   let terms: Vec<String> = normalize_text(input)
     .split_whitespace()
-    .map(|term| format!("{term}*"))
+    .map(|term| format!("\"{term}\"*"))
     .collect();
 
   if terms.is_empty() {
@@ -2641,10 +2641,10 @@ mod tests {
 
   #[test]
   fn search_prefix_query_normalizes_user_input_for_partial_fts_matches() {
-    assert_eq!(search_prefix_query(" psal "), Some("psal*".to_string()));
+    assert_eq!(search_prefix_query(" psal "), Some("\"psal\"*".to_string()));
     assert_eq!(
       search_prefix_query("Psalm stu"),
-      Some("psalm* AND stu*".to_string())
+      Some("\"psalm\"* AND \"stu\"*".to_string())
     );
     assert_eq!(search_prefix_query("!!!"), None);
   }
