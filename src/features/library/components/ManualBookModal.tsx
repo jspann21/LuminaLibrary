@@ -159,7 +159,7 @@ export function ManualBookModal({
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-title" className={labelClass}>Title <span className="text-rose-500" aria-hidden="true">*</span></label>
-                            <input id="manual-book-title" required className={inputClass} value={form.title} onChange={(event) => updateField('title', event.target.value)} />
+                            <input id="manual-book-title" autoFocus required className={inputClass} value={form.title} onChange={(event) => updateField('title', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-subtitle" className={labelClass}>Subtitle</label>

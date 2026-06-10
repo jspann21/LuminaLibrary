@@ -1769,15 +1769,13 @@ impl Repository {
 
     let mut list_values = values;
     let mut list_sql = format!(
-      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence, COALESCE(group_concat(DISTINCT bf.format),''), COUNT(DISTINCT bf.file_id), COUNT(DISTINCT CASE WHEN f.status='missing' THEN f.id END),
-        COALESCE(group_concat(DISTINCT t.label), '')
+      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence,
+        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = b.id),
+        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id),
+        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = b.id AND f.status = 'missing'),
+        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id)
        FROM books b
-       LEFT JOIN book_files bf ON bf.book_id = b.id
-       LEFT JOIN files f ON f.id = bf.file_id
-       LEFT JOIN book_tags bt ON bt.book_id = b.id
-       LEFT JOIN tags t ON t.id = bt.tag_id
        WHERE {where_sql}
-       GROUP BY b.id
        ORDER BY {sort_column} {sort_direction}, b.title ASC"
     );
     if let Some((_, normalized_page_size, offset)) = pagination {
@@ -1890,15 +1888,13 @@ impl Repository {
     list_values.push(Value::from(offset as i64));
 
     let list_sql = format!(
-      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence, COALESCE(group_concat(DISTINCT bf.format),''), COUNT(DISTINCT bf.file_id), COUNT(DISTINCT CASE WHEN f.status='missing' THEN f.id END),
-        COALESCE(group_concat(DISTINCT t.label), '')
+      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence,
+        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = b.id),
+        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id),
+        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = b.id AND f.status = 'missing'),
+        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id)
        FROM books b
-       LEFT JOIN book_files bf ON bf.book_id = b.id
-       LEFT JOIN files f ON f.id = bf.file_id
-       LEFT JOIN book_tags bt ON bt.book_id = b.id
-       LEFT JOIN tags t ON t.id = bt.tag_id
        WHERE {where_sql}
-       GROUP BY b.id
        ORDER BY b.updated_at DESC, b.title ASC
        LIMIT ? OFFSET ?"
     );
@@ -2196,6 +2192,7 @@ impl Repository {
   }
 
   fn get_book_field(&self, book_id: &str, field_name: &str) -> anyhow::Result<Option<String>> {
+    anyhow::ensure!(is_book_column_allowed(field_name), "invalid book column name");
     let conn = self.conn()?;
     let query = format!("SELECT {field_name} FROM books WHERE id = ?1");
     Ok(
@@ -2207,6 +2204,7 @@ impl Repository {
   }
 
   fn get_book_i64_field(&self, book_id: &str, field_name: &str) -> anyhow::Result<Option<i64>> {
+    anyhow::ensure!(is_book_column_allowed(field_name), "invalid book column name");
     let conn = self.conn()?;
     let query = format!("SELECT {field_name} FROM books WHERE id = ?1");
     Ok(
@@ -2310,11 +2308,32 @@ fn metadata_field_to_override_name(field: &MetadataField) -> Option<&'static str
   metadata_field_to_book_column(field)
 }
 
+fn is_book_column_allowed(field_name: &str) -> bool {
+  matches!(
+    field_name,
+    "title"
+      | "subtitle"
+      | "authors_json"
+      | "publisher"
+      | "publish_date"
+      | "isbn10"
+      | "isbn13"
+      | "description"
+      | "language"
+      | "page_count"
+      | "series"
+      | "series_index"
+      | "cover_url"
+      | "cover_local_path"
+  )
+}
+
 fn get_book_field_value_for_lock(
   tx: &rusqlite::Transaction<'_>,
   book_id: &str,
   field_name: &str,
 ) -> anyhow::Result<Option<String>> {
+  anyhow::ensure!(is_book_column_allowed(field_name), "invalid book column name");
   let query = format!("SELECT {field_name} FROM books WHERE id = ?1 LIMIT 1");
   if matches!(field_name, "page_count" | "series_index") {
     let numeric = tx
@@ -2445,7 +2464,7 @@ fn pagination_offset(page: u32, page_size: u32) -> u32 {
 fn search_prefix_query(input: &str) -> Option<String> {
   let terms: Vec<String> = normalize_text(input)
     .split_whitespace()
-    .map(|term| format!("{term}*"))
+    .map(|term| format!("\"{term}\"*"))
     .collect();
 
   if terms.is_empty() {
@@ -2641,10 +2660,10 @@ mod tests {
 
   #[test]
   fn search_prefix_query_normalizes_user_input_for_partial_fts_matches() {
-    assert_eq!(search_prefix_query(" psal "), Some("psal*".to_string()));
+    assert_eq!(search_prefix_query(" psal "), Some("\"psal\"*".to_string()));
     assert_eq!(
       search_prefix_query("Psalm stu"),
-      Some("psalm* AND stu*".to_string())
+      Some("\"psalm\"* AND \"stu\"*".to_string())
     );
     assert_eq!(search_prefix_query("!!!"), None);
   }
@@ -2704,6 +2723,18 @@ mod tests {
       .expect("plural search");
     assert_eq!(plural.total, 1);
     assert_eq!(plural.items[0].id, psalms_id);
+
+    let operator_like = db
+      .repo
+      .get_library_books(
+        Some("near".to_string()),
+        BookFilters::default(),
+        SortSpec::default(),
+        Some(1),
+        Some(20),
+      )
+      .expect("operator-like search input should not break fts parsing");
+    assert_eq!(operator_like.total, 0);
   }
 
   #[test]
