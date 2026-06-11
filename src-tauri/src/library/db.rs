@@ -1768,21 +1768,28 @@ impl Repository {
     };
 
     let mut list_values = values;
-    let mut list_sql = format!(
-      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence,
-        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = b.id),
-        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id),
-        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = b.id AND f.status = 'missing'),
-        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id)
-       FROM books b
-       WHERE {where_sql}
-       ORDER BY {sort_column} {sort_direction}, b.title ASC"
-    );
+    let mut limit_offset_sql = String::new();
     if let Some((_, normalized_page_size, offset)) = pagination {
-      list_sql.push_str(" LIMIT ? OFFSET ?");
+      limit_offset_sql = " LIMIT ? OFFSET ?".to_string();
       list_values.push(Value::from(normalized_page_size as i64));
       list_values.push(Value::from(offset as i64));
     }
+
+    let list_sql = format!(
+      "SELECT q.id, q.title, q.authors_json, q.publisher, q.publish_date, q.cover_url, q.cover_local_path, q.confidence,
+        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = q.id),
+        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = q.id),
+        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = q.id AND f.status = 'missing'),
+        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = q.id)
+       FROM (
+         SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence,
+                {sort_column} as sort_val
+         FROM books b
+         WHERE {where_sql}
+         ORDER BY sort_val {sort_direction}, b.title ASC
+         {limit_offset_sql}
+       ) q"
+    );
     let mut stmt = conn.prepare(&list_sql)?;
     let mut items = Vec::new();
     for row in stmt.query_map(params_from_iter(list_values.iter()), |row| {
@@ -1888,15 +1895,18 @@ impl Repository {
     list_values.push(Value::from(offset as i64));
 
     let list_sql = format!(
-      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence,
-        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = b.id),
-        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id),
-        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = b.id AND f.status = 'missing'),
-        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id)
-       FROM books b
-       WHERE {where_sql}
-       ORDER BY b.updated_at DESC, b.title ASC
-       LIMIT ? OFFSET ?"
+      "SELECT q.id, q.title, q.authors_json, q.publisher, q.publish_date, q.cover_url, q.cover_local_path, q.confidence,
+        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = q.id),
+        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = q.id),
+        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = q.id AND f.status = 'missing'),
+        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = q.id)
+       FROM (
+         SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence
+         FROM books b
+         WHERE {where_sql}
+         ORDER BY b.updated_at DESC, b.title ASC
+         LIMIT ? OFFSET ?
+       ) q"
     );
 
     let mut stmt = conn.prepare(&list_sql)?;
