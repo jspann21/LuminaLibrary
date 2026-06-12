@@ -1768,21 +1768,34 @@ impl Repository {
     };
 
     let mut list_values = values;
-    let mut list_sql = format!(
-      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence,
-        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = b.id),
-        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id),
-        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = b.id AND f.status = 'missing'),
-        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id)
-       FROM books b
-       WHERE {where_sql}
-       ORDER BY {sort_column} {sort_direction}, b.title ASC"
-    );
-    if let Some((_, normalized_page_size, offset)) = pagination {
-      list_sql.push_str(" LIMIT ? OFFSET ?");
+    let pagination_clause = if let Some((_, normalized_page_size, offset)) = pagination {
       list_values.push(Value::from(normalized_page_size as i64));
       list_values.push(Value::from(offset as i64));
-    }
+      "LIMIT ? OFFSET ?"
+    } else {
+      ""
+    };
+
+    // PERFORMANCE OPTIMIZATION:
+    // We use a CTE to apply pagination (LIMIT/OFFSET) and sorting to the base query *before*
+    // evaluating correlated scalar subqueries (like group_concat or COUNT).
+    // This prevents SQLite from executing expensive subqueries on thousands of matching rows
+    // when we only need to render a small paginated slice.
+    let list_sql = format!(
+      "WITH PaginatedBooks AS (
+        SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence
+        FROM books b
+        WHERE {where_sql}
+        ORDER BY {sort_column} {sort_direction}, b.title ASC
+        {pagination_clause}
+      )
+      SELECT pb.id, pb.title, pb.authors_json, pb.publisher, pb.publish_date, pb.cover_url, pb.cover_local_path, pb.confidence,
+        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = pb.id),
+        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = pb.id),
+        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = pb.id AND f.status = 'missing'),
+        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = pb.id)
+       FROM PaginatedBooks pb"
+    );
     let mut stmt = conn.prepare(&list_sql)?;
     let mut items = Vec::new();
     for row in stmt.query_map(params_from_iter(list_values.iter()), |row| {
@@ -1887,16 +1900,25 @@ impl Repository {
     list_values.push(Value::from(page_size as i64));
     list_values.push(Value::from(offset as i64));
 
+    // PERFORMANCE OPTIMIZATION:
+    // We use a CTE to apply pagination (LIMIT/OFFSET) and sorting to the base query *before*
+    // evaluating correlated scalar subqueries (like group_concat or COUNT).
+    // This prevents SQLite from executing expensive subqueries on thousands of matching rows
+    // when we only need to render a small paginated slice.
     let list_sql = format!(
-      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence,
-        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = b.id),
-        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id),
-        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = b.id AND f.status = 'missing'),
-        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id)
-       FROM books b
-       WHERE {where_sql}
-       ORDER BY b.updated_at DESC, b.title ASC
-       LIMIT ? OFFSET ?"
+      "WITH PaginatedBooks AS (
+        SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence
+        FROM books b
+        WHERE {where_sql}
+        ORDER BY b.updated_at DESC, b.title ASC
+        LIMIT ? OFFSET ?
+      )
+      SELECT pb.id, pb.title, pb.authors_json, pb.publisher, pb.publish_date, pb.cover_url, pb.cover_local_path, pb.confidence,
+        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = pb.id),
+        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = pb.id),
+        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = pb.id AND f.status = 'missing'),
+        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = pb.id)
+       FROM PaginatedBooks pb"
     );
 
     let mut stmt = conn.prepare(&list_sql)?;

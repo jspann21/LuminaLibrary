@@ -1,0 +1,3 @@
+## 2026-06-12 - Optimize SQLite Pagination N+1 with CTEs
+**Learning:** In SQLite, when paginating with `LIMIT` and `OFFSET` on a main query that includes correlated scalar subqueries (e.g., `group_concat` or `COUNT()`), SQLite will evaluate the correlated subqueries for *all* rows matching the `WHERE` clause before filtering down to the limit. For large catalogs, this causes an N+1 performance bottleneck inside the database engine.
+**Action:** Always refactor paginated queries with correlated subqueries by using a Common Table Expression (CTE) to apply the `WHERE`, `ORDER BY`, `LIMIT`, and `OFFSET` onto the base table first, then run the expensive correlated subqueries in the outer `SELECT` against the limited CTE rows.
