@@ -315,6 +315,11 @@ export function useLibraryAppController() {
   const hiddenBooks = hiddenBooksQuery.data?.items ?? EMPTY_BOOKS
 
   useEffect(() => {
+    if (activeView !== 'library') return
+    libraryScrollContainerRef.current?.scrollTo({ top: 0 })
+  }, [activeView, debouncedQuery, filters, sort])
+
+  useEffect(() => {
     if (activeView !== 'library' || booksQuery.isLoading) return
     const bookIds = books
       .filter((book) => book.coverUrl && !book.coverLocalPath)

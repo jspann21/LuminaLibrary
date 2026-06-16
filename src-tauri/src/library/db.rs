@@ -1758,6 +1758,7 @@ impl Repository {
       _ => "lower(b.title)",
     };
     let sort_direction = if sort.direction.eq_ignore_ascii_case("desc") { "DESC" } else { "ASC" };
+    let title_tiebreaker_direction = if sort.field == "title" { sort_direction } else { "ASC" };
     let where_sql = where_clauses.join(" AND ");
 
     let total = if pagination.is_some() {
@@ -1776,7 +1777,7 @@ impl Repository {
         (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id)
        FROM books b
        WHERE {where_sql}
-       ORDER BY {sort_column} {sort_direction}, b.title ASC"
+       ORDER BY {sort_column} {sort_direction}, lower(b.title) {title_tiebreaker_direction}, b.title {title_tiebreaker_direction}, b.id ASC"
     );
     if let Some((_, normalized_page_size, offset)) = pagination {
       list_sql.push_str(" LIMIT ? OFFSET ?");
@@ -2735,6 +2736,104 @@ mod tests {
       )
       .expect("operator-like search input should not break fts parsing");
     assert_eq!(operator_like.total, 0);
+  }
+
+  #[test]
+  fn get_library_books_applies_requested_sort_order() {
+    let db = TestDb::new();
+    let (middle_id, _) = create_matched_book_with_title(
+      &db,
+      "C:\\Books\\SortMiddle",
+      "Middle Book",
+      "Charlie Author",
+    );
+    let (alpha_id, _) = create_matched_book_with_title(
+      &db,
+      "C:\\Books\\SortAlpha",
+      "Alpha Book",
+      "Bravo Author",
+    );
+    let (omega_id, _) = create_matched_book_with_title(
+      &db,
+      "C:\\Books\\SortOmega",
+      "Omega Book",
+      "Alpha Author",
+    );
+
+    let conn = db.repo.conn().expect("conn");
+    conn
+      .execute(
+        "UPDATE books SET created_at = ?1 WHERE id = ?2",
+        params!["2026-01-02T00:00:00Z", &middle_id],
+      )
+      .expect("set middle date");
+    conn
+      .execute(
+        "UPDATE books SET created_at = ?1 WHERE id = ?2",
+        params!["2026-01-01T00:00:00Z", &alpha_id],
+      )
+      .expect("set alpha date");
+    conn
+      .execute(
+        "UPDATE books SET created_at = ?1 WHERE id = ?2",
+        params!["2026-01-03T00:00:00Z", &omega_id],
+      )
+      .expect("set omega date");
+    drop(conn);
+
+    let title_desc = db
+      .repo
+      .get_library_books(
+        None,
+        BookFilters::default(),
+        SortSpec {
+          field: "title".to_string(),
+          direction: "desc".to_string(),
+        },
+        Some(1),
+        Some(10),
+      )
+      .expect("title desc");
+    assert_eq!(
+      title_desc.items.iter().map(|book| book.title.as_str()).collect::<Vec<_>>(),
+      vec!["Omega Book", "Middle Book", "Alpha Book"]
+    );
+
+    let author_asc = db
+      .repo
+      .get_library_books(
+        None,
+        BookFilters::default(),
+        SortSpec {
+          field: "author".to_string(),
+          direction: "asc".to_string(),
+        },
+        Some(1),
+        Some(10),
+      )
+      .expect("author asc");
+    assert_eq!(
+      author_asc.items.iter().map(|book| book.title.as_str()).collect::<Vec<_>>(),
+      vec!["Omega Book", "Alpha Book", "Middle Book"]
+    );
+
+    let created_desc = db
+      .repo
+      .get_library_books(
+        None,
+        BookFilters::default(),
+        SortSpec {
+          field: "createdAt".to_string(),
+          direction: "desc".to_string(),
+        },
+        Some(1),
+        Some(10),
+      )
+      .expect("created desc");
+    assert_eq!(
+      created_desc.items.iter().map(|book| book.title.as_str()).collect::<Vec<_>>(),
+      vec!["Omega Book", "Middle Book", "Alpha Book"]
+    );
   }
 
   #[test]
