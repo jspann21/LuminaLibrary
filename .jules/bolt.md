@@ -1,0 +1,3 @@
+## 2024-05-18 - Avoid Correlated Subqueries in Pagination
+**Learning:** In SQLite, placing correlated scalar subqueries (like `group_concat` or `COUNT()`) directly in the `SELECT` clause while simultaneously paginating with `LIMIT` and `OFFSET` causes an N+1 performance bottleneck, because the subqueries are evaluated before the pagination limit is applied.
+**Action:** Always wrap the base pagination query (the one handling `WHERE`, `ORDER BY`, `LIMIT`, and `OFFSET`) inside a CTE (Common Table Expression), and then evaluate the expensive correlated subqueries in the outer `SELECT` over just the limited rows. When referencing columns for ordering in the outer query, use `replace("b.", "lb.")` to remap the table aliases automatically without duplicating logic.
