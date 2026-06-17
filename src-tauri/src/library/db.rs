@@ -1749,13 +1749,16 @@ impl Repository {
       }
     }
 
-    let sort_column = match sort.field.as_str() {
-      "publisher" => "lower(COALESCE(b.publisher, ''))",
-      "publishDate" => "b.publish_date",
-      "createdAt" => "b.created_at",
-      "updatedAt" => "b.updated_at",
-      "author" => "lower(COALESCE(json_extract(b.authors_json, '$[0]'), ''))",
-      _ => "lower(b.title)",
+    let (sort_column, outer_sort_column) = match sort.field.as_str() {
+      "publisher" => ("lower(COALESCE(b.publisher, ''))", "lower(COALESCE(lb.publisher, ''))"),
+      "publishDate" => ("b.publish_date", "lb.publish_date"),
+      "createdAt" => ("b.created_at", "lb.created_at"),
+      "updatedAt" => ("b.updated_at", "lb.updated_at"),
+      "author" => (
+        "lower(COALESCE(json_extract(b.authors_json, '$[0]'), ''))",
+        "lower(COALESCE(json_extract(lb.authors_json, '$[0]'), ''))",
+      ),
+      _ => ("lower(b.title)", "lower(lb.title)"),
     };
     let sort_direction = if sort.direction.eq_ignore_ascii_case("desc") { "DESC" } else { "ASC" };
     let title_tiebreaker_direction = if sort.field == "title" { sort_direction } else { "ASC" };
@@ -1769,21 +1772,28 @@ impl Repository {
     };
 
     let mut list_values = values;
-    let mut list_sql = format!(
-      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence,
-        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = b.id),
-        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id),
-        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = b.id AND f.status = 'missing'),
-        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id)
-       FROM books b
-       WHERE {where_sql}
-       ORDER BY {sort_column} {sort_direction}, lower(b.title) {title_tiebreaker_direction}, b.title {title_tiebreaker_direction}, b.id ASC"
-    );
+    let mut pagination_clause = String::new();
     if let Some((_, normalized_page_size, offset)) = pagination {
-      list_sql.push_str(" LIMIT ? OFFSET ?");
+      pagination_clause = "LIMIT ? OFFSET ?".to_string();
       list_values.push(Value::from(normalized_page_size as i64));
       list_values.push(Value::from(offset as i64));
     }
+    let list_sql = format!(
+      "WITH limited_books AS (
+         SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence, b.created_at, b.updated_at
+         FROM books b
+         WHERE {where_sql}
+         ORDER BY {sort_column} {sort_direction}, lower(b.title) {title_tiebreaker_direction}, b.title {title_tiebreaker_direction}, b.id ASC
+         {pagination_clause}
+       )
+       SELECT lb.id, lb.title, lb.authors_json, lb.publisher, lb.publish_date, lb.cover_url, lb.cover_local_path, lb.confidence,
+        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = lb.id),
+        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = lb.id),
+        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = lb.id AND f.status = 'missing'),
+        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = lb.id)
+       FROM limited_books lb
+       ORDER BY {outer_sort_column} {sort_direction}, lower(lb.title) {title_tiebreaker_direction}, lb.title {title_tiebreaker_direction}, lb.id ASC"
+    );
     let mut stmt = conn.prepare(&list_sql)?;
     let mut items = Vec::new();
     for row in stmt.query_map(params_from_iter(list_values.iter()), |row| {
@@ -1889,15 +1899,20 @@ impl Repository {
     list_values.push(Value::from(offset as i64));
 
     let list_sql = format!(
-      "SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence,
-        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = b.id),
-        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id),
-        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = b.id AND f.status = 'missing'),
-        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = b.id)
-       FROM books b
-       WHERE {where_sql}
-       ORDER BY b.updated_at DESC, b.title ASC
-       LIMIT ? OFFSET ?"
+      "WITH limited_books AS (
+         SELECT b.id, b.title, b.authors_json, b.publisher, b.publish_date, b.cover_url, b.cover_local_path, b.confidence, b.updated_at
+         FROM books b
+         WHERE {where_sql}
+         ORDER BY b.updated_at DESC, lower(b.title) ASC, b.title ASC, b.id ASC
+         LIMIT ? OFFSET ?
+       )
+       SELECT lb.id, lb.title, lb.authors_json, lb.publisher, lb.publish_date, lb.cover_url, lb.cover_local_path, lb.confidence,
+        (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = lb.id),
+        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = lb.id),
+        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = lb.id AND f.status = 'missing'),
+        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = lb.id)
+       FROM limited_books lb
+       ORDER BY lb.updated_at DESC, lower(lb.title) ASC, lb.title ASC, lb.id ASC"
     );
 
     let mut stmt = conn.prepare(&list_sql)?;
