@@ -63,6 +63,7 @@ export function LibraryHeader({
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
         event.preventDefault()
         searchInputRef.current?.focus()
+        searchInputRef.current?.select()
       }
     }
 
