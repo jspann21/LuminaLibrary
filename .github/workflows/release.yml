@@ -12,7 +12,6 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  PNPM_CONFIG_MINIMUM_RELEASE_AGE: 0
 
 jobs:
   build-windows:

@@ -9,6 +9,8 @@ savePrefix: ''
 minimumReleaseAge: 10080
 minimumReleaseAgeStrict: true
 minimumReleaseAgeIgnoreMissingTime: false
+# Only add exact package@version entries for vulnerability patches, such as
+# versions selected by `pnpm audit --fix`.
 minimumReleaseAgeExclude: []
 trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 10080
