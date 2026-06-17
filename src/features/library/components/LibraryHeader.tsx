@@ -80,10 +80,15 @@ export function LibraryHeader({
             type="text"
             aria-label="Search your library"
             placeholder="Search your library..."
-            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-10 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-16 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={query}
             onChange={(event) => onSetQuery(event.target.value)}
           />
+          {!query ? (
+            <div className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded border border-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 dark:border-slate-700 dark:text-slate-500">
+              <span className="text-[10px]">Ctrl</span>F
+            </div>
+          ) : null}
           {query ? (
             <button
               type="button"
@@ -187,6 +192,7 @@ export function LibraryHeader({
         <button
           onClick={() => onSetViewMode('grid')}
           aria-label="Grid view"
+          aria-pressed={viewMode === 'grid'}
           title="Grid view"
           className={cx(
             'rounded-lg p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500',
@@ -200,6 +206,7 @@ export function LibraryHeader({
         <button
           onClick={() => onSetViewMode('list')}
           aria-label="List view"
+          aria-pressed={viewMode === 'list'}
           title="List view"
           className={cx(
             'rounded-lg p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500',
