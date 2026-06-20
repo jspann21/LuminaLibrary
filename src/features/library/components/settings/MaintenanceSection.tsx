@@ -102,16 +102,16 @@ export function MaintenanceSection({
                         </button>
                     </div>
                     <DisabledTooltip className="grid w-fit" reason={isRescanMissingMetadataPending ? 'Rescan in progress' : undefined}>
-                        <button className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-accent-600 transition-colors hover:bg-accent-50 hover:text-accent-700 disabled:pointer-events-none disabled:opacity-50 dark:text-accent-300 dark:hover:bg-accent-900/20 dark:hover:text-accent-200" disabled={isRescanMissingMetadataPending} onClick={onRescanMissingMetadata}><RefreshCw size={16} className={cx(isRescanMissingMetadataPending && 'animate-spin')} />{isRescanMissingMetadataPending ? 'Rescanning Metadata...' : 'Rescan & Update Metadata'}</button>
+                        <button className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-accent-600 transition-colors hover:bg-accent-50 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-accent-300 dark:hover:bg-accent-900/20 dark:hover:text-accent-200" disabled={isRescanMissingMetadataPending} onClick={onRescanMissingMetadata}><RefreshCw size={16} className={cx(isRescanMissingMetadataPending && 'animate-spin')} />{isRescanMissingMetadataPending ? 'Rescanning Metadata...' : 'Rescan & Update Metadata'}</button>
                     </DisabledTooltip>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Re-processes library entries to fill missing metadata and covers.</p>
                     <DisabledTooltip className="mt-3 grid w-fit" reason={isRefreshMissingCoversPending ? 'Cover refresh in progress' : undefined}>
-                        <button className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-accent-600 transition-colors hover:bg-accent-50 hover:text-accent-700 disabled:pointer-events-none disabled:opacity-50 dark:text-accent-300 dark:hover:bg-accent-900/20 dark:hover:text-accent-200" disabled={isRefreshMissingCoversPending} onClick={onRefreshMissingCovers}><RefreshCw size={16} className={cx(isRefreshMissingCoversPending && 'animate-spin')} />{isRefreshMissingCoversPending ? 'Refreshing Covers...' : 'Refresh Missing Covers'}</button>
+                        <button className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-accent-600 transition-colors hover:bg-accent-50 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-accent-300 dark:hover:bg-accent-900/20 dark:hover:text-accent-200" disabled={isRefreshMissingCoversPending} onClick={onRefreshMissingCovers}><RefreshCw size={16} className={cx(isRefreshMissingCoversPending && 'animate-spin')} />{isRefreshMissingCoversPending ? 'Refreshing Covers...' : 'Refresh Missing Covers'}</button>
                     </DisabledTooltip>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Only fills missing cover art using ISBN and title/author lookups.</p>
                     <DisabledTooltip className="mt-3 grid w-fit" reason={isReconcileLocalFilesPending ? 'Local file check in progress' : undefined}>
                         <button
-                            className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-accent-600 transition-colors hover:bg-accent-50 hover:text-accent-700 disabled:pointer-events-none disabled:opacity-50 dark:text-accent-300 dark:hover:bg-accent-900/20 dark:hover:text-accent-200"
+                            className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-accent-600 transition-colors hover:bg-accent-50 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-accent-300 dark:hover:bg-accent-900/20 dark:hover:text-accent-200"
                             disabled={isReconcileLocalFilesPending}
                             onClick={onReconcileLocalFiles}
                         >
@@ -146,7 +146,7 @@ export function MaintenanceSection({
                     <div className="space-y-3">
                         <DisabledTooltip className="grid w-fit" reason={csvOperationReason}>
                             <button
-                                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-accent-600 transition-colors hover:bg-accent-50 hover:text-accent-700 disabled:pointer-events-none disabled:opacity-50 dark:text-accent-300 dark:hover:bg-accent-900/20 dark:hover:text-accent-200"
+                                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-accent-600 transition-colors hover:bg-accent-50 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-accent-300 dark:hover:bg-accent-900/20 dark:hover:text-accent-200"
                                 disabled={isExportPending || isImportPending}
                                 onClick={() => void onExportUnresolvedCsv()}
                             >
@@ -161,7 +161,7 @@ export function MaintenanceSection({
 
                         <DisabledTooltip className="grid w-fit" reason={csvOperationReason}>
                             <button
-                                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-accent-600 transition-colors hover:bg-accent-50 hover:text-accent-700 disabled:pointer-events-none disabled:opacity-50 dark:text-accent-300 dark:hover:bg-accent-900/20 dark:hover:text-accent-200"
+                                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-accent-600 transition-colors hover:bg-accent-50 hover:text-accent-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-accent-300 dark:hover:bg-accent-900/20 dark:hover:text-accent-200"
                                 disabled={isImportPending || isExportPending}
                                 onClick={() => void onImportEnrichmentCsv()}
                             >

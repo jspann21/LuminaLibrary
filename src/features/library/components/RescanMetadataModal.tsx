@@ -473,7 +473,7 @@ export function RescanMetadataModal({
               <button
                 onClick={() => { void handleApply() }}
                 disabled={isApplying}
-                className="inline-flex items-center gap-2 rounded-xl bg-accent-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-accent-700 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-accent-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-accent-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isApplying ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 {isApplying ? 'Applying…' : 'Apply Changes'}

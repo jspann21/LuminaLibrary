@@ -239,7 +239,7 @@ export function ManualBookModal({
                         type="button"
                         onClick={() => void submit()}
                         disabled={isSaving}
-                        className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:opacity-50"
+                        className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                         {isSaving ? 'Adding...' : 'Add to Library'}

@@ -51,21 +51,21 @@ export function IntegrationsSection({
                             onChange={(event) => onSetGoogleBooksApiKeyInput(event.target.value)}
                         />
                         <button
-                            className="rounded-lg bg-accent-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-50"
+                            className="rounded-lg bg-accent-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:cursor-not-allowed disabled:opacity-50"
                             disabled={isSetGoogleBooksApiKeyPending || isClearGoogleBooksApiKeyPending || isTestGoogleBooksApiKeyPending}
                             onClick={onSaveGoogleBooksApiKey}
                         >
                             {isSetGoogleBooksApiKeyPending ? 'Saving...' : 'Save Key'}
                         </button>
                         <button
-                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-45 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
+                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
                             disabled={isSetGoogleBooksApiKeyPending || isClearGoogleBooksApiKeyPending || isTestGoogleBooksApiKeyPending}
                             onClick={onTestGoogleBooksApiKey}
                         >
                             {isTestGoogleBooksApiKeyPending ? 'Testing...' : 'Test Key'}
                         </button>
                         <button
-                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-45 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
+                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
                             disabled={!appSettings?.googleBooksApiKeyConfigured || isSetGoogleBooksApiKeyPending || isClearGoogleBooksApiKeyPending || isTestGoogleBooksApiKeyPending}
                             onClick={onClearGoogleBooksApiKey}
                         >

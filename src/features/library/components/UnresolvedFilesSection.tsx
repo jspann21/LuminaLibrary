@@ -156,7 +156,7 @@ export function UnresolvedFilesSection({
                         ) : null}
                     </div>
                     <button
-                        className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:opacity-50"
+                        className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={isAttemptMatchPending || isAttemptMatchAllPending || discoveredItems.length === 0}
                         onClick={onAttemptMatchAll}
                     >
@@ -316,7 +316,7 @@ export function UnresolvedFilesSection({
                                         <td className="border-b border-slate-50 px-1.5 py-2.5 text-right dark:border-slate-800/60">
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <button
-                                                    className="inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                                                    className="inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                                                     disabled={isPreviewMatchPending || isAttemptMatchPending || isAttemptMatchAllPending}
                                                     onClick={() => setManualFile(file)}
                                                 >
@@ -324,7 +324,7 @@ export function UnresolvedFilesSection({
                                                     Manual
                                                 </button>
                                                 <button
-                                                    className="inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-accent-500/40 bg-accent-50 px-2 py-1.5 text-[11px] font-medium text-accent-700 transition-colors hover:bg-accent-100 disabled:opacity-50 dark:border-accent-500/30 dark:bg-accent-900/20 dark:text-accent-300 dark:hover:bg-accent-900/40"
+                                                    className="inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-accent-500/40 bg-accent-50 px-2 py-1.5 text-[11px] font-medium text-accent-700 transition-colors hover:bg-accent-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-accent-500/30 dark:bg-accent-900/20 dark:text-accent-300 dark:hover:bg-accent-900/40"
                                                     disabled={isPreviewMatchPending || isAttemptMatchPending || isAttemptMatchAllPending}
                                                     onClick={async () => {
                                                         setPreviewingFileId(file.fileId)
@@ -360,7 +360,7 @@ export function UnresolvedFilesSection({
             {discoveredPages > 1 ? (
                 <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3 dark:border-slate-700/60">
                     <button
-                        className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-45 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                        className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
                         disabled={discoveredPage <= 1}
                         onClick={onPreviousDiscoveredPage}
                     >
@@ -370,7 +370,7 @@ export function UnresolvedFilesSection({
                         Page {discoveredPage} / {discoveredPages}
                     </span>
                     <button
-                        className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-45 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                        className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
                         disabled={discoveredPage >= discoveredPages}
                         onClick={onNextDiscoveredPage}
                     >
