@@ -1119,16 +1119,28 @@ impl Repository {
     let title_len = title.trim().len() as i64;
 
     let query = if use_prefilter {
-      "SELECT b.id, b.title, b.authors_json, COUNT(DISTINCT bf.file_id) AS file_count
-       FROM books b
-       LEFT JOIN book_files bf ON bf.book_id = b.id
-       WHERE (
-         lower(b.title) LIKE ?1
-         OR lower(b.title) LIKE ?2
-         OR abs(length(b.title) - ?3) <= 36
+      "WITH limited_books AS (
+         SELECT id, title, authors_json
+         FROM books
+         WHERE (
+           lower(title) LIKE ?1
+           OR lower(title) LIKE ?2
+           OR abs(length(title) - ?3) <= 36
+         )
+         ORDER BY
+           CASE
+             WHEN lower(title) LIKE ?1 THEN 0
+             WHEN lower(title) LIKE ?2 THEN 1
+             ELSE 2
+           END,
+           abs(length(title) - ?3),
+           id
+         LIMIT 200
        )
-       GROUP BY b.id, b.title, b.authors_json
-       LIMIT 200"
+       SELECT lb.id, lb.title, lb.authors_json, COUNT(DISTINCT bf.file_id) AS file_count
+       FROM limited_books lb
+       LEFT JOIN book_files bf ON bf.book_id = lb.id
+       GROUP BY lb.id, lb.title, lb.authors_json"
     } else {
       "SELECT b.id, b.title, b.authors_json, COUNT(DISTINCT bf.file_id) AS file_count
        FROM books b
