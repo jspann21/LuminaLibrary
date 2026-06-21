@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { cx } from '../lib/cx'
 import { COVER_LIST_HEIGHT, COVER_LIST_WIDTH } from '../model/constants'
 import { CoverThumb } from './CoverThumb'
 
@@ -43,7 +44,12 @@ export const LibraryBookCard = memo(function LibraryBookCard({
     return (
       <button
         onClick={() => onClick(id)}
-        className="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-accent-400/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-slate-700/60 dark:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
+        className={cx(
+          'group flex w-full items-center gap-4 rounded-xl border p-3 text-left transition hover:border-accent-400/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
+          selected
+            ? 'border-accent-400 bg-accent-50/50 dark:border-accent-500/50 dark:bg-accent-900/20'
+            : 'border-slate-200 bg-white dark:border-slate-700/60 dark:bg-slate-800',
+        )}
       >
         <input
           type="checkbox"
@@ -87,7 +93,14 @@ export const LibraryBookCard = memo(function LibraryBookCard({
 
   return (
     <button onClick={() => onClick(id)} className="group flex cursor-pointer flex-col gap-1.5 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900">
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:shadow-xl dark:border-slate-700/60 dark:bg-slate-800">
+      <div
+        className={cx(
+          'relative aspect-[2/3] w-full overflow-hidden rounded-lg border shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:shadow-xl',
+          selected
+            ? 'border-accent-500 bg-white ring-2 ring-accent-500 dark:border-accent-400 dark:bg-slate-800 dark:ring-accent-400'
+            : 'border-slate-200 bg-white dark:border-slate-700/60 dark:bg-slate-800',
+        )}
+      >
         <input
           type="checkbox"
           checked={selected}
