@@ -186,8 +186,15 @@ export function UnresolvedFilesSection({
             {/* Table */}
             <div className="overflow-x-auto px-3 py-4">
                 {discoveredItems.length === 0 ? (
-                    <div className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">
-                        {discoveredQuery ? 'No unresolved files match your search.' : 'No unresolved files — great job! 🎉'}
+                    <div className="py-12 flex flex-col items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+                        {discoveredQuery ? (
+                            'No unresolved files match your search.'
+                        ) : (
+                            <>
+                                <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">No unresolved files — great job! 🎉</p>
+                                <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">If you expected files here, you can add more library folders in Settings.</p>
+                            </>
+                        )}
                     </div>
                 ) : (
                     <table className="w-full min-w-[980px] table-fixed border-separate border-spacing-0">
