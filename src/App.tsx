@@ -93,7 +93,7 @@ function App() {
               <button
                 onClick={overlays.onZoomCoversOut}
                 disabled={!overlays.canZoomOut}
-                className="rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-slate-300 dark:hover:bg-slate-700"
+                className="rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-slate-300 dark:hover:bg-slate-700"
                 aria-label="Decrease cover size"
               >
                 <Minus size={14} />
@@ -104,7 +104,7 @@ function App() {
               <button
                 onClick={overlays.onZoomCoversIn}
                 disabled={!overlays.canZoomIn}
-                className="rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-slate-300 dark:hover:bg-slate-700"
+                className="rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-slate-300 dark:hover:bg-slate-700"
                 aria-label="Increase cover size"
               >
                 <Plus size={14} />
