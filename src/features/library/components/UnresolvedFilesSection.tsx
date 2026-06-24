@@ -103,22 +103,29 @@ export function UnresolvedFilesSection({
 
     const sortedItems = useMemo(() => {
         if (!sortField) return discoveredItems
-        const items = [...discoveredItems]
-        items.sort((a, b) => {
-            let aVal = ''
-            let bVal = ''
+
+        // OPTIMIZATION (Bolt): Use Schwartzian transform (decorate-sort-undecorate) to pre-compute sort values.
+        // This avoids calling expensive operations like sanitizeDisplayText (which uses 3 regexes)
+        // O(N log N) times inside the sort loop, reducing them to exactly O(N) operations.
+        const mapped = discoveredItems.map((item) => {
+            let sortValue = ''
             switch (sortField) {
-                case 'fileName': aVal = a.fileName ?? ''; bVal = b.fileName ?? ''; break
-                case 'type': aVal = fileExt(a.fileName); bVal = fileExt(b.fileName); break
-                case 'reason': aVal = a.reason ?? ''; bVal = b.reason ?? ''; break
-                case 'title': aVal = sanitizeDisplayText(a.guessedTitle) ?? ''; bVal = sanitizeDisplayText(b.guessedTitle) ?? ''; break
-                case 'author': aVal = sanitizeDisplayText(a.guessedAuthor) ?? ''; bVal = sanitizeDisplayText(b.guessedAuthor) ?? ''; break
-                case 'isbn': aVal = sanitizeDisplayText(a.guessedIsbn) ?? ''; bVal = sanitizeDisplayText(b.guessedIsbn) ?? ''; break
+                case 'fileName': sortValue = item.fileName ?? ''; break
+                case 'type': sortValue = fileExt(item.fileName); break
+                case 'reason': sortValue = item.reason ?? ''; break
+                case 'title': sortValue = sanitizeDisplayText(item.guessedTitle) ?? ''; break
+                case 'author': sortValue = sanitizeDisplayText(item.guessedAuthor) ?? ''; break
+                case 'isbn': sortValue = sanitizeDisplayText(item.guessedIsbn) ?? ''; break
             }
-            const cmp = aVal.localeCompare(bVal, undefined, { sensitivity: 'base' })
+            return { item, sortValue }
+        })
+
+        mapped.sort((a, b) => {
+            const cmp = a.sortValue.localeCompare(b.sortValue, undefined, { sensitivity: 'base' })
             return sortDir === 'asc' ? cmp : -cmp
         })
-        return items
+
+        return mapped.map((x) => x.item)
     }, [discoveredItems, sortField, sortDir])
 
     return (
