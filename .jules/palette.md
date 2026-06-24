@@ -1,0 +1,3 @@
+## 2024-05-24 - Restore Not-Allowed Cursors on Disabled Elements
+**Learning:** Applying `cursor-not-allowed` directly to disabled buttons while removing `pointer-events-none` introduces regressions. `pointer-events-none` is often used to prevent disabled elements from triggering hover states and to allow wrapper elements (like tooltips) to catch mouse events. Removing it breaks tooltips and allows confusing hover interactions on disabled controls.
+**Action:** Keep `pointer-events-none` on the disabled elements, and apply `cursor-not-allowed` conditionally to a wrapper element (like a tooltip wrapper) when the inner control is disabled.
