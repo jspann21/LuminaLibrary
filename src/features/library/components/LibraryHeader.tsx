@@ -231,7 +231,7 @@ export function LibraryHeader({
 
         <div className="mx-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
 
-        <span className="flex" title={isScanning ? 'Library scan in progress' : 'Add Books'}>
+        <span className={cx('flex', isScanning && 'cursor-not-allowed')} title={isScanning ? 'Library scan in progress' : 'Add Books'}>
           <button
             type="button"
             onClick={onQuickAddBooks}
