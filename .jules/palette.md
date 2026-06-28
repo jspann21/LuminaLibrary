@@ -1,0 +1,3 @@
+## 2025-02-12 - Disabled buttons with tooltips need cursor-not-allowed on wrappers
+**Learning:** In Tailwind, applying `pointer-events-none` on a disabled button intrinsicially breaks its `cursor-not-allowed` hover state. However, if the disabled button relies on a wrapper element (like `<span title="...">`) to show a tooltip explaining why it's disabled, you can't remove `pointer-events-none` without breaking the tooltip wrapper's ability to catch mouse events.
+**Action:** Always apply `cursor-not-allowed` conditionally to the wrapper element instead of relying on the button itself when `pointer-events-none` is in use on tooltipped disabled states.
