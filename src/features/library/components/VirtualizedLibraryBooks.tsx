@@ -94,7 +94,7 @@ export const VirtualizedLibraryBooks = memo(function VirtualizedLibraryBooks({
   if (books.length === 0) return null
 
   return (
-    <div ref={viewportRef} className="relative">
+    <div ref={viewportRef} className={cx('relative', selectedBookIds.size > 0 && 'selection-mode-active')}>
       <div style={{ height: `${rowVirtualizer.getTotalSize()}px` }} className="relative">
         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
           const startIndex = virtualRow.index * columns
@@ -117,7 +117,6 @@ export const VirtualizedLibraryBooks = memo(function VirtualizedLibraryBooks({
                 viewMode={viewMode}
                 coverScale={coverScale}
                 selected={selectedBookIds.has(book.id)}
-                selectionModeActive={selectedBookIds.size > 0}
                 onToggleSelected={handleToggleBookSelection}
                 onClick={handleSelectBook}
               />,
