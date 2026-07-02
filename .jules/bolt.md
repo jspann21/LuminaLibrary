@@ -1,0 +1,3 @@
+## 2025-02-17 - Prevent O(N) Re-renders with CSS Descendant Selectors
+**Learning:** In virtualized lists with many items, toggling a global visibility state (like showing checkboxes for selection mode) by passing a prop to each child component breaks `React.memo` and causes an O(N) re-render of all currently mounted items.
+**Action:** Apply a CSS class to a parent container (e.g., `selection-mode-active`) and use Tailwind CSS descendant selectors (e.g., `[.selection-mode-active_&]:opacity-100`) on the child elements. This delegates the visibility toggle to the browser's CSS engine, completely bypassing React's render cycle for the unchanged children.
