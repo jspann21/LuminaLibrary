@@ -1,0 +1,3 @@
+## 2024-07-03 - Tooltips on disabled buttons require cursor-not-allowed on the wrapper
+**Learning:** In Tailwind CSS, applying `pointer-events-none` prevents an element from receiving mouse events, which intrinsically breaks `cursor-not-allowed` hover states. However, removing it can break wrapper elements (like tooltips) that need to catch mouse events. To safely display a disabled cursor with a tooltip, keep `pointer-events-none` on the disabled element and apply `cursor-not-allowed` conditionally to its wrapper element.
+**Action:** When adding tooltips to disabled buttons using a wrapper span with `title`, conditionally add `cursor-not-allowed` to the wrapper span based on the disabled state.
