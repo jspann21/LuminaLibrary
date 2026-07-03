@@ -1,0 +1,3 @@
+## 2024-10-24 - Avoiding O(N) re-renders for global UI visibility toggles in virtualized lists
+**Learning:** Passing a global state like `selectionModeActive` as a prop down to every list item child in a large collection breaks `React.memo` for all N components simultaneously, leading to O(N) React re-renders when the global state toggles. This is a noticeable bottleneck in virtualized or large lists.
+**Action:** For bulk UI visibility toggles, apply a CSS class (e.g., `selection-mode-active`) to the parent container and use Tailwind CSS descendant selectors (e.g., `[.selection-mode-active_&]:opacity-100`) on the children instead. This offloads the UI update to the browser's CSS engine without triggering React renders, keeping React overhead O(1).

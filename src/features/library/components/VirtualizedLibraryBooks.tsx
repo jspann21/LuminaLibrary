@@ -94,7 +94,9 @@ export const VirtualizedLibraryBooks = memo(function VirtualizedLibraryBooks({
   if (books.length === 0) return null
 
   return (
-    <div ref={viewportRef} className="relative">
+    // We use a CSS class to control selection mode visibility instead of passing a prop
+    // to all children to prevent breaking React.memo and causing O(N) re-renders.
+    <div ref={viewportRef} className={cx('relative', selectedBookIds.size > 0 && 'selection-mode-active')}>
       <div style={{ height: `${rowVirtualizer.getTotalSize()}px` }} className="relative">
         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
           const startIndex = virtualRow.index * columns
@@ -117,7 +119,6 @@ export const VirtualizedLibraryBooks = memo(function VirtualizedLibraryBooks({
                 viewMode={viewMode}
                 coverScale={coverScale}
                 selected={selectedBookIds.has(book.id)}
-                selectionModeActive={selectedBookIds.size > 0}
                 onToggleSelected={handleToggleBookSelection}
                 onClick={handleSelectBook}
               />,
