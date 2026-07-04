@@ -93,8 +93,13 @@ export const VirtualizedLibraryBooks = memo(function VirtualizedLibraryBooks({
 
   if (books.length === 0) return null
 
+  // ⚡ Bolt Optimization:
+  // Instead of passing `selectionModeActive` to every single BookCard and triggering
+  // O(N) re-renders, we apply a `.selection-active` class to the parent container.
+  // The child components use CSS descendant selectors ([.selection-active_&]) to show
+  // checkboxes, preserving React.memo bailouts for unselected cards.
   return (
-    <div ref={viewportRef} className="relative">
+    <div ref={viewportRef} className={cx('relative', selectedBookIds.size > 0 && 'selection-active')}>
       <div style={{ height: `${rowVirtualizer.getTotalSize()}px` }} className="relative">
         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
           const startIndex = virtualRow.index * columns
@@ -117,7 +122,6 @@ export const VirtualizedLibraryBooks = memo(function VirtualizedLibraryBooks({
                 viewMode={viewMode}
                 coverScale={coverScale}
                 selected={selectedBookIds.has(book.id)}
-                selectionModeActive={selectedBookIds.size > 0}
                 onToggleSelected={handleToggleBookSelection}
                 onClick={handleSelectBook}
               />,
