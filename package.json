@@ -41,5 +41,20 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.59.3",
     "vite": "8.0.16"
-  }
+  },
+  "description": "Lumina Library is a local-first Windows desktop app for cataloging PDF and EPUB books. It watches the folders you choose, extracts embedded file metadata, enriches records through public book catalogs, and gives you a searchable personal library without moving or uploading your files.",
+  "main": "eslint.config.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jspann21/LuminaLibrary.git"
+  },
+  "keywords": [],
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/jspann21/LuminaLibrary/issues"
+  },
+  "homepage": "https://github.com/jspann21/LuminaLibrary#readme"
 }

@@ -1,0 +1,3 @@
+## 2024-03-24 - Add disabled state tooltip for "Add Books" button
+**Learning:** In Tailwind, disabled elements with `pointer-events-none` (applied via `disabled:pointer-events-none`) cannot trigger hover events, which prevents native `title` attributes or custom tooltips from showing. Wrapping the disabled element in a span allows the wrapper to catch the pointer events and show the tooltip, but we need to ensure the wrapper has `cursor-not-allowed` when the inner button is disabled to communicate the state properly.
+**Action:** Always wrap disabled elements in a container that catches pointer events if you need to display a tooltip explaining why the element is disabled. Apply `cursor-not-allowed` to the wrapper.
