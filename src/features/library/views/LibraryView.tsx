@@ -1,6 +1,7 @@
 import type { RefObject } from 'react'
 import { FolderOpen, Plus } from 'lucide-react'
 import type { BookCard } from '../../../lib/types'
+import { cx } from '../lib/cx'
 import type { ViewMode } from '../model/types'
 import { CoverThumb } from '../components/CoverThumb'
 import { VirtualizedLibraryBooks } from '../components/VirtualizedLibraryBooks'
@@ -95,7 +96,7 @@ export function LibraryView({
               >
                 Select All
               </button>
-              <span className="flex" title={selectedBookIds.size === 0 ? 'No books selected' : undefined}>
+              <span className={cx('flex', selectedBookIds.size === 0 && 'cursor-not-allowed')} title={selectedBookIds.size === 0 ? 'No books selected' : undefined}>
                 <button
                   onClick={onClearSelection}
                   disabled={selectedBookIds.size === 0}
@@ -104,7 +105,7 @@ export function LibraryView({
                   Clear
                 </button>
               </span>
-              <span className="flex" title={selectedBookIds.size === 0 ? 'No books selected to hide' : isHidePending ? 'Hiding selected books' : undefined}>
+              <span className={cx('flex', (selectedBookIds.size === 0 || isHidePending) && 'cursor-not-allowed')} title={selectedBookIds.size === 0 ? 'No books selected to hide' : isHidePending ? 'Hiding selected books' : undefined}>
                 <button
                   onClick={onHideSelectedBooks}
                   disabled={selectedBookIds.size === 0 || isHidePending}
@@ -144,7 +145,7 @@ export function LibraryView({
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             Hidden from Library ({hiddenBooks.length})
           </h3>
-          <span className="flex" title={hiddenBooks.length === 0 ? 'No hidden books to restore' : isRestorePending ? 'Restoring hidden books' : undefined}>
+          <span className={cx('flex', (hiddenBooks.length === 0 || isRestorePending) && 'cursor-not-allowed')} title={hiddenBooks.length === 0 ? 'No hidden books to restore' : isRestorePending ? 'Restoring hidden books' : undefined}>
             <button
               onClick={onRestoreAllHiddenBooks}
               disabled={hiddenBooks.length === 0 || isRestorePending}
@@ -174,7 +175,7 @@ export function LibraryView({
                     </p>
                   </div>
                 </div>
-                <span className="flex shrink-0" title={isRestorePending ? 'Restoring hidden books' : undefined}>
+                <span className={cx('flex shrink-0', isRestorePending && 'cursor-not-allowed')} title={isRestorePending ? 'Restoring hidden books' : undefined}>
                   <button
                     onClick={() => onRestoreBook(book.id)}
                     disabled={isRestorePending}
