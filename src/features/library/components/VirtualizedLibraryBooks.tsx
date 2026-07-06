@@ -93,8 +93,12 @@ export const VirtualizedLibraryBooks = memo(function VirtualizedLibraryBooks({
 
   if (books.length === 0) return null
 
+  // ⚡ Bolt: Bulk UI Visibility Toggle Optimization
+  // By applying the 'selection-mode' class to the parent container when any item is selected,
+  // we can use Tailwind's descendant selector ([.selection-mode_&]:opacity-100) on the children
+  // (LibraryBookCard). This prevents an O(N) re-render of all items just to toggle the checkbox visibility.
   return (
-    <div ref={viewportRef} className="relative">
+    <div ref={viewportRef} className={cx('relative', selectedBookIds.size > 0 && 'selection-mode')}>
       <div style={{ height: `${rowVirtualizer.getTotalSize()}px` }} className="relative">
         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
           const startIndex = virtualRow.index * columns
@@ -117,7 +121,6 @@ export const VirtualizedLibraryBooks = memo(function VirtualizedLibraryBooks({
                 viewMode={viewMode}
                 coverScale={coverScale}
                 selected={selectedBookIds.has(book.id)}
-                selectionModeActive={selectedBookIds.size > 0}
                 onToggleSelected={handleToggleBookSelection}
                 onClick={handleSelectBook}
               />,
