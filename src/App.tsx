@@ -89,22 +89,22 @@ function App() {
               zoomControlsBottomClass,
             )}
           >
-            <span className="flex" title={overlays.canZoomOut ? 'Decrease cover size' : 'Minimum cover size reached'}>
+            <span className={cx('flex', !overlays.canZoomOut && 'cursor-not-allowed')} title={overlays.canZoomOut ? 'Decrease cover size' : 'Minimum cover size reached'}>
               <button
                 onClick={overlays.onZoomCoversOut}
                 disabled={!overlays.canZoomOut}
-                className="rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-slate-300 dark:hover:bg-slate-700"
+                className="rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-slate-300 dark:hover:bg-slate-700"
                 aria-label="Decrease cover size"
               >
                 <Minus size={14} />
               </button>
             </span>
             <span className="min-w-10 text-center text-xs font-semibold text-slate-600 dark:text-slate-300">{overlays.zoomPercent}%</span>
-            <span className="flex" title={overlays.canZoomIn ? 'Increase cover size' : 'Maximum cover size reached'}>
+            <span className={cx('flex', !overlays.canZoomIn && 'cursor-not-allowed')} title={overlays.canZoomIn ? 'Increase cover size' : 'Maximum cover size reached'}>
               <button
                 onClick={overlays.onZoomCoversIn}
                 disabled={!overlays.canZoomIn}
-                className="rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-slate-300 dark:hover:bg-slate-700"
+                className="rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-slate-300 dark:hover:bg-slate-700"
                 aria-label="Increase cover size"
               >
                 <Plus size={14} />
