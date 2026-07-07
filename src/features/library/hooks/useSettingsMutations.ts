@@ -3,8 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import { formatDisplayPath } from '../../../lib/format'
 import { libraryQueryKeys } from '../model/queryKeys'
-import type { KeyTestNotice } from '../model/types'
-import type { ApiKeyTestResult, FolderRemovalPreview } from '../../../lib/types'
+import type { KeyTestNotice, LibraryThingNotice } from '../model/types'
+import type { ApiKeyTestResult, FolderRemovalPreview, LibraryThingImportResult } from '../../../lib/types'
 
 export function useSettingsMutations(deps: {
     setScanStatus: React.Dispatch<React.SetStateAction<string>>
@@ -16,7 +16,9 @@ export function useSettingsMutations(deps: {
 
     const [folderPath, setFolderPath] = useState('')
     const [googleBooksApiKeyInput, setGoogleBooksApiKeyInput] = useState('')
+    const [libraryThingCatalogLabelInput, setLibraryThingCatalogLabelInput] = useState('')
     const [keyTestNotice, setKeyTestNotice] = useState<KeyTestNotice | null>(null)
+    const [libraryThingNotice, setLibraryThingNotice] = useState<LibraryThingNotice | null>(null)
 
     const addFolderMutation = useMutation({
         mutationFn: (path: string) => api.addLibraryFolder(formatDisplayPath(path).trim(), true),
@@ -71,6 +73,72 @@ export function useSettingsMutations(deps: {
         },
         onError: (error: unknown) => {
             setScanStatus(error instanceof Error ? error.message : 'Failed to update startup scan setting')
+        },
+    })
+    const setLibraryThingEnabledMutation = useMutation({
+        mutationFn: (enabled: boolean) => api.setLibraryThingEnabled(enabled),
+        onSuccess: (settings) => {
+            queryClient.setQueryData(libraryQueryKeys.appSettings(), settings)
+            invalidateLibraryData()
+            setScanStatus(settings.libraryThingEnabled ? 'LibraryThing integration enabled' : 'LibraryThing integration disabled')
+        },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to update LibraryThing integration')
+        },
+    })
+    const setLibraryThingCatalogLabelMutation = useMutation({
+        mutationFn: (label?: string) => api.setLibraryThingCatalogLabel(label),
+        onSuccess: (settings) => {
+            queryClient.setQueryData(libraryQueryKeys.appSettings(), settings)
+            setLibraryThingCatalogLabelInput('')
+            setLibraryThingNotice({
+                tone: 'success',
+                message: settings.libraryThingCatalogLabel ? 'LibraryThing catalog label saved.' : 'LibraryThing catalog label cleared.',
+            })
+        },
+        onError: (error: unknown) => {
+            setLibraryThingNotice({
+                tone: 'error',
+                message: error instanceof Error ? error.message : 'Failed to save LibraryThing catalog label',
+            })
+        },
+    })
+    const importLibraryThingMutation = useMutation({
+        mutationFn: (path: string) => api.importLibraryThingExport(path),
+        onMutate: () => {
+            setLibraryThingNotice({ tone: 'loading', message: 'Importing LibraryThing export...' })
+        },
+        onSuccess: (result: LibraryThingImportResult) => {
+            invalidateLibraryData()
+            setLibraryThingNotice({
+                tone: 'success',
+                message: `Imported ${result.importedRows} LibraryThing rows (${result.matchedRows} matched, ${result.createdRows} new, ${result.skippedRows} skipped).`,
+            })
+            setScanStatus('LibraryThing export imported')
+        },
+        onError: (error: unknown) => {
+            setLibraryThingNotice({
+                tone: 'error',
+                message: error instanceof Error ? error.message : 'Failed to import LibraryThing export',
+            })
+            setScanStatus(error instanceof Error ? error.message : 'Failed to import LibraryThing export')
+        },
+    })
+    const clearLibraryThingMutation = useMutation({
+        mutationFn: () => api.clearLibraryThingIntegration(),
+        onSuccess: (settings) => {
+            queryClient.setQueryData(libraryQueryKeys.appSettings(), settings)
+            setLibraryThingCatalogLabelInput('')
+            invalidateLibraryData()
+            setLibraryThingNotice({ tone: 'success', message: 'LibraryThing integration data cleared.' })
+            setScanStatus('LibraryThing integration data cleared')
+        },
+        onError: (error: unknown) => {
+            setLibraryThingNotice({
+                tone: 'error',
+                message: error instanceof Error ? error.message : 'Failed to clear LibraryThing integration',
+            })
+            setScanStatus(error instanceof Error ? error.message : 'Failed to clear LibraryThing integration')
         },
     })
     const testGoogleBooksApiKeyMutation = useMutation({
@@ -152,19 +220,51 @@ export function useSettingsMutations(deps: {
         const value = googleBooksApiKeyInput.trim()
         testGoogleBooksApiKeyMutation.mutate(value || undefined)
     }
+    const browseAndImportLibraryThing = async () => {
+        try {
+            const selected = await api.browseForLibraryThingImport()
+            if (selected) importLibraryThingMutation.mutate(formatDisplayPath(selected))
+        } catch (error) {
+            setLibraryThingNotice({
+                tone: 'error',
+                message: error instanceof Error ? error.message : 'Unable to open LibraryThing export picker',
+            })
+            setScanStatus(error instanceof Error ? error.message : 'Unable to open LibraryThing export picker')
+        }
+    }
+    const saveLibraryThingCatalogLabel = () => {
+        setLibraryThingCatalogLabelMutation.mutate(libraryThingCatalogLabelInput.trim() || undefined)
+    }
+    const clearLibraryThingIntegration = () => {
+        openConfirmDialog({
+            title: 'Clear LibraryThing integration?',
+            message: 'This removes imported LibraryThing-only books and LibraryThing links from merged books. Local PDF/EPUB books and files are not deleted.',
+            confirmLabel: 'Clear LibraryThing',
+            tone: 'danger',
+            onConfirm: () => clearLibraryThingMutation.mutate(),
+        })
+    }
 
     return {
         folderPath,
         setFolderPath,
         googleBooksApiKeyInput,
         setGoogleBooksApiKeyInput,
+        libraryThingCatalogLabelInput,
+        setLibraryThingCatalogLabelInput,
         keyTestNotice,
         setKeyTestNotice,
+        libraryThingNotice,
+        setLibraryThingNotice,
         addFolderMutation,
         removeFolderMutation,
         setGoogleBooksApiKeyMutation,
         clearGoogleBooksApiKeyMutation,
         setScanOnStartupMutation,
+        setLibraryThingEnabledMutation,
+        setLibraryThingCatalogLabelMutation,
+        importLibraryThingMutation,
+        clearLibraryThingMutation,
         testGoogleBooksApiKeyMutation,
         browseForFolder,
         quickAddBooks,
@@ -172,5 +272,8 @@ export function useSettingsMutations(deps: {
         saveGoogleBooksApiKey,
         clearGoogleBooksApiKey,
         testGoogleBooksApiKey,
+        browseAndImportLibraryThing,
+        saveLibraryThingCatalogLabel,
+        clearLibraryThingIntegration,
     }
 }

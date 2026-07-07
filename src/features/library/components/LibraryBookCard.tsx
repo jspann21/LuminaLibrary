@@ -9,6 +9,7 @@ type LibraryBookCardProps = {
   authors: string[]
   coverUrl?: string
   coverLocalPath?: string
+  libraryThingUrl?: string | null
   imagePriority?: boolean
   tags: string[]
   format?: string
@@ -25,6 +26,7 @@ export const LibraryBookCard = memo(function LibraryBookCard({
   authors,
   coverUrl,
   coverLocalPath,
+  libraryThingUrl,
   imagePriority,
   tags,
   format,
@@ -69,6 +71,7 @@ export const LibraryBookCard = memo(function LibraryBookCard({
           <CoverThumb
             coverUrl={coverUrl}
             coverLocalPath={coverLocalPath}
+            libraryThingBadge={Boolean(libraryThingUrl)}
             loading={imagePriority ? 'eager' : 'lazy'}
             fetchPriority={imagePriority ? 'high' : 'auto'}
             title={title}
@@ -123,6 +126,7 @@ export const LibraryBookCard = memo(function LibraryBookCard({
         <CoverThumb
           coverUrl={coverUrl}
           coverLocalPath={coverLocalPath}
+          libraryThingBadge={Boolean(libraryThingUrl)}
           loading={imagePriority ? 'eager' : 'lazy'}
           fetchPriority={imagePriority ? 'high' : 'auto'}
           title={title}

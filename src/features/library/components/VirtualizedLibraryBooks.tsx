@@ -111,6 +111,7 @@ export const VirtualizedLibraryBooks = memo(function VirtualizedLibraryBooks({
                 authors={book.authors}
                 coverUrl={book.coverUrl}
                 coverLocalPath={book.coverLocalPath}
+                libraryThingUrl={book.libraryThingUrl}
                 imagePriority={imagePriority}
                 tags={book.tags}
                 format={book.formats[0]}

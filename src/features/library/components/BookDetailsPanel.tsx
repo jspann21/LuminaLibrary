@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
-import { Check, ExternalLink, EyeOff, FolderOpen, ImagePlus, Loader2, RefreshCw, Trash2, X } from 'lucide-react'
+import { BookOpen, Check, ExternalLink, EyeOff, FolderOpen, ImagePlus, Loader2, RefreshCw, Trash2, X } from 'lucide-react'
 import { formatBytes, formatDate, formatDisplayPath } from '../../../lib/format'
 import type { BookDetail, BookPatch } from '../../../lib/types'
 import { cx } from '../lib/cx'
@@ -51,6 +51,7 @@ export function BookDetailsPanel({
   onApplyCuratedMetadata,
   onOpenFile,
   onOpenFolder,
+  onOpenLibraryThingUrl,
   onRequestHide,
   onRequestDelete,
   isSaving,
@@ -196,6 +197,7 @@ export function BookDetailsPanel({
               <CoverThumb
                 coverUrl={form.coverUrl || book.coverUrl}
                 coverLocalPath={form.coverUrl ? undefined : book.coverLocalPath}
+                libraryThingBadge={Boolean(book.libraryThingUrl)}
                 title={book.title}
                 className="h-44 w-32"
               />
@@ -296,6 +298,29 @@ export function BookDetailsPanel({
             <div>
               <h3 className="mb-2 font-semibold text-slate-900 dark:text-white">Local Files</h3>
               <div className="space-y-2">
+                {book.libraryThingUrl ? (
+                  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700/60 dark:bg-slate-800/50">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                      <BookOpen size={17} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">LibraryThing</div>
+                      <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200" title={book.libraryThingUrl}>
+                        {book.libraryThingUrl}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (book.libraryThingUrl) void onOpenLibraryThingUrl(book.libraryThingUrl)
+                      }}
+                      className={cx('inline-flex shrink-0 items-center justify-center gap-1 rounded-lg border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300', detailSecondaryButtonClass)}
+                    >
+                      <ExternalLink size={12} />
+                      Open
+                    </button>
+                  </div>
+                ) : null}
                 {book.files.length > 0 ? (
                   book.files.map((file) => {
                     const formatLabel = file.format.toUpperCase()
@@ -345,7 +370,7 @@ export function BookDetailsPanel({
                     )
                   })
                 ) : (
-                  <p className="font-mono text-xs text-slate-400">No linked files.</p>
+                  <p className="font-mono text-xs text-slate-400">{book.libraryThingUrl ? 'No linked local files.' : 'No linked files.'}</p>
                 )}
               </div>
               <div className="mt-3 font-mono text-xs text-slate-400">

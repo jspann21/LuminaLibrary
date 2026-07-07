@@ -38,6 +38,10 @@ export type AppSettings = {
   googleBooksApiKeyManagedByApp: boolean
   googleBooksApiKeyFromEnvironment: boolean
   scanOnStartup: boolean
+  libraryThingEnabled: boolean
+  libraryThingCatalogLabel?: string | null
+  libraryThingLastImportAt?: string | null
+  libraryThingBookCount: number
 }
 
 export type ApiKeyTestResult = {
@@ -81,6 +85,7 @@ export type BookCard = {
   formats: string[]
   fileCount: number
   missingFiles: number
+  libraryThingUrl?: string | null
 }
 
 type BookFile = {
@@ -113,6 +118,16 @@ export type BookDetail = {
   metadataSource: string
   confidence?: number
   files: BookFile[]
+  libraryThingUrl?: string | null
+}
+
+export type LibraryThingImportResult = {
+  importedRows: number
+  matchedRows: number
+  createdRows: number
+  skippedRows: number
+  path: string
+  importedAt: string
 }
 
 export type DiscoveredFile = {

@@ -161,6 +161,7 @@ export function useLibraryAppController() {
   const scanMutations = useScanMutations({ setScanProgress, setScanStatus, invalidateLibraryData })
   const { triggerStartupReconcile } = scanMutations
   const settingsMutations = useSettingsMutations({ setScanStatus, invalidateLibraryData, openConfirmDialog })
+  const setLibraryThingCatalogLabelInput = settingsMutations.setLibraryThingCatalogLabelInput
   const csvTransfer = useCsvTransferMutations({ setScanStatus, setCsvImportProgress, invalidateLibraryData })
   const bookMutations = useBookMutations({
     setScanStatus,
@@ -211,6 +212,12 @@ export function useLibraryAppController() {
     appSettingsQuery.isLoading,
     triggerStartupReconcile,
   ])
+
+  useEffect(() => {
+    if (appSettingsQuery.data?.libraryThingCatalogLabel) {
+      setLibraryThingCatalogLabelInput(appSettingsQuery.data.libraryThingCatalogLabel)
+    }
+  }, [appSettingsQuery.data?.libraryThingCatalogLabel, setLibraryThingCatalogLabelInput])
 
   // Auto-dismiss match notice
   useEffect(() => {
@@ -458,13 +465,26 @@ export function useLibraryAppController() {
       onSaveGoogleBooksApiKey: settingsMutations.saveGoogleBooksApiKey,
       onTestGoogleBooksApiKey: settingsMutations.testGoogleBooksApiKey,
       onClearGoogleBooksApiKey: settingsMutations.clearGoogleBooksApiKey,
+      libraryThingCatalogLabelInput: settingsMutations.libraryThingCatalogLabelInput,
+      onSetLibraryThingCatalogLabelInput: settingsMutations.setLibraryThingCatalogLabelInput,
+      onSaveLibraryThingCatalogLabel: settingsMutations.saveLibraryThingCatalogLabel,
+      onSetLibraryThingEnabled: (enabled: boolean) => settingsMutations.setLibraryThingEnabledMutation.mutate(enabled),
+      onImportLibraryThingExport: () => {
+        void settingsMutations.browseAndImportLibraryThing()
+      },
+      onClearLibraryThingIntegration: settingsMutations.clearLibraryThingIntegration,
       appSettings: appSettingsQuery.data,
       onSetScanOnStartup: (enabled: boolean) => settingsMutations.setScanOnStartupMutation.mutate(enabled),
       isSetScanOnStartupPending: settingsMutations.setScanOnStartupMutation.isPending,
       keyTestNotice: settingsMutations.keyTestNotice,
+      libraryThingNotice: settingsMutations.libraryThingNotice,
       isSetGoogleBooksApiKeyPending: settingsMutations.setGoogleBooksApiKeyMutation.isPending,
       isClearGoogleBooksApiKeyPending: settingsMutations.clearGoogleBooksApiKeyMutation.isPending,
       isTestGoogleBooksApiKeyPending: settingsMutations.testGoogleBooksApiKeyMutation.isPending,
+      isSetLibraryThingEnabledPending: settingsMutations.setLibraryThingEnabledMutation.isPending,
+      isSetLibraryThingCatalogLabelPending: settingsMutations.setLibraryThingCatalogLabelMutation.isPending,
+      isImportLibraryThingPending: settingsMutations.importLibraryThingMutation.isPending,
+      isClearLibraryThingPending: settingsMutations.clearLibraryThingMutation.isPending,
       folderPath: settingsMutations.folderPath,
       onSetFolderPath: settingsMutations.setFolderPath,
       onBrowseForFolder: () => {
@@ -554,6 +574,7 @@ export function useLibraryAppController() {
       },
       onOpenFile: (absPath: string) => api.openLocalFile(absPath),
       onOpenFolder: (absPath: string) => api.openLocalFileFolder(absPath),
+      onOpenLibraryThingUrl: (url: string) => api.openLibraryThingUrl(url),
       onRequestHide: (bookId: string) => bookMutations.requestHideBook(bookId),
       onRequestDelete: (bookId: string) =>
         openConfirmDialog({

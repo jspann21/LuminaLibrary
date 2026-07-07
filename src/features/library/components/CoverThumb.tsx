@@ -7,6 +7,7 @@ import type { CoverThumbProps } from '../model/types'
 export const CoverThumb = memo(function CoverThumb({
   coverUrl,
   coverLocalPath,
+  libraryThingBadge = false,
   loading = 'lazy',
   fetchPriority = 'auto',
   title,
@@ -24,11 +25,12 @@ export const CoverThumb = memo(function CoverThumb({
     return (
       <div
         className={cx(
-          'flex items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400',
+          'relative flex items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400',
           className,
         )}
       >
         <BookOpen size={18} />
+        {libraryThingBadge ? <LibraryThingBadge /> : null}
       </div>
     )
   }
@@ -52,6 +54,15 @@ export const CoverThumb = memo(function CoverThumb({
         onLoad={() => setLoadedSrc(src)}
         onError={() => setFailedSrcs((current) => (current.includes(src) ? current : [...current, src]))}
       />
+      {libraryThingBadge ? <LibraryThingBadge /> : null}
     </div>
   )
 })
+
+function LibraryThingBadge() {
+  return (
+    <span className="absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-white/80 bg-slate-950/75 text-white shadow-sm">
+      <BookOpen size={13} />
+    </span>
+  )
+}

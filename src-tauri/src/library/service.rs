@@ -13,7 +13,7 @@ use std::os::windows::process::CommandExt;
 use anyhow::{anyhow, ensure, Context};
 use chrono::{DateTime, Utc};
 use reqwest::{blocking::Client as HttpClient, StatusCode, Url};
-use serde_json::json;
+use serde_json::{json, Value as JsonValue};
 use tauri::{AppHandle, Emitter};
 
 use crate::library::cover_cache::CoverCache;
@@ -26,7 +26,7 @@ use crate::library::scanner::{Scanner, FolderWatcher};
 use crate::library::secrets::SecretStore;
 use crate::library::types::{
   ApiKeyTestResult, AppSettings, BookDetail, BookFilters, BookPatch, ExportResult,
-  FileRecord, FolderRemovalPreview, ImportResult, LibraryFolder, LibraryMaintenanceResult, MatchPreview, MatchResult, Paged,
+  FileRecord, FolderRemovalPreview, ImportResult, LibraryFolder, LibraryMaintenanceResult, LibraryThingImportResult, MatchPreview, MatchResult, Paged,
   MetadataCandidate, MetadataField, MetadataFieldSelection, MetadataLockUpdate, MetadataRescanPreview, MetadataSourceStatus,
   ParsedMetadata, ScanSummary, SortSpec,
   TagCount, TagDeleteResult, TagMergeResult,
@@ -34,6 +34,7 @@ use crate::library::types::{
 };
 
 const MAX_CSV_IMPORT_BYTES: u64 = 25 * 1024 * 1024;
+const MAX_LIBRARY_THING_IMPORT_BYTES: u64 = 25 * 1024 * 1024;
 const MAX_BOOK_IDS_PER_REQUEST: usize = 500;
 const MAX_METADATA_FIELD_UPDATES: usize = 32;
 const MAX_SEARCH_QUERY_CHARS: usize = 256;
@@ -166,11 +167,35 @@ impl LibraryService {
       google_books_api_key_managed_by_app: self.secret_store.has_google_books_api_key()?,
       google_books_api_key_from_environment: env_google_books_api_key().is_some(),
       scan_on_startup: self.repository.get_scan_on_startup()?,
+      library_thing_enabled: self.repository.get_library_thing_enabled()?,
+      library_thing_catalog_label: self.repository.get_library_thing_catalog_label()?,
+      library_thing_last_import_at: self.repository.get_library_thing_last_import_at()?,
+      library_thing_book_count: self.repository.count_library_thing_books()?,
     })
   }
 
   pub fn set_scan_on_startup(&self, enabled: bool) -> anyhow::Result<AppSettings> {
     self.repository.set_scan_on_startup(enabled, &now_iso())?;
+    self.get_app_settings()
+  }
+
+  pub fn set_library_thing_enabled(&self, enabled: bool) -> anyhow::Result<AppSettings> {
+    self.repository.set_library_thing_enabled(enabled, &now_iso())?;
+    self.get_app_settings()
+  }
+
+  pub fn set_library_thing_catalog_label(&self, label: Option<String>) -> anyhow::Result<AppSettings> {
+    let normalized = label
+      .and_then(|value| normalized_non_empty_text(Some(value)))
+      .map(|value| value.chars().take(120).collect::<String>());
+    self.repository.set_library_thing_catalog_label(normalized, &now_iso())?;
+    self.get_app_settings()
+  }
+
+  pub fn clear_library_thing_integration(&self) -> anyhow::Result<AppSettings> {
+    let now = now_iso();
+    let _ = self.repository.clear_library_thing_sources(&now)?;
+    self.run_storage_maintenance();
     self.get_app_settings()
   }
 
@@ -1038,6 +1063,115 @@ impl LibraryService {
     }
   }
 
+  pub fn import_library_thing_export(&self, path: String) -> anyhow::Result<LibraryThingImportResult> {
+    validate_library_thing_import_path(&path)?;
+    let imported_at = now_iso();
+    let rows = parse_library_thing_export(&path)?;
+    ensure!(!rows.is_empty(), "LibraryThing export did not contain any supported book rows");
+
+    let mut imported_rows = 0usize;
+    let mut matched_rows = 0usize;
+    let mut created_rows = 0usize;
+    let mut skipped_rows = 0usize;
+
+    for row in rows {
+      let Some(external_id) = row.book_id.as_deref().and_then(normalized_library_thing_id) else {
+        skipped_rows += 1;
+        continue;
+      };
+      let external_url = library_thing_book_url(&external_id)?;
+      let title = row
+        .title
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string)
+        .unwrap_or_else(|| format!("LibraryThing book {external_id}"));
+      let authors = row.authors.clone();
+      let cover_url = row
+        .cover_url
+        .clone()
+        .and_then(|value| validate_cover_url_value(value).ok())
+        .filter(|value| !value.trim().is_empty());
+
+      let matched_book_id = self
+        .repository
+        .find_book_by_external_source("librarything", &external_id)?
+        .or_else(|| {
+          self
+            .repository
+            .find_book_by_isbn(row.isbn10.as_deref(), row.isbn13.as_deref())
+            .ok()
+            .flatten()
+        })
+        .or_else(|| {
+          if authors.is_empty() {
+            None
+          } else {
+            self.repository.find_book_by_title_author(&title, &authors).ok().flatten()
+          }
+        });
+
+      let input = UpsertBookInput {
+        title,
+        subtitle: None,
+        authors,
+        publisher: row.publisher.clone(),
+        publish_date: row.publish_date.clone(),
+        isbn10: row.isbn10.clone(),
+        isbn13: row.isbn13.clone(),
+        description: row.description.clone(),
+        language: row.language.clone(),
+        page_count: row.page_count,
+        series: row.series.clone(),
+        series_index: None,
+        cover_url,
+        metadata_source: "librarything".to_string(),
+        confidence: Some(0.92),
+      };
+
+      let created_book = matched_book_id.is_none();
+      let book_id = if let Some(existing_id) = matched_book_id {
+        self
+          .repository
+          .update_book_by_id_ignoring_manual_overrides(&existing_id, input, &imported_at)?;
+        existing_id
+      } else {
+        self.repository.upsert_book(input, &imported_at)?
+      };
+      let metadata_json = serde_json::to_string(&row.raw)?;
+      self.repository.upsert_external_source(
+        &book_id,
+        "librarything",
+        &external_id,
+        row.work_id.as_deref(),
+        &external_url,
+        &metadata_json,
+        &imported_at,
+      )?;
+      let _ = self.resolve_and_cache_book_cover_if_needed(&book_id)?;
+      imported_rows += 1;
+      if created_book {
+        created_rows += 1;
+      } else {
+        matched_rows += 1;
+      }
+    }
+
+    self.repository.set_library_thing_enabled(true, &imported_at)?;
+    self.repository.set_library_thing_last_import_at(&imported_at, &imported_at)?;
+    self.run_storage_maintenance();
+
+    Ok(LibraryThingImportResult {
+      imported_rows,
+      matched_rows,
+      created_rows,
+      skipped_rows,
+      path,
+      imported_at,
+    })
+  }
+
   pub fn rescan_file(&self, file_id: String) -> anyhow::Result<FileRecord> {
     let file = self
       .repository
@@ -1142,6 +1276,39 @@ impl LibraryService {
     cache_book_cover_if_needed_with(&self.repository, &self.cover_cache, book_id)
   }
 
+  fn resolve_and_cache_book_cover_if_needed(&self, book_id: &str) -> anyhow::Result<bool> {
+    let detail = self.repository.get_book_detail(book_id)?;
+    let mut metadata = ParsedMetadata::default();
+    metadata.title = Some(detail.title.clone());
+    metadata.subtitle = detail.subtitle.clone();
+    metadata.authors = detail.authors.clone();
+    metadata.publisher = detail.publisher.clone();
+    metadata.publish_date = detail.publish_date.clone();
+    metadata.isbn10 = detail.isbn10.clone();
+    metadata.isbn13 = detail.isbn13.clone();
+    metadata.description = detail.description.clone();
+    metadata.language = detail.language.clone();
+    metadata.page_count = detail.page_count;
+
+    let existing_cover_url = detail.cover_url.clone();
+    let resolved_cover_url = self.scanner.enricher.resolve_cover_only(&metadata, existing_cover_url.clone());
+    self.scanner.emit_google_books_quota_notice_if_needed();
+    if let Some(url) = resolved_cover_url {
+      if existing_cover_url.as_deref() != Some(url.as_str()) {
+        self.repository.set_book_cover_url(book_id, &url, &now_iso())?;
+      }
+    } else if existing_cover_url
+      .as_deref()
+      .map(|url| self.scanner.enricher.is_google_placeholder_cover_url(url))
+      .unwrap_or(false)
+    {
+      self.repository.clear_book_cover_url(book_id, &now_iso())?;
+      return Ok(true);
+    }
+
+    self.cache_book_cover_if_needed(book_id)
+  }
+
   fn get_detail_after_duplicate_consolidation(&self, book_id: &str) -> anyhow::Result<BookDetail> {
     let edited_detail = self.repository.get_book_detail(book_id)?;
     let merged_duplicate_books = self.repository.consolidate_duplicate_books(&now_iso())?;
@@ -1198,6 +1365,21 @@ impl LibraryService {
     ensure!(metadata.is_dir(), "path is not a folder: {}", parent.display());
 
     open_file_with_system_app(parent)?;
+    Ok(())
+  }
+
+  pub fn open_library_thing_url(&self, url: String) -> anyhow::Result<()> {
+    let parsed = Url::parse(url.trim()).map_err(|_| anyhow!("LibraryThing URL must be valid"))?;
+    ensure!(parsed.scheme() == "https", "LibraryThing URL must use HTTPS");
+    ensure!(
+      parsed.host_str().map(|host| host.eq_ignore_ascii_case("www.librarything.com")).unwrap_or(false),
+      "LibraryThing URL must be on www.librarything.com"
+    );
+    ensure!(
+      parsed.path().starts_with("/work/book/"),
+      "LibraryThing URL must point to a LibraryThing book page"
+    );
+    open_url_with_system_app(parsed.as_str())?;
     Ok(())
   }
 
@@ -1393,6 +1575,296 @@ fn csv_value(row: &HashMap<String, String>, keys: &[&str]) -> Option<String> {
     }
   }
   None
+}
+
+#[derive(Debug, Clone, Default)]
+struct LibraryThingExportRow {
+  book_id: Option<String>,
+  work_id: Option<String>,
+  title: Option<String>,
+  authors: Vec<String>,
+  publisher: Option<String>,
+  publish_date: Option<String>,
+  isbn10: Option<String>,
+  isbn13: Option<String>,
+  description: Option<String>,
+  language: Option<String>,
+  page_count: Option<i64>,
+  series: Option<String>,
+  cover_url: Option<String>,
+  raw: JsonValue,
+}
+
+fn parse_library_thing_export(path: &str) -> anyhow::Result<Vec<LibraryThingExportRow>> {
+  let contents = fs::read_to_string(path).with_context(|| format!("failed to read LibraryThing export file {path}"))?;
+  let trimmed = contents.trim_start();
+  if trimmed.starts_with('{') || trimmed.starts_with('[') {
+    return parse_library_thing_json(&contents);
+  }
+  parse_library_thing_tsv(&contents)
+}
+
+fn parse_library_thing_json(contents: &str) -> anyhow::Result<Vec<LibraryThingExportRow>> {
+  let value: JsonValue = serde_json::from_str(contents).context("failed to parse LibraryThing JSON export")?;
+  let objects = collect_library_thing_json_objects(&value);
+  let mut rows = Vec::new();
+  for object in objects {
+    let Some(map) = object.as_object() else {
+      continue;
+    };
+    let normalized = normalize_json_object_map(map);
+    rows.push(library_thing_row_from_map(&normalized, object.clone()));
+  }
+  Ok(rows)
+}
+
+fn collect_library_thing_json_objects(value: &JsonValue) -> Vec<&JsonValue> {
+  if let Some(items) = value.as_array() {
+    return items.iter().collect();
+  }
+  if let Some(object) = value.as_object() {
+    for key in ["books", "items", "data", "rows", "catalog"] {
+      if let Some(items) = object.get(key).and_then(JsonValue::as_array) {
+        return items.iter().collect();
+      }
+    }
+    if object.values().all(JsonValue::is_object) {
+      return object.values().collect();
+    }
+  }
+  vec![value]
+}
+
+fn parse_library_thing_tsv(contents: &str) -> anyhow::Result<Vec<LibraryThingExportRow>> {
+  let mut reader = csv::ReaderBuilder::new()
+    .delimiter(b'\t')
+    .flexible(true)
+    .from_reader(contents.as_bytes());
+  let headers = reader.headers()?.clone();
+  let mut rows = Vec::new();
+  for record in reader.records() {
+    let record = record?;
+    let mut map = HashMap::new();
+    for (key, value) in headers.iter().zip(record.iter()) {
+      map.insert(normalize_export_key(key), value.trim().to_string());
+    }
+    let raw = JsonValue::Object(
+      map
+        .iter()
+        .map(|(key, value)| (key.clone(), JsonValue::String(value.clone())))
+        .collect(),
+    );
+    rows.push(library_thing_row_from_map(&map, raw));
+  }
+  Ok(rows)
+}
+
+fn normalize_json_object_map(map: &serde_json::Map<String, JsonValue>) -> HashMap<String, String> {
+  let mut out = HashMap::new();
+  for (key, value) in map {
+    let text = match value {
+      JsonValue::Null => None,
+      JsonValue::String(value) => Some(value.clone()),
+      JsonValue::Number(value) => Some(value.to_string()),
+      JsonValue::Bool(value) => Some(value.to_string()),
+      JsonValue::Array(items) => {
+        let values: Vec<String> = items.iter().filter_map(json_scalar_text).collect();
+        if values.is_empty() {
+          None
+        } else {
+          Some(values.join("|"))
+        }
+      }
+      JsonValue::Object(_) => None,
+    };
+    if let Some(text) = text {
+      out.insert(normalize_export_key(key), text.trim().to_string());
+    }
+  }
+  out
+}
+
+fn json_scalar_text(value: &JsonValue) -> Option<String> {
+  match value {
+    JsonValue::String(value) => Some(value.clone()),
+    JsonValue::Number(value) => Some(value.to_string()),
+    JsonValue::Bool(value) => Some(value.to_string()),
+    _ => None,
+  }
+}
+
+fn library_thing_row_from_map(map: &HashMap<String, String>, raw: JsonValue) -> LibraryThingExportRow {
+  let mut row = LibraryThingExportRow {
+    book_id: export_value(map, &["book_id", "books_id", "bookid", "booksid", "book id", "books id", "book"]).and_then(normalized_library_thing_id),
+    work_id: export_value(map, &["workcode", "work_code", "work_id", "workid", "work id"]).and_then(normalized_library_thing_id),
+    title: export_value(map, &["title"]),
+    authors: export_value(
+      map,
+      &[
+        "author_first_last",
+        "author first last",
+        "author (first, last)",
+        "author",
+        "authors",
+        "primary_author",
+        "primaryauthor",
+        "primary author",
+        "author_last_first",
+        "author (last, first)",
+      ],
+    )
+    .map(|value| parse_library_thing_author_list(&value))
+    .unwrap_or_default(),
+    publisher: export_value(map, &["publisher", "publication"]),
+    publish_date: export_value(map, &["date", "publish_date", "published", "publication_date", "publication date"]),
+    isbn10: export_value(map, &["isbn10", "isbn_10", "isbn 10", "originalisbn"]).and_then(|value| normalize_valid_isbn(&value)).filter(|isbn| isbn.len() == 10),
+    isbn13: export_value(map, &["isbn13", "isbn_13", "isbn 13"]).and_then(|value| normalize_valid_isbn(&value)).filter(|isbn| isbn.len() == 13),
+    description: export_value(map, &["summary", "description", "review", "comments"]),
+    language: export_value(map, &["language", "language_1", "language 1"]),
+    page_count: export_value(map, &["pages", "page_count", "pagecount", "page count"]).and_then(parse_i64_value),
+    series: export_value(map, &["series"]),
+    cover_url: export_value(map, &["cover_url", "coverurl", "cover", "cover image", "cover_image"]),
+    raw,
+  };
+  fill_library_thing_row_from_raw_json(&mut row);
+  if row.isbn10.is_none() || row.isbn13.is_none() {
+    assign_library_thing_isbns(&mut row, export_value(map, &["isbns", "isbn", "isbn_list", "isbn list"]));
+  }
+  row
+}
+
+fn fill_library_thing_row_from_raw_json(row: &mut LibraryThingExportRow) {
+  let raw = row.raw.clone();
+  let Some(object) = raw.as_object() else {
+    return;
+  };
+
+  if let Some(authors) = object.get("authors").and_then(JsonValue::as_array) {
+    let parsed_authors: Vec<String> = authors
+      .iter()
+      .filter_map(|author| {
+        author
+          .get("fl")
+          .and_then(JsonValue::as_str)
+          .or_else(|| author.get("lf").and_then(JsonValue::as_str))
+          .map(str::trim)
+          .filter(|value| !value.is_empty())
+          .map(ToString::to_string)
+      })
+      .collect();
+    if !parsed_authors.is_empty() {
+      row.authors = parsed_authors;
+    }
+  }
+
+  if row.isbn10.is_none() || row.isbn13.is_none() {
+    if let Some(isbn_object) = object.get("isbn").and_then(JsonValue::as_object) {
+      let isbn_values: Vec<String> = isbn_object
+        .values()
+        .filter_map(JsonValue::as_str)
+        .map(ToString::to_string)
+        .collect();
+      for value in isbn_values {
+        assign_library_thing_isbns(row, Some(value));
+      }
+    }
+  }
+
+  if row.language.is_none() {
+    let language = object
+      .get("language")
+      .and_then(JsonValue::as_array)
+      .and_then(|items| items.first())
+      .and_then(JsonValue::as_str)
+      .map(str::trim)
+      .filter(|value| !value.is_empty())
+      .map(ToString::to_string);
+    row.language = language;
+  }
+}
+
+fn parse_library_thing_author_list(value: &str) -> Vec<String> {
+  let separator = if value.contains('|') {
+    '|'
+  } else if value.contains(';') {
+    ';'
+  } else {
+    '\0'
+  };
+
+  if separator == '\0' {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+      Vec::new()
+    } else {
+      vec![trimmed.to_string()]
+    }
+  } else {
+    value
+      .split(separator)
+      .map(str::trim)
+      .filter(|item| !item.is_empty())
+      .map(ToString::to_string)
+      .collect()
+  }
+}
+
+fn assign_library_thing_isbns(row: &mut LibraryThingExportRow, raw: Option<String>) {
+  let Some(raw) = raw else {
+    return;
+  };
+  for token in raw.split(|ch: char| ch.is_whitespace() || matches!(ch, ',' | ';' | '|' | '[' | ']' | '"' | '\'')) {
+    let Some(normalized) = normalize_valid_isbn(token) else {
+      continue;
+    };
+    if normalized.len() == 10 && row.isbn10.is_none() {
+      row.isbn10 = Some(normalized);
+    } else if normalized.len() == 13 && row.isbn13.is_none() {
+      row.isbn13 = Some(normalized);
+    }
+  }
+}
+
+fn export_value(map: &HashMap<String, String>, keys: &[&str]) -> Option<String> {
+  for key in keys {
+    if let Some(value) = map.get(&normalize_export_key(key)) {
+      let trimmed = value.trim();
+      if !trimmed.is_empty() {
+        return Some(trimmed.to_string());
+      }
+    }
+  }
+  None
+}
+
+fn normalize_export_key(key: &str) -> String {
+  key
+    .trim()
+    .to_ascii_lowercase()
+    .chars()
+    .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' })
+    .collect::<String>()
+    .split('_')
+    .filter(|part| !part.is_empty())
+    .collect::<Vec<_>>()
+    .join("_")
+}
+
+fn normalized_library_thing_id(value: impl AsRef<str>) -> Option<String> {
+  let trimmed = value.as_ref().trim();
+  if trimmed.is_empty() || trimmed.len() > 64 {
+    return None;
+  }
+  if trimmed.chars().all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-')) {
+    Some(trimmed.to_string())
+  } else {
+    None
+  }
+}
+
+fn library_thing_book_url(book_id: &str) -> anyhow::Result<String> {
+  let normalized = normalized_library_thing_id(book_id).ok_or_else(|| anyhow!("Invalid LibraryThing book id"))?;
+  Ok(format!("https://www.librarything.com/work/book/{normalized}"))
 }
 
 fn parse_csv_list(value: &str) -> Vec<String> {
@@ -1759,12 +2231,40 @@ fn validate_csv_import_path(path: &str) -> anyhow::Result<fs::Metadata> {
   Ok(metadata)
 }
 
+fn validate_library_thing_import_path(path: &str) -> anyhow::Result<fs::Metadata> {
+  let candidate = Path::new(path);
+  ensure!(
+    has_library_thing_export_extension(candidate),
+    "LibraryThing import file must be a .json, .tsv, or .txt export"
+  );
+
+  let metadata = fs::metadata(candidate).context("failed to access LibraryThing import file")?;
+  ensure!(metadata.is_file(), "LibraryThing import path must be a file");
+  ensure!(
+    metadata.len() <= MAX_LIBRARY_THING_IMPORT_BYTES,
+    "LibraryThing import file must be 25 MB or smaller"
+  );
+  Ok(metadata)
+}
+
 fn validate_csv_export_path(path: &str) -> anyhow::Result<()> {
   ensure!(
     has_csv_extension(Path::new(path)),
     "CSV export file must have a .csv extension"
   );
   Ok(())
+}
+
+fn has_library_thing_export_extension(path: &Path) -> bool {
+  path
+    .extension()
+    .and_then(|ext| ext.to_str())
+    .map(|ext| {
+      ext.eq_ignore_ascii_case("json")
+        || ext.eq_ignore_ascii_case("tsv")
+        || ext.eq_ignore_ascii_case("txt")
+    })
+    .unwrap_or(false)
 }
 
 fn has_csv_extension(path: &Path) -> bool {
@@ -1856,12 +2356,32 @@ fn open_file_with_system_app(path: &Path) -> anyhow::Result<()> {
   Ok(())
 }
 
+#[cfg(target_os = "windows")]
+fn open_url_with_system_app(url: &str) -> anyhow::Result<()> {
+  let mut command = Command::new("explorer.exe");
+  command.arg(url);
+  command.creation_flags(0x08000000);
+  command
+    .spawn()
+    .with_context(|| format!("failed to open URL {url}"))?;
+  Ok(())
+}
+
 #[cfg(target_os = "macos")]
 fn open_file_with_system_app(path: &Path) -> anyhow::Result<()> {
   Command::new("open")
     .arg(path.as_os_str())
     .spawn()
     .with_context(|| format!("failed to open file {}", path.display()))?;
+  Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn open_url_with_system_app(url: &str) -> anyhow::Result<()> {
+  Command::new("open")
+    .arg(url)
+    .spawn()
+    .with_context(|| format!("failed to open URL {url}"))?;
   Ok(())
 }
 
@@ -1874,17 +2394,97 @@ fn open_file_with_system_app(path: &Path) -> anyhow::Result<()> {
   Ok(())
 }
 
+#[cfg(all(unix, not(target_os = "macos")))]
+fn open_url_with_system_app(url: &str) -> anyhow::Result<()> {
+  Command::new("xdg-open")
+    .arg(url)
+    .spawn()
+    .with_context(|| format!("failed to open URL {url}"))?;
+  Ok(())
+}
+
 #[cfg(test)]
 mod tests {
   use super::{
-    csv_import_progress_percent, normalize_book_patch_isbns, validate_book_id_batch, validate_cover_url_value,
-    validate_csv_export_path, validate_csv_import_path, validate_metadata_update_batch, validate_search_query,
-    validate_tag_inputs, MAX_CSV_IMPORT_BYTES,
+    csv_import_progress_percent, library_thing_book_url, parse_library_thing_export, normalize_book_patch_isbns,
+    validate_book_id_batch, validate_cover_url_value, validate_csv_export_path, validate_csv_import_path,
+    validate_library_thing_import_path, validate_metadata_update_batch, validate_search_query, validate_tag_inputs,
+    MAX_CSV_IMPORT_BYTES, MAX_LIBRARY_THING_IMPORT_BYTES,
   };
   use crate::library::scanner::{is_weak_lookup_key, lookup_skip_reason, parsed_metadata_improves_lookup};
   use crate::library::types::{BookPatch, MetadataField, MetadataFieldSelection, MetadataLockUpdate, ParsedMetadata};
   use std::{fs, path::PathBuf};
   use uuid::Uuid;
+
+  #[test]
+  fn library_thing_json_parser_reads_export_rows() {
+    let file = temp_test_path("librarything.json");
+    fs::write(
+      &file,
+      r#"{"255521076":{"books_id":"255521076","workcode":"5338686","title":"First John: Life at Its Best","primaryauthor":"Laurin, Roy L.","authors":[{"lf":"Laurin, Roy L.","fl":"Roy L. Laurin","role":"Author"}],"originalisbn":"0825431360","isbn":{"0":"0825431360","2":"9780825431364"},"summary":"First John: Life at Its Best by Roy L. Laurin (1987)","language":["English"],"pages":"200 "}}"#,
+    )
+    .expect("write json");
+
+    let rows = parse_library_thing_export(file.to_str().unwrap()).expect("parse json");
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].book_id.as_deref(), Some("255521076"));
+    assert_eq!(rows[0].work_id.as_deref(), Some("5338686"));
+    assert_eq!(rows[0].title.as_deref(), Some("First John: Life at Its Best"));
+    assert_eq!(rows[0].authors, vec!["Roy L. Laurin"]);
+    assert_eq!(rows[0].isbn13.as_deref(), Some("9780825431364"));
+    assert_eq!(rows[0].isbn10.as_deref(), Some("0825431360"));
+    assert_eq!(rows[0].language.as_deref(), Some("English"));
+    assert_eq!(rows[0].page_count, Some(200));
+    let _ = fs::remove_file(file);
+  }
+
+  #[test]
+  fn library_thing_tsv_parser_reads_export_rows() {
+    let file = temp_test_path("librarything.tsv");
+    fs::write(
+      &file,
+      "book id\ttitle\tauthor (first, last)\tISBNs\tlanguage 1\n301952134\tDune\tFrank Herbert\t9780441172719\ten\n",
+    )
+    .expect("write tsv");
+
+    let rows = parse_library_thing_export(file.to_str().unwrap()).expect("parse tsv");
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].book_id.as_deref(), Some("301952134"));
+    assert_eq!(rows[0].language.as_deref(), Some("en"));
+    let _ = fs::remove_file(file);
+  }
+
+  #[test]
+  fn library_thing_url_generation_is_restricted_to_safe_ids() {
+    assert_eq!(
+      library_thing_book_url("301952134").expect("url"),
+      "https://www.librarything.com/work/book/301952134"
+    );
+    assert!(library_thing_book_url("../bad").is_err());
+  }
+
+  #[test]
+  fn library_thing_import_path_validation_accepts_supported_export_files() {
+    let file = temp_test_path("librarything.txt");
+    fs::write(&file, "book id\ttitle\n1\tDune\n").expect("write export");
+    let metadata = validate_library_thing_import_path(file.to_str().unwrap()).expect("validate export");
+    assert!(metadata.is_file());
+
+    let unsupported = temp_test_path("librarything.csv");
+    fs::write(&unsupported, "book id,title\n1,Dune\n").expect("write csv");
+    assert!(validate_library_thing_import_path(unsupported.to_str().unwrap()).is_err());
+
+    let large_file = temp_test_path("librarything-large.tsv");
+    let file_handle = fs::File::create(&large_file).expect("create large file");
+    file_handle
+      .set_len(MAX_LIBRARY_THING_IMPORT_BYTES + 1)
+      .expect("size large file");
+    assert!(validate_library_thing_import_path(large_file.to_str().unwrap()).is_err());
+
+    let _ = fs::remove_file(file);
+    let _ = fs::remove_file(unsupported);
+    let _ = fs::remove_file(large_file);
+  }
 
   #[test]
   fn weak_lookup_key_flags_generic_or_missing_titles_without_isbn() {

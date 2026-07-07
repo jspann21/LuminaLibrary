@@ -98,6 +98,11 @@ export type KeyTestNotice = {
   message: string
 }
 
+export type LibraryThingNotice = {
+  tone: 'loading' | 'success' | 'error'
+  message: string
+}
+
 export type MatchNotice = {
   tone: 'success' | 'warning' | 'error'
   message: string
@@ -133,6 +138,7 @@ export type BookDetailsPanelProps = {
   }) => Promise<void>
   onOpenFile: (absPath: string) => Promise<void>
   onOpenFolder: (absPath: string) => Promise<void>
+  onOpenLibraryThingUrl: (url: string) => Promise<void>
   onRequestHide: (bookId: string) => void
   onRequestDelete: (bookId: string) => void
   isSaving: boolean
@@ -153,6 +159,7 @@ export type SidebarItemProps = {
 export type CoverThumbProps = {
   coverUrl?: string
   coverLocalPath?: string
+  libraryThingBadge?: boolean
   loading?: 'eager' | 'lazy'
   fetchPriority?: 'auto' | 'high' | 'low'
   title: string

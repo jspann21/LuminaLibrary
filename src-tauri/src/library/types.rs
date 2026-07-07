@@ -46,6 +46,10 @@ pub struct AppSettings {
   pub google_books_api_key_managed_by_app: bool,
   pub google_books_api_key_from_environment: bool,
   pub scan_on_startup: bool,
+  pub library_thing_enabled: bool,
+  pub library_thing_catalog_label: Option<String>,
+  pub library_thing_last_import_at: Option<String>,
+  pub library_thing_book_count: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -108,6 +112,7 @@ pub struct BookCard {
   pub formats: Vec<String>,
   pub file_count: i64,
   pub missing_files: i64,
+  pub library_thing_url: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -144,6 +149,18 @@ pub struct BookDetail {
   pub metadata_source: String,
   pub confidence: Option<f64>,
   pub files: Vec<BookFile>,
+  pub library_thing_url: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryThingImportResult {
+  pub imported_rows: usize,
+  pub matched_rows: usize,
+  pub created_rows: usize,
+  pub skipped_rows: usize,
+  pub path: String,
+  pub imported_at: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

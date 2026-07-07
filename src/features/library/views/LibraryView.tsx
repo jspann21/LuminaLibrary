@@ -166,7 +166,7 @@ export function LibraryView({
                 className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-700 dark:bg-slate-900/30"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <CoverThumb coverUrl={book.coverUrl} coverLocalPath={book.coverLocalPath} title={book.title} className="h-12 w-9 shrink-0" />
+                  <CoverThumb coverUrl={book.coverUrl} coverLocalPath={book.coverLocalPath} libraryThingBadge={Boolean(book.libraryThingUrl)} title={book.title} className="h-12 w-9 shrink-0" />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{book.title}</p>
                     <p className="truncate text-xs text-slate-500 dark:text-slate-400">

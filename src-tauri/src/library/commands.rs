@@ -3,7 +3,7 @@ use tauri::{AppHandle, State};
 use crate::library::types::{
   ApiKeyTestResult, AppSettings, AppState, BookCard, BookDetail, BookFilters, BookPatch, BulkMatchInput,
   BulkMatchResult, CoverCandidate, DiscoveredFile, ExportResult, FileRecord, FolderRemovalPreview, ImportResult,
-  LibraryFolder, LibraryMaintenanceResult, MatchPreview, MatchResult, MetadataFieldSelection, MetadataLockUpdate,
+  LibraryFolder, LibraryMaintenanceResult, LibraryThingImportResult, MatchPreview, MatchResult, MetadataFieldSelection, MetadataLockUpdate,
   MetadataRescanPreview, Paged, ScanSummary, SortSpec, TagCount, TagDeleteResult, TagMergeResult,
 };
 
@@ -50,6 +50,24 @@ pub fn get_app_settings(state: State<'_, AppState>) -> Result<AppSettings, Strin
 #[tauri::command]
 pub fn set_scan_on_startup(state: State<'_, AppState>, enabled: bool) -> Result<AppSettings, String> {
   to_result(state.service.set_scan_on_startup(enabled))
+}
+
+#[tauri::command]
+pub fn set_library_thing_enabled(state: State<'_, AppState>, enabled: bool) -> Result<AppSettings, String> {
+  to_result(state.service.set_library_thing_enabled(enabled))
+}
+
+#[tauri::command]
+pub fn set_library_thing_catalog_label(
+  state: State<'_, AppState>,
+  label: Option<String>,
+) -> Result<AppSettings, String> {
+  to_result(state.service.set_library_thing_catalog_label(label))
+}
+
+#[tauri::command]
+pub fn clear_library_thing_integration(state: State<'_, AppState>) -> Result<AppSettings, String> {
+  to_result(state.service.clear_library_thing_integration())
 }
 
 #[tauri::command]
@@ -244,6 +262,18 @@ pub async fn import_enrichment_csv(state: State<'_, AppState>, path: String) -> 
 }
 
 #[tauri::command]
+pub async fn import_library_thing_export(
+  state: State<'_, AppState>,
+  path: String,
+) -> Result<LibraryThingImportResult, String> {
+  let service = state.service.clone();
+  tauri::async_runtime::spawn_blocking(move || service.import_library_thing_export(path))
+    .await
+    .map_err(|err| format!("LibraryThing import task join error: {err}"))?
+    .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
 pub fn rescan_file(state: State<'_, AppState>, file_id: String) -> Result<FileRecord, String> {
   to_result(state.service.rescan_file(file_id))
 }
@@ -283,6 +313,11 @@ pub fn open_local_file(state: State<'_, AppState>, abs_path: String) -> Result<(
 #[tauri::command]
 pub fn open_local_file_folder(state: State<'_, AppState>, abs_path: String) -> Result<(), String> {
   to_result(state.service.open_local_file_folder(abs_path))
+}
+
+#[tauri::command]
+pub fn open_library_thing_url(state: State<'_, AppState>, url: String) -> Result<(), String> {
+  to_result(state.service.open_library_thing_url(url))
 }
 
 #[tauri::command]

@@ -1708,7 +1708,7 @@ impl Scanner {
     }
   }
 
-  fn emit_google_books_quota_notice_if_needed(&self) {
+  pub(crate) fn emit_google_books_quota_notice_if_needed(&self) {
     let notice = self.enricher.google_books_quota_notice();
     let mut last_notice = match self.last_google_quota_notice.lock() {
       Ok(guard) => guard,

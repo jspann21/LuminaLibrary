@@ -21,6 +21,7 @@ import type {
   ImportResult,
   LibraryMaintenanceResult,
   LibraryFolder,
+  LibraryThingImportResult,
   MatchPreview,
   MatchResult,
   MetadataFieldSelection,
@@ -55,6 +56,12 @@ export const api = {
   getAppSettings: () => invokeOrThrow<AppSettings>('get_app_settings'),
   setScanOnStartup: (enabled: boolean) =>
     invokeOrThrow<AppSettings>('set_scan_on_startup', { enabled }),
+  setLibraryThingEnabled: (enabled: boolean) =>
+    invokeOrThrow<AppSettings>('set_library_thing_enabled', { enabled }),
+  setLibraryThingCatalogLabel: (label?: string) =>
+    invokeOrThrow<AppSettings>('set_library_thing_catalog_label', { label }),
+  clearLibraryThingIntegration: () =>
+    invokeOrThrow<AppSettings>('clear_library_thing_integration'),
   setGoogleBooksApiKey: (apiKey: string) =>
     invokeOrThrow<AppSettings>('set_google_books_api_key', { apiKey }),
   clearGoogleBooksApiKey: () => invokeOrThrow<AppSettings>('clear_google_books_api_key'),
@@ -118,6 +125,8 @@ export const api = {
     invokeOrThrow<ExportResult>('export_unresolved_csv', { path }),
   importEnrichmentCsv: (path: string) =>
     invokeOrThrow<ImportResult>('import_enrichment_csv', { path }),
+  importLibraryThingExport: (path: string) =>
+    invokeOrThrow<LibraryThingImportResult>('import_library_thing_export', { path }),
   rescanFile: (fileId: string) => invokeOrThrow<FileRecord>('rescan_file', { fileId }),
   previewRescanMetadata: (bookId: string, fileId: string) =>
     invokeOrThrow<MetadataRescanPreview>('preview_rescan_metadata', { bookId, fileId }),
@@ -125,6 +134,7 @@ export const api = {
     invokeOrThrow<BookDetail>('apply_curated_metadata', { bookId, selection, lockUpdates }),
   openLocalFile: (absPath: string) => invokeOrThrow<void>('open_local_file', { absPath }),
   openLocalFileFolder: (absPath: string) => invokeOrThrow<void>('open_local_file_folder', { absPath }),
+  openLibraryThingUrl: (url: string) => invokeOrThrow<void>('open_library_thing_url', { url }),
   browseForFolder: async () => {
     if (!isTauri()) {
       throw new Error('Tauri runtime not detected. Run with `pnpm tauri:dev`.')
@@ -156,6 +166,19 @@ export const api = {
       multiple: false,
       title: 'Import Lumina Enrichment CSV',
       filters: [{ name: 'CSV', extensions: ['csv'] }],
+    })
+    if (Array.isArray(selected)) return selected[0] ?? null
+    return selected
+  },
+  browseForLibraryThingImport: async () => {
+    if (!isTauri()) {
+      throw new Error('Tauri runtime not detected. Run with `pnpm tauri:dev`.')
+    }
+    const selected = await open({
+      directory: false,
+      multiple: false,
+      title: 'Import LibraryThing Export',
+      filters: [{ name: 'LibraryThing Export', extensions: ['json', 'tsv', 'txt'] }],
     })
     if (Array.isArray(selected)) return selected[0] ?? null
     return selected

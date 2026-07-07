@@ -180,6 +180,7 @@ function App() {
               onApplyCuratedMetadata={detailsPanel.onApplyCuratedMetadata}
               onOpenFile={detailsPanel.onOpenFile}
               onOpenFolder={detailsPanel.onOpenFolder}
+              onOpenLibraryThingUrl={detailsPanel.onOpenLibraryThingUrl}
               onRequestHide={detailsPanel.onRequestHide}
               onRequestDelete={detailsPanel.onRequestDelete}
               isSaving={detailsPanel.isSaving}

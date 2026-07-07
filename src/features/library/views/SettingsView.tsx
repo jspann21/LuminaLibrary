@@ -4,6 +4,7 @@ import type {
   CsvImportProgressState,
   CsvTransferNotice,
   KeyTestNotice,
+  LibraryThingNotice,
   MaintenanceNotice,
   MatchDraft,
   MatchNotice,
@@ -29,13 +30,24 @@ type SettingsViewProps = {
   onSaveGoogleBooksApiKey: () => void
   onTestGoogleBooksApiKey: () => void
   onClearGoogleBooksApiKey: () => void
+  libraryThingCatalogLabelInput: string
+  onSetLibraryThingCatalogLabelInput: (value: string) => void
+  onSaveLibraryThingCatalogLabel: () => void
+  onSetLibraryThingEnabled: (enabled: boolean) => void
+  onImportLibraryThingExport: () => void
+  onClearLibraryThingIntegration: () => void
   appSettings?: AppSettings
   onSetScanOnStartup: (enabled: boolean) => void
   isSetScanOnStartupPending: boolean
   keyTestNotice: KeyTestNotice | null
+  libraryThingNotice: LibraryThingNotice | null
   isSetGoogleBooksApiKeyPending: boolean
   isClearGoogleBooksApiKeyPending: boolean
   isTestGoogleBooksApiKeyPending: boolean
+  isSetLibraryThingEnabledPending: boolean
+  isSetLibraryThingCatalogLabelPending: boolean
+  isImportLibraryThingPending: boolean
+  isClearLibraryThingPending: boolean
   folderPath: string
   onSetFolderPath: (value: string) => void
   onBrowseForFolder: () => void
@@ -123,11 +135,22 @@ export function SettingsView(props: SettingsViewProps) {
           onSaveGoogleBooksApiKey={props.onSaveGoogleBooksApiKey}
           onTestGoogleBooksApiKey={props.onTestGoogleBooksApiKey}
           onClearGoogleBooksApiKey={props.onClearGoogleBooksApiKey}
+          libraryThingCatalogLabelInput={props.libraryThingCatalogLabelInput}
+          onSetLibraryThingCatalogLabelInput={props.onSetLibraryThingCatalogLabelInput}
+          onSaveLibraryThingCatalogLabel={props.onSaveLibraryThingCatalogLabel}
+          onSetLibraryThingEnabled={props.onSetLibraryThingEnabled}
+          onImportLibraryThingExport={props.onImportLibraryThingExport}
+          onClearLibraryThingIntegration={props.onClearLibraryThingIntegration}
           appSettings={props.appSettings}
           keyTestNotice={props.keyTestNotice}
+          libraryThingNotice={props.libraryThingNotice}
           isSetGoogleBooksApiKeyPending={props.isSetGoogleBooksApiKeyPending}
           isClearGoogleBooksApiKeyPending={props.isClearGoogleBooksApiKeyPending}
           isTestGoogleBooksApiKeyPending={props.isTestGoogleBooksApiKeyPending}
+          isSetLibraryThingEnabledPending={props.isSetLibraryThingEnabledPending}
+          isSetLibraryThingCatalogLabelPending={props.isSetLibraryThingCatalogLabelPending}
+          isImportLibraryThingPending={props.isImportLibraryThingPending}
+          isClearLibraryThingPending={props.isClearLibraryThingPending}
         />
 
         <AppearanceSection

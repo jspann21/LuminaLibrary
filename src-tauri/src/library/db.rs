@@ -198,6 +198,22 @@ impl Repository {
         updated_at TEXT NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS book_external_sources (
+        id TEXT PRIMARY KEY,
+        book_id TEXT NOT NULL,
+        source TEXT NOT NULL,
+        external_id TEXT NOT NULL,
+        external_work_id TEXT,
+        external_url TEXT NOT NULL,
+        metadata_json TEXT,
+        imported_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(source, external_id),
+        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_book_external_sources_book_source ON book_external_sources(book_id, source);
+
       CREATE VIRTUAL TABLE IF NOT EXISTS fts_books USING fts5(
         book_id UNINDEXED,
         title,
@@ -1064,6 +1080,74 @@ impl Repository {
     Ok(())
   }
 
+  pub fn get_library_thing_enabled(&self) -> anyhow::Result<bool> {
+    let value = self.get_setting_value("library_thing_enabled")?;
+    Ok(parse_bool_setting(value.as_deref(), false))
+  }
+
+  pub fn set_library_thing_enabled(&self, enabled: bool, now: &str) -> anyhow::Result<()> {
+    self.set_setting_value("library_thing_enabled", if enabled { "1" } else { "0" }, now)
+  }
+
+  pub fn get_library_thing_catalog_label(&self) -> anyhow::Result<Option<String>> {
+    self.get_setting_value("library_thing_catalog_label")
+  }
+
+  pub fn set_library_thing_catalog_label(&self, label: Option<String>, now: &str) -> anyhow::Result<()> {
+    let conn = self.conn()?;
+    if let Some(value) = label.and_then(|value| normalized_non_empty_setting(&value)) {
+      conn.execute(
+        "INSERT INTO library_settings(key, value, updated_at) VALUES('library_thing_catalog_label', ?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+        params![value, now],
+      )?;
+    } else {
+      conn.execute(
+        "DELETE FROM library_settings WHERE key = 'library_thing_catalog_label'",
+        [],
+      )?;
+    }
+    Ok(())
+  }
+
+  pub fn get_library_thing_last_import_at(&self) -> anyhow::Result<Option<String>> {
+    self.get_setting_value("library_thing_last_import_at")
+  }
+
+  pub fn set_library_thing_last_import_at(&self, imported_at: &str, now: &str) -> anyhow::Result<()> {
+    self.set_setting_value("library_thing_last_import_at", imported_at, now)
+  }
+
+  pub fn count_library_thing_books(&self) -> anyhow::Result<i64> {
+    self.conn()?.query_row(
+      "SELECT COUNT(DISTINCT book_id) FROM book_external_sources WHERE source = 'librarything'",
+      [],
+      |row| row.get(0),
+    ).map_err(Into::into)
+  }
+
+  fn get_setting_value(&self, key: &str) -> anyhow::Result<Option<String>> {
+    Ok(
+      self
+        .conn()?
+        .query_row(
+          "SELECT value FROM library_settings WHERE key = ?1 LIMIT 1",
+          params![key],
+          |row| row.get::<_, String>(0),
+        )
+        .optional()?,
+    )
+  }
+
+  fn set_setting_value(&self, key: &str, value: &str, now: &str) -> anyhow::Result<()> {
+    self.conn()?.execute(
+      "INSERT INTO library_settings(key, value, updated_at) VALUES(?1, ?2, ?3)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+      params![key, value, now],
+    )?;
+    Ok(())
+  }
+
   pub fn find_unique_book_by_exact_title(&self, title: &str) -> anyhow::Result<Option<String>> {
     let trimmed = title.trim();
     if trimmed.is_empty() {
@@ -1210,6 +1294,107 @@ impl Repository {
     }
 
     Ok(best.map(|(book_id, _, _)| book_id))
+  }
+
+  pub fn find_book_by_external_source(&self, source: &str, external_id: &str) -> anyhow::Result<Option<String>> {
+    Ok(
+      self
+        .conn()?
+        .query_row(
+          "SELECT book_id FROM book_external_sources WHERE source = ?1 AND external_id = ?2 LIMIT 1",
+          params![source, external_id],
+          |row| row.get::<_, String>(0),
+        )
+        .optional()?,
+    )
+  }
+
+  pub fn upsert_external_source(
+    &self,
+    book_id: &str,
+    source: &str,
+    external_id: &str,
+    external_work_id: Option<&str>,
+    external_url: &str,
+    metadata_json: &str,
+    now: &str,
+  ) -> anyhow::Result<bool> {
+    let conn = self.conn()?;
+    let existed = conn
+      .query_row(
+        "SELECT 1 FROM book_external_sources WHERE source = ?1 AND external_id = ?2 LIMIT 1",
+        params![source, external_id],
+        |_| Ok(()),
+      )
+      .optional()?
+      .is_some();
+    conn.execute(
+      "INSERT INTO book_external_sources(id, book_id, source, external_id, external_work_id, external_url, metadata_json, imported_at, updated_at)
+       VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)
+       ON CONFLICT(source, external_id) DO UPDATE SET
+         book_id = excluded.book_id,
+         external_work_id = excluded.external_work_id,
+         external_url = excluded.external_url,
+         metadata_json = excluded.metadata_json,
+         updated_at = excluded.updated_at",
+      params![
+        Uuid::new_v4().to_string(),
+        book_id,
+        source,
+        external_id,
+        external_work_id,
+        external_url,
+        metadata_json,
+        now,
+      ],
+    )?;
+    Ok(!existed)
+  }
+
+  pub fn clear_library_thing_sources(&self, now: &str) -> anyhow::Result<(u64, u64)> {
+    let mut conn = self.conn()?;
+    let tx = conn.transaction()?;
+    let mut book_ids = Vec::new();
+    {
+      let mut stmt = tx.prepare(
+        "SELECT DISTINCT book_id FROM book_external_sources WHERE source = 'librarything'",
+      )?;
+      for row in stmt.query_map([], |row| row.get::<_, String>(0))? {
+        book_ids.push(row?);
+      }
+    }
+    let removed_sources = tx.execute(
+      "DELETE FROM book_external_sources WHERE source = 'librarything'",
+      [],
+    )?;
+    tx.execute(
+      "DELETE FROM library_settings WHERE key IN ('library_thing_enabled', 'library_thing_catalog_label', 'library_thing_last_import_at')",
+      [],
+    )?;
+
+    let mut removed_books = 0usize;
+    if !book_ids.is_empty() {
+      let placeholders = vec!["?"; book_ids.len()].join(",");
+      let mut values: Vec<Value> = book_ids.into_iter().map(Value::from).collect();
+      let count_sql = format!(
+        "SELECT COUNT(*) FROM books b
+         WHERE b.id IN ({placeholders})
+           AND NOT EXISTS (SELECT 1 FROM book_files bf WHERE bf.book_id = b.id)
+           AND NOT EXISTS (SELECT 1 FROM book_external_sources bes WHERE bes.book_id = b.id)"
+      );
+      removed_books = tx.query_row(&count_sql, params_from_iter(values.iter()), |row| row.get::<_, i64>(0))? as usize;
+      let delete_sql = format!(
+        "DELETE FROM books
+         WHERE id IN ({placeholders})
+           AND NOT EXISTS (SELECT 1 FROM book_files bf WHERE bf.book_id = books.id)
+           AND NOT EXISTS (SELECT 1 FROM book_external_sources bes WHERE bes.book_id = books.id)"
+      );
+      tx.execute(&delete_sql, params_from_iter(values.iter()))?;
+      values.clear();
+    }
+    tx.execute("UPDATE files SET last_seen_at = ?1 WHERE id IN (SELECT file_id FROM book_files)", params![now])?;
+    tx.commit()?;
+    Ok((removed_sources as u64, removed_books as u64))
   }
 
   pub fn upsert_book(&self, input: UpsertBookInput, now: &str) -> anyhow::Result<String> {
@@ -1584,6 +1769,7 @@ impl Repository {
 
   pub fn get_book_detail(&self, book_id: &str) -> anyhow::Result<BookDetail> {
     let conn = self.conn()?;
+    let library_thing_enabled = library_thing_enabled_from_conn(&conn)?;
     let mut detail = conn
       .query_row(
         "SELECT id, title, subtitle, authors_json, publisher, publish_date, created_at, isbn10, isbn13, description, language, page_count, series, series_index, cover_url, cover_local_path, metadata_source, confidence FROM books WHERE id = ?1",
@@ -1611,6 +1797,7 @@ impl Repository {
             metadata_source: row.get(16)?,
             confidence: row.get(17)?,
             files: Vec::new(),
+            library_thing_url: None,
           })
         },
       )
@@ -1648,6 +1835,15 @@ impl Repository {
     )?;
     for row in tag_stmt.query_map(params![book_id], |row| row.get::<_, String>(0))? {
       detail.tags.push(row?);
+    }
+    if library_thing_enabled {
+      detail.library_thing_url = conn
+        .query_row(
+          "SELECT external_url FROM book_external_sources WHERE book_id = ?1 AND source = 'librarything' LIMIT 1",
+          params![book_id],
+          |row| row.get::<_, String>(0),
+        )
+        .optional()?;
     }
     Ok(detail)
   }
@@ -1707,6 +1903,7 @@ impl Repository {
     page_size: Option<u32>,
   ) -> anyhow::Result<Paged<BookCard>> {
     let conn = self.conn()?;
+    let library_thing_enabled = library_thing_enabled_from_conn(&conn)?;
     let pagination = page_size.map(|value| {
       let normalized_page_size = value.clamp(1, 200);
       let normalized_page = page.unwrap_or(1).max(1);
@@ -1716,7 +1913,11 @@ impl Repository {
 
     let mut where_clauses = vec![
       "b.hidden = 0".to_string(),
-      "EXISTS (SELECT 1 FROM book_files bf0 WHERE bf0.book_id = b.id)".to_string(),
+      if library_thing_enabled {
+        "(EXISTS (SELECT 1 FROM book_files bf0 WHERE bf0.book_id = b.id) OR EXISTS (SELECT 1 FROM book_external_sources bes0 WHERE bes0.book_id = b.id AND bes0.source = 'librarything'))".to_string()
+      } else {
+        "EXISTS (SELECT 1 FROM book_files bf0 WHERE bf0.book_id = b.id)".to_string()
+      },
     ];
     let mut values: Vec<Value> = Vec::new();
     if let Some(text) = query.as_deref().and_then(search_prefix_query) {
@@ -1802,9 +2003,12 @@ impl Repository {
         (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = lb.id),
         (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = lb.id),
         (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = lb.id AND f.status = 'missing'),
-        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = lb.id)
+        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = lb.id),
+        CASE WHEN {library_thing_url_enabled} THEN (SELECT external_url FROM book_external_sources bes WHERE bes.book_id = lb.id AND bes.source = 'librarything' LIMIT 1) ELSE NULL END
        FROM limited_books lb
        ORDER BY {outer_sort_column} {sort_direction}, lower(lb.title) {title_tiebreaker_direction}, lb.title {title_tiebreaker_direction}, lb.id ASC"
+      ,
+      library_thing_url_enabled = if library_thing_enabled { "1" } else { "0" },
     );
     let mut stmt = conn.prepare(&list_sql)?;
     let mut items = Vec::new();
@@ -1833,6 +2037,7 @@ impl Repository {
           .collect(),
         file_count: row.get(9)?,
         missing_files: row.get(10)?,
+        library_thing_url: row.get(12)?,
       })
     })? {
       items.push(row?);
@@ -1888,13 +2093,18 @@ impl Repository {
     page_size: Option<u32>,
   ) -> anyhow::Result<Paged<BookCard>> {
     let conn = self.conn()?;
+    let library_thing_enabled = library_thing_enabled_from_conn(&conn)?;
     let page = page.unwrap_or(1).max(1);
     let page_size = page_size.unwrap_or(50).clamp(1, 200);
     let offset = pagination_offset(page, page_size);
 
     let mut where_clauses = vec![
       "b.hidden = 1".to_string(),
-      "EXISTS (SELECT 1 FROM book_files bf0 WHERE bf0.book_id = b.id)".to_string(),
+      if library_thing_enabled {
+        "(EXISTS (SELECT 1 FROM book_files bf0 WHERE bf0.book_id = b.id) OR EXISTS (SELECT 1 FROM book_external_sources bes0 WHERE bes0.book_id = b.id AND bes0.source = 'librarything'))".to_string()
+      } else {
+        "EXISTS (SELECT 1 FROM book_files bf0 WHERE bf0.book_id = b.id)".to_string()
+      },
     ];
     let mut values: Vec<Value> = Vec::new();
     if let Some(text) = query.as_deref().and_then(search_prefix_query) {
@@ -1922,9 +2132,12 @@ impl Repository {
         (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = lb.id),
         (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = lb.id),
         (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = lb.id AND f.status = 'missing'),
-        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = lb.id)
+        (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = lb.id),
+        CASE WHEN {library_thing_url_enabled} THEN (SELECT external_url FROM book_external_sources bes WHERE bes.book_id = lb.id AND bes.source = 'librarything' LIMIT 1) ELSE NULL END
        FROM limited_books lb
        ORDER BY lb.updated_at DESC, lower(lb.title) ASC, lb.title ASC, lb.id ASC"
+      ,
+      library_thing_url_enabled = if library_thing_enabled { "1" } else { "0" },
     );
 
     let mut stmt = conn.prepare(&list_sql)?;
@@ -1954,6 +2167,7 @@ impl Repository {
           .collect(),
         file_count: row.get(9)?,
         missing_files: row.get(10)?,
+        library_thing_url: row.get(12)?,
       })
     })? {
       items.push(row?);
@@ -2286,6 +2500,26 @@ fn parse_bool_setting(value: Option<&str>, default_value: bool) -> bool {
     return false;
   }
   default_value
+}
+
+fn library_thing_enabled_from_conn(conn: &Connection) -> anyhow::Result<bool> {
+  let value = conn
+    .query_row(
+      "SELECT value FROM library_settings WHERE key = 'library_thing_enabled' LIMIT 1",
+      [],
+      |row| row.get::<_, String>(0),
+    )
+    .optional()?;
+  Ok(parse_bool_setting(value.as_deref(), false))
+}
+
+fn normalized_non_empty_setting(value: &str) -> Option<String> {
+  let normalized = value.split_whitespace().collect::<Vec<_>>().join(" ");
+  if normalized.is_empty() {
+    None
+  } else {
+    Some(normalized)
+  }
 }
 
 fn normalize_tag_keys(raw_tags: Vec<String>) -> Vec<String> {
@@ -3697,6 +3931,130 @@ mod tests {
       .expect("list books");
     assert_eq!(books.total, 0);
     assert!(books.items.is_empty());
+  }
+
+  #[test]
+  fn library_thing_books_are_visible_only_when_enabled() {
+    let db = TestDb::new();
+    let book_id = db
+      .repo
+      .upsert_book(
+        UpsertBookInput {
+          title: "LibraryThing Only".to_string(),
+          subtitle: None,
+          authors: vec!["Catalog Author".to_string()],
+          publisher: None,
+          publish_date: None,
+          isbn10: None,
+          isbn13: Some("9780441172719".to_string()),
+          description: None,
+          language: None,
+          page_count: None,
+          series: None,
+          series_index: None,
+          cover_url: None,
+          metadata_source: "librarything".to_string(),
+          confidence: Some(0.92),
+        },
+        now(),
+      )
+      .expect("upsert book");
+    db
+      .repo
+      .upsert_external_source(
+        &book_id,
+        "librarything",
+        "301952134",
+        Some("12345"),
+        "https://www.librarything.com/work/book/301952134",
+        "{}",
+        now(),
+      )
+      .expect("upsert source");
+
+    let disabled = db
+      .repo
+      .get_library_books(None, BookFilters::default(), SortSpec::default(), Some(1), Some(20))
+      .expect("disabled list");
+    assert_eq!(disabled.total, 0);
+    let disabled_detail = db.repo.get_book_detail(&book_id).expect("disabled detail");
+    assert_eq!(disabled_detail.library_thing_url, None);
+
+    db.repo.set_library_thing_enabled(true, now()).expect("enable");
+    let enabled = db
+      .repo
+      .get_library_books(None, BookFilters::default(), SortSpec::default(), Some(1), Some(20))
+      .expect("enabled list");
+    assert_eq!(enabled.total, 1);
+    assert_eq!(
+      enabled.items[0].library_thing_url.as_deref(),
+      Some("https://www.librarything.com/work/book/301952134")
+    );
+    let enabled_detail = db.repo.get_book_detail(&book_id).expect("enabled detail");
+    assert_eq!(
+      enabled_detail.library_thing_url.as_deref(),
+      Some("https://www.librarything.com/work/book/301952134")
+    );
+  }
+
+  #[test]
+  fn clearing_library_thing_sources_removes_imported_only_books_and_preserves_local_books() {
+    let db = TestDb::new();
+    let (local_book_id, _) = create_matched_book(&db, "C:\\Books\\LibraryThingLocal");
+    db
+      .repo
+      .upsert_external_source(
+        &local_book_id,
+        "librarything",
+        "301952134",
+        None,
+        "https://www.librarything.com/work/book/301952134",
+        "{}",
+        now(),
+      )
+      .expect("local source");
+    let imported_book_id = db
+      .repo
+      .upsert_book(
+        UpsertBookInput {
+          title: "Imported Only".to_string(),
+          subtitle: None,
+          authors: vec!["Catalog Author".to_string()],
+          publisher: None,
+          publish_date: None,
+          isbn10: None,
+          isbn13: None,
+          description: None,
+          language: None,
+          page_count: None,
+          series: None,
+          series_index: None,
+          cover_url: None,
+          metadata_source: "librarything".to_string(),
+          confidence: Some(0.92),
+        },
+        now(),
+      )
+      .expect("imported book");
+    db
+      .repo
+      .upsert_external_source(
+        &imported_book_id,
+        "librarything",
+        "301952135",
+        None,
+        "https://www.librarything.com/work/book/301952135",
+        "{}",
+        now(),
+      )
+      .expect("imported source");
+
+    let (removed_sources, removed_books) = db.repo.clear_library_thing_sources(now()).expect("clear sources");
+    assert_eq!(removed_sources, 2);
+    assert_eq!(removed_books, 1);
+    assert!(db.repo.get_book_detail(&local_book_id).is_ok());
+    assert!(db.repo.get_book_detail(&imported_book_id).is_err());
+    assert_eq!(db.repo.count_library_thing_books().expect("count"), 0);
   }
 
   #[test]
