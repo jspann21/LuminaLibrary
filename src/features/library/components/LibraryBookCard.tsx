@@ -15,6 +15,7 @@ type LibraryBookCardProps = {
   viewMode: 'grid' | 'list'
   coverScale: number
   selected: boolean
+  selectionModeActive?: boolean
   onToggleSelected: (id: string) => void
   onClick: (id: string) => void
 }
@@ -31,6 +32,7 @@ export const LibraryBookCard = memo(function LibraryBookCard({
   viewMode,
   coverScale,
   selected,
+  selectionModeActive,
   onToggleSelected,
   onClick,
 }: LibraryBookCardProps) {
@@ -57,7 +59,7 @@ export const LibraryBookCard = memo(function LibraryBookCard({
             event.stopPropagation()
             onToggleSelected(id)
           }}
-          className={`h-4 w-4 shrink-0 transition-opacity accent-accent-600 ${selected ? 'opacity-100' : 'opacity-0 focus:opacity-100 group-hover:opacity-100 [.selection-mode-active_&]:opacity-100'}`}
+          className={`h-4 w-4 shrink-0 transition-opacity accent-accent-600 ${selectionModeActive || selected ? 'opacity-100' : 'opacity-0 focus:opacity-100 group-hover:opacity-100'}`}
           aria-label={`Select ${title}`}
         />
         <div className="shrink-0" style={{ width: `${listCoverWidth}px`, height: `${listCoverHeight}px` }}>
@@ -107,7 +109,7 @@ export const LibraryBookCard = memo(function LibraryBookCard({
             event.stopPropagation()
             onToggleSelected(id)
           }}
-          className={`absolute left-2 top-2 z-10 h-4 w-4 transition-opacity accent-accent-600 ${selected ? 'opacity-100' : 'opacity-0 focus:opacity-100 group-hover:opacity-100 [.selection-mode-active_&]:opacity-100'}`}
+          className={`absolute left-2 top-2 z-10 h-4 w-4 transition-opacity accent-accent-600 ${selectionModeActive || selected ? 'opacity-100' : 'opacity-0 focus:opacity-100 group-hover:opacity-100'}`}
           aria-label={`Select ${title}`}
         />
         <CoverThumb
