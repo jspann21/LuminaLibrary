@@ -103,22 +103,26 @@ export function UnresolvedFilesSection({
 
     const sortedItems = useMemo(() => {
         if (!sortField) return discoveredItems
-        const items = [...discoveredItems]
-        items.sort((a, b) => {
-            let aVal = ''
-            let bVal = ''
+
+        const mappedItems = discoveredItems.map((item) => {
+            let sortValue = ''
             switch (sortField) {
-                case 'fileName': aVal = a.fileName ?? ''; bVal = b.fileName ?? ''; break
-                case 'type': aVal = fileExt(a.fileName); bVal = fileExt(b.fileName); break
-                case 'reason': aVal = a.reason ?? ''; bVal = b.reason ?? ''; break
-                case 'title': aVal = sanitizeDisplayText(a.guessedTitle) ?? ''; bVal = sanitizeDisplayText(b.guessedTitle) ?? ''; break
-                case 'author': aVal = sanitizeDisplayText(a.guessedAuthor) ?? ''; bVal = sanitizeDisplayText(b.guessedAuthor) ?? ''; break
-                case 'isbn': aVal = sanitizeDisplayText(a.guessedIsbn) ?? ''; bVal = sanitizeDisplayText(b.guessedIsbn) ?? ''; break
+                case 'fileName': sortValue = item.fileName ?? ''; break
+                case 'type': sortValue = fileExt(item.fileName); break
+                case 'reason': sortValue = item.reason ?? ''; break
+                case 'title': sortValue = sanitizeDisplayText(item.guessedTitle) ?? ''; break
+                case 'author': sortValue = sanitizeDisplayText(item.guessedAuthor) ?? ''; break
+                case 'isbn': sortValue = sanitizeDisplayText(item.guessedIsbn) ?? ''; break
             }
-            const cmp = aVal.localeCompare(bVal, undefined, { sensitivity: 'base' })
+            return { item, sortValue }
+        })
+
+        mappedItems.sort((a, b) => {
+            const cmp = a.sortValue.localeCompare(b.sortValue, undefined, { sensitivity: 'base' })
             return sortDir === 'asc' ? cmp : -cmp
         })
-        return items
+
+        return mappedItems.map(({ item }) => item)
     }, [discoveredItems, sortField, sortDir])
 
     return (
@@ -187,7 +191,12 @@ export function UnresolvedFilesSection({
             <div className="overflow-x-auto px-3 py-4">
                 {discoveredItems.length === 0 ? (
                     <div className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">
-                        {discoveredQuery ? 'No unresolved files match your search.' : 'No unresolved files — great job! 🎉'}
+                        <p>{discoveredQuery ? 'No unresolved files match your search.' : 'No unresolved files.'}</p>
+                        {!discoveredQuery ? (
+                            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                                Add more library folders in Settings if you expected files here.
+                            </p>
+                        ) : null}
                     </div>
                 ) : (
                     <table className="w-full min-w-[980px] table-fixed border-separate border-spacing-0">
