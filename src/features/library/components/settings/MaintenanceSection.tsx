@@ -38,7 +38,7 @@ function DisabledTooltip({
     children: ReactNode
 }) {
     return (
-        <span className={cx(className ?? 'inline-grid')} title={reason}>
+        <span className={cx(className ?? 'inline-grid', reason && 'cursor-not-allowed')} title={reason}>
             {children}
         </span>
     )

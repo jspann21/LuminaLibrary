@@ -89,7 +89,7 @@ function App() {
               zoomControlsBottomClass,
             )}
           >
-            <span className="flex" title={overlays.canZoomOut ? 'Decrease cover size' : 'Minimum cover size reached'}>
+            <span className={cx('flex', !overlays.canZoomOut && 'cursor-not-allowed')} title={overlays.canZoomOut ? 'Decrease cover size' : 'Minimum cover size reached'}>
               <button
                 onClick={overlays.onZoomCoversOut}
                 disabled={!overlays.canZoomOut}
@@ -100,7 +100,7 @@ function App() {
               </button>
             </span>
             <span className="min-w-10 text-center text-xs font-semibold text-slate-600 dark:text-slate-300">{overlays.zoomPercent}%</span>
-            <span className="flex" title={overlays.canZoomIn ? 'Increase cover size' : 'Maximum cover size reached'}>
+            <span className={cx('flex', !overlays.canZoomIn && 'cursor-not-allowed')} title={overlays.canZoomIn ? 'Increase cover size' : 'Maximum cover size reached'}>
               <button
                 onClick={overlays.onZoomCoversIn}
                 disabled={!overlays.canZoomIn}

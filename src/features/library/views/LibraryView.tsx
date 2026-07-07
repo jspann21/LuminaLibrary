@@ -95,7 +95,7 @@ export function LibraryView({
               >
                 Select All
               </button>
-              <span className="flex" title={selectedBookIds.size === 0 ? 'No books selected' : undefined}>
+              <span className={selectedBookIds.size === 0 ? 'flex cursor-not-allowed' : 'flex'} title={selectedBookIds.size === 0 ? 'No books selected' : undefined}>
                 <button
                   onClick={onClearSelection}
                   disabled={selectedBookIds.size === 0}
@@ -104,7 +104,7 @@ export function LibraryView({
                   Clear
                 </button>
               </span>
-              <span className="flex" title={selectedBookIds.size === 0 ? 'No books selected to hide' : isHidePending ? 'Hiding selected books' : undefined}>
+              <span className={selectedBookIds.size === 0 || isHidePending ? 'flex cursor-not-allowed' : 'flex'} title={selectedBookIds.size === 0 ? 'No books selected to hide' : isHidePending ? 'Hiding selected books' : undefined}>
                 <button
                   onClick={onHideSelectedBooks}
                   disabled={selectedBookIds.size === 0 || isHidePending}
@@ -144,7 +144,7 @@ export function LibraryView({
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             Hidden from Library ({hiddenBooks.length})
           </h3>
-          <span className="flex" title={hiddenBooks.length === 0 ? 'No hidden books to restore' : isRestorePending ? 'Restoring hidden books' : undefined}>
+          <span className={hiddenBooks.length === 0 || isRestorePending ? 'flex cursor-not-allowed' : 'flex'} title={hiddenBooks.length === 0 ? 'No hidden books to restore' : isRestorePending ? 'Restoring hidden books' : undefined}>
             <button
               onClick={onRestoreAllHiddenBooks}
               disabled={hiddenBooks.length === 0 || isRestorePending}
@@ -174,7 +174,7 @@ export function LibraryView({
                     </p>
                   </div>
                 </div>
-                <span className="flex shrink-0" title={isRestorePending ? 'Restoring hidden books' : undefined}>
+                <span className={isRestorePending ? 'flex shrink-0 cursor-not-allowed' : 'flex shrink-0'} title={isRestorePending ? 'Restoring hidden books' : undefined}>
                   <button
                     onClick={() => onRestoreBook(book.id)}
                     disabled={isRestorePending}

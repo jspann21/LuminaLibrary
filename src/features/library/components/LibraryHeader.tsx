@@ -87,12 +87,17 @@ export function LibraryHeader({
             )}
             value={query}
             onChange={(event) => onSetQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Escape') return
+              if (query) onSetQuery('')
+              else searchInputRef.current?.blur()
+            }}
           />
           {query ? (
             <button
               type="button"
               aria-label="Clear library search"
-              title="Clear search"
+              title="Clear search (Esc)"
               onClick={() => onSetQuery('')}
               className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"
             >
@@ -231,7 +236,7 @@ export function LibraryHeader({
 
         <div className="mx-2 h-6 w-px bg-slate-200 dark:bg-slate-700" />
 
-        <span className="flex" title={isScanning ? 'Library scan in progress' : 'Add Books'}>
+        <span className={cx('flex', isScanning && 'cursor-not-allowed')} title={isScanning ? 'Library scan in progress' : 'Add Books'}>
           <button
             type="button"
             onClick={onQuickAddBooks}
