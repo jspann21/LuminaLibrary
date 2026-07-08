@@ -70,6 +70,7 @@ export function TagManagerView({
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/30">
               <input
+                aria-label="Target tag for merge"
                 className="w-full bg-transparent text-sm outline-none"
                 placeholder="Merge selected into tag..."
                 value={tagMergeTarget}
@@ -84,7 +85,7 @@ export function TagManagerView({
             </div>
 
             <span
-              className="flex"
+              className={cx('flex', (selectedCount === 0 || !tagMergeTarget.trim() || isMerging || isDeleting) && 'cursor-not-allowed')}
               title={selectedCount === 0 ? 'Select tags to merge' : !tagMergeTarget.trim() ? 'Enter a target tag name' : isMerging ? 'Merging tags' : isDeleting ? 'Cannot merge while deleting tags' : undefined}
             >
               <button
@@ -97,7 +98,7 @@ export function TagManagerView({
             </span>
 
             <span
-              className="flex"
+              className={cx('flex', (selectedCount === 0 || isDeleting || isMerging) && 'cursor-not-allowed')}
               title={selectedCount === 0 ? 'Select tags to delete' : isDeleting ? 'Deleting tags' : isMerging ? 'Cannot delete while merging tags' : undefined}
             >
               <button
@@ -114,7 +115,7 @@ export function TagManagerView({
             <span>
               {selectedCount} selected • {tagManagerFiltered.length} shown
             </span>
-            <span className="flex" title={selectedCount === 0 ? 'No tags selected' : undefined}>
+            <span className={cx('flex', selectedCount === 0 && 'cursor-not-allowed')} title={selectedCount === 0 ? 'No tags selected' : undefined}>
               <button
                 onClick={onClearSelection}
                 disabled={selectedCount === 0}
