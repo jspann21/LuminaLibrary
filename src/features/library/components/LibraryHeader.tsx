@@ -13,6 +13,13 @@ import {
 import { cx } from '../lib/cx'
 import type { FilterType, SortOption, ViewMode } from '../model/types'
 
+const FILTER_OPTIONS: Array<{ value: FilterType; label: string; buttonLabel: string }> = [
+  { value: 'all', label: 'All Formats', buttonLabel: 'All Formats' },
+  { value: 'pdf', label: 'PDF', buttonLabel: 'PDF' },
+  { value: 'epub', label: 'EPUB', buttonLabel: 'EPUB' },
+  { value: 'librarything', label: 'LibraryThing', buttonLabel: 'LibraryThing' },
+]
+
 type LibraryHeaderProps = {
   query: string
   filterType: FilterType
@@ -56,6 +63,7 @@ export function LibraryHeader({
   onQuickAddBooks,
 }: LibraryHeaderProps) {
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const activeFilterLabel = FILTER_OPTIONS.find((option) => option.value === filterType)?.buttonLabel ?? 'All Formats'
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -134,22 +142,22 @@ export function LibraryHeader({
             )}
           >
             <Filter size={16} className={cx(filterType !== 'all' ? 'text-accent-500' : 'text-slate-400')} />
-            <span className="capitalize">{filterType === 'all' ? 'All Formats' : filterType.toUpperCase()}</span>
+            <span>{activeFilterLabel}</span>
           </button>
           {isFilterOpen ? (
-            <div className="absolute right-0 top-full z-30 mt-2 w-40 rounded-xl border border-slate-100 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-800">
-              {(['all', 'pdf', 'epub'] as FilterType[]).map((option) => (
+            <div className="absolute right-0 top-full z-30 mt-2 w-44 rounded-xl border border-slate-100 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+              {FILTER_OPTIONS.map((option) => (
                 <button
-                  key={option}
-                  onClick={() => onSetFilterType(option)}
+                  key={option.value}
+                  onClick={() => onSetFilterType(option.value)}
                   className={cx(
                     'w-full rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                    filterType === option
+                    filterType === option.value
                       ? 'bg-accent-50 text-accent-600 dark:bg-accent-900/30 dark:text-accent-300'
                       : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700',
                   )}
                 >
-                  {option === 'all' ? 'All Formats' : option.toUpperCase()}
+                  {option.label}
                 </button>
               ))}
             </div>

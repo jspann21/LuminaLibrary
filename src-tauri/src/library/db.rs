@@ -1924,13 +1924,42 @@ impl Repository {
       where_clauses.push("b.id IN (SELECT book_id FROM fts_books WHERE fts_books MATCH ?)".to_string());
       values.push(Value::from(text));
     }
-    if !filters.formats.is_empty() {
-      let placeholders = vec!["?"; filters.formats.len()].join(",");
-      where_clauses.push(format!(
-        "EXISTS (SELECT 1 FROM book_files bf2 WHERE bf2.book_id = b.id AND lower(bf2.format) IN ({placeholders}))"
-      ));
-      for item in filters.formats {
-        values.push(Value::from(item.to_lowercase()));
+    let requested_formats = filters
+      .formats
+      .iter()
+      .map(|item| item.trim().to_lowercase())
+      .filter(|item| !item.is_empty())
+      .collect::<Vec<_>>();
+    if !requested_formats.is_empty() {
+      let wants_library_thing = requested_formats.iter().any(|item| item == "librarything");
+      let local_formats = requested_formats
+        .iter()
+        .filter(|item| item.as_str() != "librarything")
+        .cloned()
+        .collect::<Vec<_>>();
+      let mut format_clauses = Vec::new();
+
+      if !local_formats.is_empty() {
+        let placeholders = vec!["?"; local_formats.len()].join(",");
+        format_clauses.push(format!(
+          "EXISTS (SELECT 1 FROM book_files bf2 WHERE bf2.book_id = b.id AND lower(bf2.format) IN ({placeholders}))"
+        ));
+        for item in local_formats {
+          values.push(Value::from(item));
+        }
+      }
+
+      if wants_library_thing && library_thing_enabled {
+        format_clauses.push(
+          "EXISTS (SELECT 1 FROM book_external_sources bes2 WHERE bes2.book_id = b.id AND bes2.source = 'librarything')"
+            .to_string(),
+        );
+      }
+
+      if format_clauses.is_empty() {
+        where_clauses.push("0 = 1".to_string());
+      } else {
+        where_clauses.push(format!("({})", format_clauses.join(" OR ")));
       }
     }
     if !filters.tags.is_empty() {
@@ -2016,6 +2045,15 @@ impl Repository {
       let authors_json = row.get::<_, String>(2)?;
       let formats = row.get::<_, String>(8)?;
       let tags = row.get::<_, String>(11)?;
+      let library_thing_url = row.get::<_, Option<String>>(12)?;
+      let mut format_values = formats
+        .split(',')
+        .filter(|value| !value.trim().is_empty())
+        .map(|value| value.to_string())
+        .collect::<Vec<_>>();
+      if library_thing_url.is_some() {
+        format_values.push("librarything".to_string());
+      }
       Ok(BookCard {
         id: row.get(0)?,
         title: row.get(1)?,
@@ -2030,14 +2068,10 @@ impl Repository {
         cover_url: row.get(5)?,
         cover_local_path: row.get(6)?,
         confidence: row.get(7)?,
-        formats: formats
-          .split(',')
-          .filter(|value| !value.trim().is_empty())
-          .map(|value| value.to_string())
-          .collect(),
+        formats: format_values,
         file_count: row.get(9)?,
         missing_files: row.get(10)?,
-        library_thing_url: row.get(12)?,
+        library_thing_url,
       })
     })? {
       items.push(row?);
@@ -2146,6 +2180,15 @@ impl Repository {
       let authors_json = row.get::<_, String>(2)?;
       let formats = row.get::<_, String>(8)?;
       let tags = row.get::<_, String>(11)?;
+      let library_thing_url = row.get::<_, Option<String>>(12)?;
+      let mut format_values = formats
+        .split(',')
+        .filter(|value| !value.trim().is_empty())
+        .map(|value| value.to_string())
+        .collect::<Vec<_>>();
+      if library_thing_url.is_some() {
+        format_values.push("librarything".to_string());
+      }
       Ok(BookCard {
         id: row.get(0)?,
         title: row.get(1)?,
@@ -2160,14 +2203,10 @@ impl Repository {
         cover_url: row.get(5)?,
         cover_local_path: row.get(6)?,
         confidence: row.get(7)?,
-        formats: formats
-          .split(',')
-          .filter(|value| !value.trim().is_empty())
-          .map(|value| value.to_string())
-          .collect(),
+        formats: format_values,
         file_count: row.get(9)?,
         missing_files: row.get(10)?,
-        library_thing_url: row.get(12)?,
+        library_thing_url,
       })
     })? {
       items.push(row?);
@@ -3977,6 +4016,20 @@ mod tests {
       .get_library_books(None, BookFilters::default(), SortSpec::default(), Some(1), Some(20))
       .expect("disabled list");
     assert_eq!(disabled.total, 0);
+    let disabled_filtered = db
+      .repo
+      .get_library_books(
+        None,
+        BookFilters {
+          formats: vec!["librarything".to_string()],
+          ..Default::default()
+        },
+        SortSpec::default(),
+        Some(1),
+        Some(20),
+      )
+      .expect("disabled filtered list");
+    assert_eq!(disabled_filtered.total, 0);
     let disabled_detail = db.repo.get_book_detail(&book_id).expect("disabled detail");
     assert_eq!(disabled_detail.library_thing_url, None);
 
@@ -3995,6 +4048,23 @@ mod tests {
       enabled_detail.library_thing_url.as_deref(),
       Some("https://www.librarything.com/work/book/301952134")
     );
+
+    let enabled_filtered = db
+      .repo
+      .get_library_books(
+        None,
+        BookFilters {
+          formats: vec!["librarything".to_string()],
+          ..Default::default()
+        },
+        SortSpec::default(),
+        Some(1),
+        Some(20),
+      )
+      .expect("enabled filtered list");
+    assert_eq!(enabled_filtered.total, 1);
+    assert_eq!(enabled_filtered.items[0].id, book_id);
+    assert!(enabled_filtered.items[0].formats.contains(&"librarything".to_string()));
   }
 
   #[test]

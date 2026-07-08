@@ -34,6 +34,7 @@ export function formatsToFilterType(formats: string[]): FilterType {
   const normalized = formats.map((item) => item.toLowerCase())
   if (normalized.length === 1 && normalized[0] === 'pdf') return 'pdf'
   if (normalized.length === 1 && normalized[0] === 'epub') return 'epub'
+  if (normalized.length === 1 && normalized[0] === 'librarything') return 'librarything'
   return 'all'
 }
 

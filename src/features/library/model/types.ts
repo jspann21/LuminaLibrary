@@ -10,7 +10,7 @@ import type {
 export type ActiveView = 'library' | 'tags' | 'settings'
 export type ViewMode = 'grid' | 'list'
 export type SortOption = 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc' | 'author-asc' | 'author-desc'
-export type FilterType = 'all' | 'pdf' | 'epub'
+export type FilterType = 'all' | 'pdf' | 'epub' | 'librarything'
 
 export type ScanProgressState = {
   active: boolean

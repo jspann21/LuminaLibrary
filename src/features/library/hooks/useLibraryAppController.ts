@@ -23,7 +23,7 @@ import {
   optionToSort,
   sortToOption,
 } from '../model/selectors'
-import type { BulkMatchProgressState, ConfirmDialogState, CsvImportProgressState, LibraryThingImportProgressState, ScanProgressState } from '../model/types'
+import type { BulkMatchProgressState, ConfirmDialogState, CsvImportProgressState, FilterType, LibraryThingImportProgressState, ScanProgressState } from '../model/types'
 
 import { useEventListeners, progressPercentForPhase } from './useEventListeners'
 import { useScanMutations } from './useScanMutations'
@@ -409,7 +409,7 @@ export function useLibraryAppController() {
       onToggleSortOpen: () => setIsSortOpen((open) => !open),
       onCloseFilterOpen: () => setIsFilterOpen(false),
       onCloseSortOpen: () => setIsSortOpen(false),
-      onSetFilterType: (value: 'all' | 'pdf' | 'epub') => setFormatFilter(filterTypeToFormats(value)),
+      onSetFilterType: (value: FilterType) => setFormatFilter(filterTypeToFormats(value)),
       onSetSortOption: (value: typeof sortOption) => setSort(optionToSort(value)),
       onSetViewMode: setViewMode,
       onQuickAddBooks: () => {

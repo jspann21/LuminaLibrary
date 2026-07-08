@@ -37,6 +37,7 @@ export const LibraryBookCard = memo(function LibraryBookCard({
   onClick,
 }: LibraryBookCardProps) {
   const authorLabel = authors.join(', ') || 'Unknown Author'
+  const formatLabel = format?.toLowerCase() === 'librarything' ? 'LibraryThing' : format?.toUpperCase()
   const listCoverWidth = Math.round(COVER_LIST_WIDTH * coverScale)
   const listCoverHeight = Math.round(COVER_LIST_HEIGHT * coverScale)
 
@@ -91,7 +92,7 @@ export const LibraryBookCard = memo(function LibraryBookCard({
               {tag}
             </span>
           ))}
-          {format ? <span className="px-2 font-mono text-xs uppercase text-slate-400 dark:text-slate-500">{format}</span> : null}
+          {formatLabel ? <span className="px-2 text-xs text-slate-400 dark:text-slate-500">{formatLabel}</span> : null}
         </div>
       </button>
     )
