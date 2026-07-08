@@ -282,7 +282,7 @@ pub fn rescan_file(state: State<'_, AppState>, file_id: String) -> Result<FileRe
 pub async fn preview_rescan_metadata(
   state: State<'_, AppState>,
   book_id: String,
-  file_id: String,
+  file_id: Option<String>,
 ) -> Result<MetadataRescanPreview, String> {
   let service = state.service.clone();
   tauri::async_runtime::spawn_blocking(move || service.preview_rescan_metadata(book_id, file_id))

@@ -20,7 +20,7 @@ type WizardStep = 'lock' | 'searching' | 'pick-edition' | 'fine-tune'
 type RescanMetadataModalProps = {
   book: BookDetail
   initialLockedFields?: MetadataField[]
-  onPreviewRescan: (input: { fileId: string; bookId: string }) => Promise<MetadataRescanPreview>
+  onPreviewRescan: (input: { fileId?: string | null; bookId: string }) => Promise<MetadataRescanPreview>
   onApplyCuratedMetadata: (input: {
     bookId: string
     selection: MetadataFieldSelection[]
@@ -29,7 +29,7 @@ type RescanMetadataModalProps = {
   onClose: () => void
   /** Called after a successful apply — parent can store an undo snapshot */
   onApplied?: () => void
-  primaryFileId: string
+  primaryFileId?: string | null
 }
 
 /* ------------------------------------------------------------------ */
@@ -252,7 +252,7 @@ export function RescanMetadataModal({
     setSelectedBaseId(null)
     setFieldPicks({})
     try {
-      const result = await onPreviewRescan({ fileId: primaryFileId, bookId: book.id })
+      const result = await onPreviewRescan({ fileId: primaryFileId ?? null, bookId: book.id })
       if (!mountedRef.current) return
       setPreview(result)
       // Update lock state from server (may differ if user hasn't toggled yet)

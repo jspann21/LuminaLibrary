@@ -1348,21 +1348,24 @@ impl LibraryService {
   pub fn preview_rescan_metadata(
     &self,
     book_id: String,
-    file_id: String,
+    file_id: Option<String>,
   ) -> anyhow::Result<MetadataRescanPreview> {
     let detail = self.repository.get_book_detail(&book_id)?;
-    let file = self
-      .repository
-      .get_file_by_id(&file_id)?
-      .ok_or_else(|| anyhow!("file not found"))?;
-    let linked_book_id = self.repository.find_book_id_for_file(&file_id)?;
-    if linked_book_id.as_deref() != Some(book_id.as_str()) {
-      return Err(anyhow!("selected file is not linked to this book"));
-    }
+    let (parsed, guessed) = if let Some(file_id) = file_id.as_deref() {
+      let file = self
+        .repository
+        .get_file_by_id(file_id)?
+        .ok_or_else(|| anyhow!("file not found"))?;
+      let linked_book_id = self.repository.find_book_id_for_file(file_id)?;
+      if linked_book_id.as_deref() != Some(book_id.as_str()) {
+        return Err(anyhow!("selected file is not linked to this book"));
+      }
 
-    let path = Path::new(&file.abs_path);
-    let parsed = parse_metadata(path, &file.ext).unwrap_or_default();
-    let guessed = infer_metadata_from_filename(path);
+      let path = Path::new(&file.abs_path);
+      (parse_metadata(path, &file.ext).unwrap_or_default(), infer_metadata_from_filename(path))
+    } else {
+      (ParsedMetadata::default(), ParsedMetadata::default())
+    };
     let locked_db_fields = self.repository.get_manual_override_fields(&book_id)?;
 
     let mut lookup = parsed.clone();

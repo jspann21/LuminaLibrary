@@ -295,7 +295,7 @@ pub struct MetadataLockUpdate {
 #[serde(rename_all = "camelCase")]
 pub struct MetadataRescanPreview {
   pub book_id: String,
-  pub file_id: String,
+  pub file_id: Option<String>,
   pub candidates: Vec<MetadataCandidate>,
   pub source_statuses: Vec<MetadataSourceStatus>,
   pub locked_fields: Vec<MetadataField>,

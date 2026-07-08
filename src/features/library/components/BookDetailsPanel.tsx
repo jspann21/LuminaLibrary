@@ -67,6 +67,7 @@ export function BookDetailsPanel({
   const resolvedPrimaryFile = book.files.find((file) => file.status !== 'missing') ?? book.files.at(0) ?? null
   const [savedPrimaryFile, setSavedPrimaryFile] = useState<typeof resolvedPrimaryFile>(null)
   const primaryFile = resolvedPrimaryFile ?? savedPrimaryFile
+  const canRescanMetadata = Boolean(primaryFile || book.libraryThingUrl)
   const isEditing = Boolean(draft)
   const form = draft?.form ?? buildDetailForm(book)
   const tags = draft?.tags ?? book.tags
@@ -232,8 +233,8 @@ export function BookDetailsPanel({
           <div className="space-y-6">
             <div className="flex items-center gap-3">
               {isEditing ? <span className={cx('flex flex-1', isSaving && 'cursor-not-allowed')} title={isSaving ? 'Saving changes' : 'Save changes'}><button onClick={saveChanges} disabled={isSaving} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent-600 py-2.5 font-medium text-white transition-colors hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500">{isSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}{isSaving ? 'Saving...' : 'Save Changes'}</button></span> : <button onClick={startEdit} className={cx('flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 font-medium text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300', detailSecondaryButtonClass)}>Edit Metadata</button>}
-              <span className={cx('flex', !primaryFile && 'cursor-not-allowed')} title={primaryFile ? 'Rescan metadata' : 'Requires a linked local file'}>
-                <button aria-label="Rescan metadata" onClick={() => { if (isEditing) { setRescanNotice({ tone: 'warning', message: 'Save changes first. Rescan uses saved metadata and does not include unsaved edits.' }); return } setShowRescanModal(true) }} disabled={!primaryFile} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-slate-700', detailSecondaryButtonClass)}><RefreshCw size={20} /></button>
+              <span className={cx('flex', !canRescanMetadata && 'cursor-not-allowed')} title={canRescanMetadata ? 'Rescan metadata' : 'Requires a linked file or LibraryThing source'}>
+                <button aria-label="Rescan metadata" onClick={() => { if (isEditing) { setRescanNotice({ tone: 'warning', message: 'Save changes first. Rescan uses saved metadata and does not include unsaved edits.' }); return } setShowRescanModal(true) }} disabled={!canRescanMetadata} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-slate-700', detailSecondaryButtonClass)}><RefreshCw size={20} /></button>
               </span>
               <span className={cx('flex', !primaryFile && 'cursor-not-allowed')} title={primaryFile ? 'Open file' : 'Requires a linked local file'}>
                 <button aria-label="Open file" onClick={() => { if (primaryFile) void onOpenFile(primaryFile.absPath) }} disabled={!primaryFile} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-slate-700', detailSecondaryButtonClass)}><ExternalLink size={20} /></button>
@@ -398,10 +399,10 @@ export function BookDetailsPanel({
           onClose={() => setShowCoverPicker(false)}
         />
       ) : null}
-      {showRescanModal && primaryFile ? (
+      {showRescanModal && canRescanMetadata ? (
         <RescanMetadataModal
           book={book}
-          primaryFileId={primaryFile.fileId}
+          primaryFileId={primaryFile?.fileId}
           onPreviewRescan={onPreviewRescan}
           onApplyCuratedMetadata={onApplyCuratedMetadata}
           onClose={() => setShowRescanModal(false)}

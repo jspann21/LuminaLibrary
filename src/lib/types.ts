@@ -251,7 +251,7 @@ export type MetadataLockUpdate = {
 
 export type MetadataRescanPreview = {
   bookId: string
-  fileId: string
+  fileId?: string | null
   candidates: MetadataCandidate[]
   sourceStatuses: MetadataSourceStatus[]
   lockedFields: MetadataField[]

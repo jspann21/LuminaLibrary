@@ -130,7 +130,7 @@ export function useBookMutations(deps: {
         },
     })
     const previewRescanMetadataMutation = useMutation({
-        mutationFn: (input: { fileId: string; bookId: string }) => api.previewRescanMetadata(input.bookId, input.fileId),
+        mutationFn: (input: { fileId?: string | null; bookId: string }) => api.previewRescanMetadata(input.bookId, input.fileId),
         onSuccess: (preview) => {
             const matched = preview.candidates.length
             if (matched > 0) {

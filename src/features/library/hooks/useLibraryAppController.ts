@@ -568,7 +568,7 @@ export function useLibraryAppController() {
           setSelectedBookId(detail.id)
         }
       },
-      onPreviewRescan: async (input: { fileId: string; bookId: string }) =>
+      onPreviewRescan: async (input: { fileId?: string | null; bookId: string }) =>
         bookMutations.previewRescanMetadataMutation.mutateAsync(input),
       onApplyCuratedMetadata: async (input: {
         bookId: string

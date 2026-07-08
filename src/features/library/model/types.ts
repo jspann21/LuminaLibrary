@@ -146,7 +146,7 @@ export type BookDetailsPanelProps = {
   book: BookDetail
   onClose: () => void
   onSave: (input: { bookId: string; patch: BookPatch; tags: string[] }) => Promise<void>
-  onPreviewRescan: (input: { fileId: string; bookId: string }) => Promise<MetadataRescanPreview>
+  onPreviewRescan: (input: { fileId?: string | null; bookId: string }) => Promise<MetadataRescanPreview>
   onApplyCuratedMetadata: (input: {
     bookId: string
     selection: MetadataFieldSelection[]

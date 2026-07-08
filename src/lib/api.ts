@@ -129,7 +129,7 @@ export const api = {
   importLibraryThingExport: (path: string) =>
     invokeOrThrow<LibraryThingImportResult>('import_library_thing_export', { path }),
   rescanFile: (fileId: string) => invokeOrThrow<FileRecord>('rescan_file', { fileId }),
-  previewRescanMetadata: (bookId: string, fileId: string) =>
+  previewRescanMetadata: (bookId: string, fileId?: string | null) =>
     invokeOrThrow<MetadataRescanPreview>('preview_rescan_metadata', { bookId, fileId }),
   applyCuratedMetadata: (bookId: string, selection: MetadataFieldSelection[], lockUpdates: MetadataLockUpdate[]) =>
     invokeOrThrow<BookDetail>('apply_curated_metadata', { bookId, selection, lockUpdates }),
