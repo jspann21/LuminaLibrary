@@ -138,19 +138,6 @@ impl Repository {
 
       CREATE INDEX IF NOT EXISTS idx_book_files_book_id ON book_files(book_id);
 
-      CREATE TRIGGER IF NOT EXISTS book_files_ad AFTER DELETE ON book_files BEGIN
-        DELETE FROM books
-         WHERE id = old.book_id
-           AND NOT EXISTS (SELECT 1 FROM book_files bf WHERE bf.book_id = old.book_id);
-      END;
-
-      CREATE TRIGGER IF NOT EXISTS book_files_au_book_id AFTER UPDATE OF book_id ON book_files BEGIN
-        DELETE FROM books
-         WHERE id = old.book_id
-           AND old.book_id <> new.book_id
-           AND NOT EXISTS (SELECT 1 FROM book_files bf WHERE bf.book_id = old.book_id);
-      END;
-
       CREATE TABLE IF NOT EXISTS tags (
         id TEXT PRIMARY KEY,
         key TEXT NOT NULL UNIQUE,
@@ -213,6 +200,23 @@ impl Repository {
       );
 
       CREATE INDEX IF NOT EXISTS idx_book_external_sources_book_source ON book_external_sources(book_id, source);
+
+      DROP TRIGGER IF EXISTS book_files_ad;
+      CREATE TRIGGER book_files_ad AFTER DELETE ON book_files BEGIN
+        DELETE FROM books
+         WHERE id = old.book_id
+           AND NOT EXISTS (SELECT 1 FROM book_files bf WHERE bf.book_id = old.book_id)
+           AND NOT EXISTS (SELECT 1 FROM book_external_sources bes WHERE bes.book_id = old.book_id);
+      END;
+
+      DROP TRIGGER IF EXISTS book_files_au_book_id;
+      CREATE TRIGGER book_files_au_book_id AFTER UPDATE OF book_id ON book_files BEGIN
+        DELETE FROM books
+         WHERE id = old.book_id
+           AND old.book_id <> new.book_id
+           AND NOT EXISTS (SELECT 1 FROM book_files bf WHERE bf.book_id = old.book_id)
+           AND NOT EXISTS (SELECT 1 FROM book_external_sources bes WHERE bes.book_id = old.book_id);
+      END;
 
       CREATE VIRTUAL TABLE IF NOT EXISTS fts_books USING fts5(
         book_id UNINDEXED,
@@ -848,7 +852,9 @@ impl Repository {
     tx.execute(&delete_sql, params_from_iter(values.iter()))?;
 
     let removed_orphan_books: i64 = tx.query_row(
-      "SELECT COUNT(*) FROM books b WHERE NOT EXISTS (SELECT 1 FROM book_files bf WHERE bf.book_id = b.id)",
+      "SELECT COUNT(*) FROM books b
+       WHERE NOT EXISTS (SELECT 1 FROM book_files bf WHERE bf.book_id = b.id)
+         AND NOT EXISTS (SELECT 1 FROM book_external_sources bes WHERE bes.book_id = b.id)",
       [],
       |row| row.get(0),
     )?;
@@ -858,6 +864,7 @@ impl Repository {
          SELECT b.id
          FROM books b
          WHERE NOT EXISTS (SELECT 1 FROM book_files bf WHERE bf.book_id = b.id)
+           AND NOT EXISTS (SELECT 1 FROM book_external_sources bes WHERE bes.book_id = b.id)
        )",
       [],
     )?;
@@ -875,7 +882,9 @@ impl Repository {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
     let removed_orphan_books: i64 = tx.query_row(
-      "SELECT COUNT(*) FROM books b WHERE NOT EXISTS (SELECT 1 FROM book_files bf WHERE bf.book_id = b.id)",
+      "SELECT COUNT(*) FROM books b
+       WHERE NOT EXISTS (SELECT 1 FROM book_files bf WHERE bf.book_id = b.id)
+         AND NOT EXISTS (SELECT 1 FROM book_external_sources bes WHERE bes.book_id = b.id)",
       [],
       |row| row.get(0),
     )?;
@@ -885,6 +894,7 @@ impl Repository {
          SELECT b.id
          FROM books b
          WHERE NOT EXISTS (SELECT 1 FROM book_files bf WHERE bf.book_id = b.id)
+           AND NOT EXISTS (SELECT 1 FROM book_external_sources bes WHERE bes.book_id = b.id)
        )",
       [],
     )?;
@@ -4011,6 +4021,10 @@ mod tests {
       )
       .expect("upsert source");
 
+    let removed_orphans = db.repo.cleanup_orphan_books().expect("cleanup orphans");
+    assert_eq!(removed_orphans, 0);
+    assert!(db.repo.get_book_detail(&book_id).is_ok());
+
     let disabled = db
       .repo
       .get_library_books(None, BookFilters::default(), SortSpec::default(), Some(1), Some(20))
@@ -4065,6 +4079,32 @@ mod tests {
     assert_eq!(enabled_filtered.total, 1);
     assert_eq!(enabled_filtered.items[0].id, book_id);
     assert!(enabled_filtered.items[0].formats.contains(&"librarything".to_string()));
+  }
+
+  #[test]
+  fn removing_local_files_preserves_books_with_external_sources() {
+    let db = TestDb::new();
+    let (book_id, file_id) = create_matched_book(&db, "C:\\Books\\LibraryThingFileRemoval");
+    db
+      .repo
+      .upsert_external_source(
+        &book_id,
+        "librarything",
+        "301952134",
+        None,
+        "https://www.librarything.com/work/book/301952134",
+        "{}",
+        now(),
+      )
+      .expect("source");
+
+    let (removed_files, removed_orphans) = db
+      .repo
+      .remove_files_and_cleanup_orphan_books(&[file_id], now())
+      .expect("remove file");
+    assert_eq!(removed_files, 1);
+    assert_eq!(removed_orphans, 0);
+    assert!(db.repo.get_book_detail(&book_id).is_ok());
   }
 
   #[test]
