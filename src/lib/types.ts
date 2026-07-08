@@ -353,6 +353,21 @@ export type CsvImportProgressEvent = {
   progressPercent?: number
 }
 
+export type LibraryThingImportProgressEvent = {
+  phase?: 'parsing' | 'importing' | 'cover_lookup' | 'completed' | 'error'
+  path?: string
+  totalRows?: number
+  processedRows?: number
+  matchedRows?: number
+  createdRows?: number
+  skippedRows?: number
+  coverRows?: number
+  currentTitle?: string
+  errors?: number
+  message?: string
+  progressPercent?: number
+}
+
 export type GoogleBooksQuotaNoticeEvent = {
   message: string
   limitedUntilUtc?: string

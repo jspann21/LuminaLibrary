@@ -1,5 +1,5 @@
 import type { AccentColor } from '../../../context/ThemeContext'
-import type { BulkMatchProgressState, CsvImportProgressState, ScanProgressState } from './types'
+import type { BulkMatchProgressState, CsvImportProgressState, LibraryThingImportProgressState, ScanProgressState } from './types'
 
 export const INITIAL_SCAN_PROGRESS: ScanProgressState = {
   active: false,
@@ -34,6 +34,19 @@ export const INITIAL_CSV_IMPORT_PROGRESS: CsvImportProgressState = {
   matchedRows: 0,
   updatedRows: 0,
   unresolvedRows: 0,
+  errors: 0,
+  progressPercent: 0,
+}
+
+export const INITIAL_LIBRARY_THING_IMPORT_PROGRESS: LibraryThingImportProgressState = {
+  active: false,
+  phase: 'idle',
+  totalRows: 0,
+  processedRows: 0,
+  matchedRows: 0,
+  createdRows: 0,
+  skippedRows: 0,
+  coverRows: 0,
   errors: 0,
   progressPercent: 0,
 }

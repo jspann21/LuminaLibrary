@@ -41,6 +41,7 @@ const MAX_SEARCH_QUERY_CHARS: usize = 256;
 const MAX_TAGS_PER_REQUEST: usize = 100;
 const MAX_TAG_LABEL_CHARS: usize = 80;
 const COVER_CACHE_WORKERS: usize = 4;
+const LIBRARY_THING_PROGRESS_EMIT_INTERVAL: Duration = Duration::from_millis(500);
 
 #[derive(Clone)]
 pub struct LibraryService {
@@ -1066,110 +1067,259 @@ impl LibraryService {
   pub fn import_library_thing_export(&self, path: String) -> anyhow::Result<LibraryThingImportResult> {
     validate_library_thing_import_path(&path)?;
     let imported_at = now_iso();
-    let rows = parse_library_thing_export(&path)?;
-    ensure!(!rows.is_empty(), "LibraryThing export did not contain any supported book rows");
+    emit_library_thing_import_progress(
+      &self.scanner.app_handle,
+      LibraryThingProgressPayload {
+        phase: "parsing",
+        path: &path,
+        total_rows: 0,
+        processed_rows: 0,
+        matched_rows: 0,
+        created_rows: 0,
+        skipped_rows: 0,
+        cover_rows: 0,
+        current_title: None,
+        message: Some("Reading LibraryThing export".to_string()),
+        progress_percent: 0,
+      },
+    );
 
-    let mut imported_rows = 0usize;
-    let mut matched_rows = 0usize;
-    let mut created_rows = 0usize;
-    let mut skipped_rows = 0usize;
+    let result = (|| -> anyhow::Result<(LibraryThingImportResult, usize, usize)> {
+      let rows = parse_library_thing_export(&path)?;
+      ensure!(!rows.is_empty(), "LibraryThing export did not contain any supported book rows");
 
-    for row in rows {
-      let Some(external_id) = row.book_id.as_deref().and_then(normalized_library_thing_id) else {
-        skipped_rows += 1;
-        continue;
-      };
-      let external_url = library_thing_book_url(&external_id)?;
-      let title = row
-        .title
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(ToString::to_string)
-        .unwrap_or_else(|| format!("LibraryThing book {external_id}"));
-      let authors = row.authors.clone();
-      let cover_url = row
-        .cover_url
-        .clone()
-        .and_then(|value| validate_cover_url_value(value).ok())
-        .filter(|value| !value.trim().is_empty());
+      let total_rows = rows.len();
+      let mut imported_rows = 0usize;
+      let mut matched_rows = 0usize;
+      let mut created_rows = 0usize;
+      let mut skipped_rows = 0usize;
+      let mut cover_rows = 0usize;
+      let mut last_emit_at = Instant::now();
 
-      let matched_book_id = self
-        .repository
-        .find_book_by_external_source("librarything", &external_id)?
-        .or_else(|| {
+      emit_library_thing_import_progress(
+        &self.scanner.app_handle,
+        LibraryThingProgressPayload {
+          phase: "importing",
+          path: &path,
+          total_rows,
+          processed_rows: 0,
+          matched_rows,
+          created_rows,
+          skipped_rows,
+          cover_rows,
+          current_title: None,
+          message: Some(format!("Importing LibraryThing books: 0/{total_rows}")),
+          progress_percent: library_thing_progress_percent(0, total_rows, false),
+        },
+      );
+
+      for row in rows {
+        let processed_rows = imported_rows + skipped_rows + 1;
+        let title_for_progress = row.title.as_deref().map(str::trim).filter(|value| !value.is_empty());
+        if last_emit_at.elapsed() >= LIBRARY_THING_PROGRESS_EMIT_INTERVAL {
+          emit_library_thing_import_progress(
+            &self.scanner.app_handle,
+            LibraryThingProgressPayload {
+              phase: "importing",
+              path: &path,
+              total_rows,
+              processed_rows: processed_rows.saturating_sub(1),
+              matched_rows,
+              created_rows,
+              skipped_rows,
+              cover_rows,
+              current_title: title_for_progress,
+              message: title_for_progress.map(|title| format!("Matching {title}")),
+              progress_percent: library_thing_progress_percent(processed_rows.saturating_sub(1), total_rows, false),
+            },
+          );
+          last_emit_at = Instant::now();
+        }
+
+        let Some(external_id) = row.book_id.as_deref().and_then(normalized_library_thing_id) else {
+          skipped_rows += 1;
+          continue;
+        };
+        let external_url = library_thing_book_url(&external_id)?;
+        let title = row
+          .title
+          .as_deref()
+          .map(str::trim)
+          .filter(|value| !value.is_empty())
+          .map(ToString::to_string)
+          .unwrap_or_else(|| format!("LibraryThing book {external_id}"));
+        let authors = row.authors.clone();
+        let cover_url = row
+          .cover_url
+          .clone()
+          .and_then(|value| validate_cover_url_value(value).ok())
+          .filter(|value| !value.trim().is_empty());
+
+        let matched_book_id = self
+          .repository
+          .find_book_by_external_source("librarything", &external_id)?
+          .or_else(|| {
+            self
+              .repository
+              .find_book_by_isbn(row.isbn10.as_deref(), row.isbn13.as_deref())
+              .ok()
+              .flatten()
+          })
+          .or_else(|| {
+            if authors.is_empty() {
+              None
+            } else {
+              self.repository.find_book_by_title_author(&title, &authors).ok().flatten()
+            }
+          });
+
+        let input = UpsertBookInput {
+          title: title.clone(),
+          subtitle: None,
+          authors,
+          publisher: row.publisher.clone(),
+          publish_date: row.publish_date.clone(),
+          isbn10: row.isbn10.clone(),
+          isbn13: row.isbn13.clone(),
+          description: row.description.clone(),
+          language: row.language.clone(),
+          page_count: row.page_count,
+          series: row.series.clone(),
+          series_index: None,
+          cover_url,
+          metadata_source: "librarything".to_string(),
+          confidence: Some(0.92),
+        };
+
+        let created_book = matched_book_id.is_none();
+        let book_id = if let Some(existing_id) = matched_book_id {
           self
             .repository
-            .find_book_by_isbn(row.isbn10.as_deref(), row.isbn13.as_deref())
-            .ok()
-            .flatten()
-        })
-        .or_else(|| {
-          if authors.is_empty() {
-            None
-          } else {
-            self.repository.find_book_by_title_author(&title, &authors).ok().flatten()
-          }
-        });
+            .update_book_by_id_ignoring_manual_overrides(&existing_id, input, &imported_at)?;
+          existing_id
+        } else {
+          self.repository.upsert_book(input, &imported_at)?
+        };
+        let metadata_json = serde_json::to_string(&row.raw)?;
+        self.repository.upsert_external_source(
+          &book_id,
+          "librarything",
+          &external_id,
+          row.work_id.as_deref(),
+          &external_url,
+          &metadata_json,
+          &imported_at,
+        )?;
 
-      let input = UpsertBookInput {
-        title,
-        subtitle: None,
-        authors,
-        publisher: row.publisher.clone(),
-        publish_date: row.publish_date.clone(),
-        isbn10: row.isbn10.clone(),
-        isbn13: row.isbn13.clone(),
-        description: row.description.clone(),
-        language: row.language.clone(),
-        page_count: row.page_count,
-        series: row.series.clone(),
-        series_index: None,
-        cover_url,
-        metadata_source: "librarything".to_string(),
-        confidence: Some(0.92),
-      };
+        emit_library_thing_import_progress(
+          &self.scanner.app_handle,
+          LibraryThingProgressPayload {
+            phase: "cover_lookup",
+            path: &path,
+            total_rows,
+            processed_rows: processed_rows.saturating_sub(1),
+            matched_rows,
+            created_rows,
+            skipped_rows,
+            cover_rows,
+            current_title: Some(title.as_str()),
+            message: Some(format!("Finding cover art for {title}")),
+            progress_percent: library_thing_progress_percent(processed_rows.saturating_sub(1), total_rows, false),
+          },
+        );
 
-      let created_book = matched_book_id.is_none();
-      let book_id = if let Some(existing_id) = matched_book_id {
-        self
-          .repository
-          .update_book_by_id_ignoring_manual_overrides(&existing_id, input, &imported_at)?;
-        existing_id
-      } else {
-        self.repository.upsert_book(input, &imported_at)?
-      };
-      let metadata_json = serde_json::to_string(&row.raw)?;
-      self.repository.upsert_external_source(
-        &book_id,
-        "librarything",
-        &external_id,
-        row.work_id.as_deref(),
-        &external_url,
-        &metadata_json,
-        &imported_at,
-      )?;
-      let _ = self.resolve_and_cache_book_cover_if_needed(&book_id)?;
-      imported_rows += 1;
-      if created_book {
-        created_rows += 1;
-      } else {
-        matched_rows += 1;
+        if self.resolve_and_cache_book_cover_if_needed(&book_id)? {
+          cover_rows += 1;
+        }
+        imported_rows += 1;
+        if created_book {
+          created_rows += 1;
+        } else {
+          matched_rows += 1;
+        }
+
+        if last_emit_at.elapsed() >= LIBRARY_THING_PROGRESS_EMIT_INTERVAL {
+          emit_library_thing_import_progress(
+            &self.scanner.app_handle,
+            LibraryThingProgressPayload {
+              phase: "importing",
+              path: &path,
+              total_rows,
+              processed_rows,
+              matched_rows,
+              created_rows,
+              skipped_rows,
+              cover_rows,
+              current_title: Some(title.as_str()),
+              message: Some(format!("Imported {processed_rows}/{total_rows} LibraryThing books")),
+              progress_percent: library_thing_progress_percent(processed_rows, total_rows, false),
+            },
+          );
+          last_emit_at = Instant::now();
+        }
+      }
+
+      self.repository.set_library_thing_enabled(true, &imported_at)?;
+      self.repository.set_library_thing_last_import_at(&imported_at, &imported_at)?;
+      self.run_storage_maintenance();
+
+      Ok((
+        LibraryThingImportResult {
+          imported_rows,
+          matched_rows,
+          created_rows,
+          skipped_rows,
+          path: path.clone(),
+          imported_at,
+        },
+        cover_rows,
+        total_rows,
+      ))
+    })();
+
+    match result {
+      Ok((summary, cover_rows, total_rows)) => {
+        emit_library_thing_import_progress(
+          &self.scanner.app_handle,
+          LibraryThingProgressPayload {
+            phase: "completed",
+            path: &path,
+            total_rows,
+            processed_rows: total_rows,
+            matched_rows: summary.matched_rows,
+            created_rows: summary.created_rows,
+            skipped_rows: summary.skipped_rows,
+            cover_rows,
+            current_title: None,
+            message: Some(format!(
+              "LibraryThing import complete: {} imported, {} matched, {} new, {} skipped",
+              summary.imported_rows, summary.matched_rows, summary.created_rows, summary.skipped_rows
+            )),
+            progress_percent: 100,
+          },
+        );
+        Ok(summary)
+      }
+      Err(err) => {
+        emit_library_thing_import_progress(
+          &self.scanner.app_handle,
+          LibraryThingProgressPayload {
+            phase: "error",
+            path: &path,
+            total_rows: 0,
+            processed_rows: 0,
+            matched_rows: 0,
+            created_rows: 0,
+            skipped_rows: 0,
+            cover_rows: 0,
+            current_title: None,
+            message: Some(err.to_string()),
+            progress_percent: 0,
+          },
+        );
+        Err(err)
       }
     }
-
-    self.repository.set_library_thing_enabled(true, &imported_at)?;
-    self.repository.set_library_thing_last_import_at(&imported_at, &imported_at)?;
-    self.run_storage_maintenance();
-
-    Ok(LibraryThingImportResult {
-      imported_rows,
-      matched_rows,
-      created_rows,
-      skipped_rows,
-      path,
-      imported_at,
-    })
   }
 
   pub fn rescan_file(&self, file_id: String) -> anyhow::Result<FileRecord> {
@@ -1510,6 +1660,39 @@ fn emit_csv_import_progress(
   );
 }
 
+struct LibraryThingProgressPayload<'a> {
+  phase: &'a str,
+  path: &'a str,
+  total_rows: usize,
+  processed_rows: usize,
+  matched_rows: usize,
+  created_rows: usize,
+  skipped_rows: usize,
+  cover_rows: usize,
+  current_title: Option<&'a str>,
+  message: Option<String>,
+  progress_percent: u8,
+}
+
+fn emit_library_thing_import_progress(app_handle: &AppHandle, payload: LibraryThingProgressPayload<'_>) {
+  let _ = app_handle.emit(
+    "library_thing_import_progress",
+    json!({
+      "phase": payload.phase,
+      "path": payload.path,
+      "totalRows": payload.total_rows,
+      "processedRows": payload.processed_rows.min(payload.total_rows),
+      "matchedRows": payload.matched_rows,
+      "createdRows": payload.created_rows,
+      "skippedRows": payload.skipped_rows,
+      "coverRows": payload.cover_rows,
+      "currentTitle": payload.current_title,
+      "progressPercent": payload.progress_percent,
+      "message": payload.message,
+    }),
+  );
+}
+
 fn emit_bulk_match_progress(
   app_handle: &AppHandle,
   phase: &str,
@@ -1556,6 +1739,16 @@ fn csv_import_progress_percent(bytes_read: u64, total_bytes: u64, completed: boo
   let ratio = (bytes_read as f64 / total_bytes as f64) * 100.0;
   let rounded = ratio.round() as i64;
   rounded.clamp(0, 99) as u8
+}
+
+fn library_thing_progress_percent(processed_rows: usize, total_rows: usize, completed: bool) -> u8 {
+  if completed {
+    return 100;
+  }
+  if total_rows == 0 {
+    return 0;
+  }
+  (((processed_rows as f64 / total_rows as f64) * 100.0).round() as i64).clamp(0, 99) as u8
 }
 
 fn normalize_csv_row(row: HashMap<String, String>) -> HashMap<String, String> {

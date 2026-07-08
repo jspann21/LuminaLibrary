@@ -54,6 +54,22 @@ export type CsvImportProgressState = {
   message?: string
 }
 
+export type LibraryThingImportProgressState = {
+  active: boolean
+  phase: 'idle' | 'parsing' | 'importing' | 'cover_lookup' | 'completed' | 'error'
+  path?: string
+  totalRows: number
+  processedRows: number
+  matchedRows: number
+  createdRows: number
+  skippedRows: number
+  coverRows: number
+  currentTitle?: string
+  errors: number
+  progressPercent: number
+  message?: string
+}
+
 export type DetailFormState = {
   title: string
   subtitle: string

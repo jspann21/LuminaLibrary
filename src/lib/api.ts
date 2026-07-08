@@ -21,6 +21,7 @@ import type {
   ImportResult,
   LibraryMaintenanceResult,
   LibraryFolder,
+  LibraryThingImportProgressEvent,
   LibraryThingImportResult,
   MatchPreview,
   MatchResult,
@@ -219,6 +220,13 @@ export async function onCsvImportProgress(
 ): Promise<UnlistenFn | undefined> {
   if (!isTauri()) return undefined
   return listen<CsvImportProgressEvent>('csv_import_progress', (event) => cb(event.payload))
+}
+
+export async function onLibraryThingImportProgress(
+  cb: (event: LibraryThingImportProgressEvent) => void,
+): Promise<UnlistenFn | undefined> {
+  if (!isTauri()) return undefined
+  return listen<LibraryThingImportProgressEvent>('library_thing_import_progress', (event) => cb(event.payload))
 }
 
 export async function onBulkMatchProgress(

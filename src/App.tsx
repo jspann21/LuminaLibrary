@@ -9,7 +9,7 @@ import { LibraryView } from './features/library/views/LibraryView'
 import { useLibraryAppController } from './features/library/hooks/useLibraryAppController'
 import { cx } from './features/library/lib/cx'
 
-const BOTTOM_OVERLAY_CLASSES = ['bottom-6', 'bottom-32', 'bottom-[14.5rem]', 'bottom-[21rem]'] as const
+const BOTTOM_OVERLAY_CLASSES = ['bottom-6', 'bottom-32', 'bottom-[14.5rem]', 'bottom-[21rem]', 'bottom-[27.5rem]'] as const
 const BookDetailsPanel = lazy(() =>
   import('./features/library/components/BookDetailsPanel').then((module) => ({ default: module.BookDetailsPanel })),
 )
@@ -26,6 +26,11 @@ const CoverRefreshOverlay = lazy(() =>
 const CsvImportProgressOverlay = lazy(() =>
   import('./features/library/components/overlays/CsvImportProgressOverlay').then((module) => ({
     default: module.CsvImportProgressOverlay,
+  })),
+)
+const LibraryThingImportProgressOverlay = lazy(() =>
+  import('./features/library/components/overlays/LibraryThingImportProgressOverlay').then((module) => ({
+    default: module.LibraryThingImportProgressOverlay,
   })),
 )
 const ScanProgressOverlay = lazy(() =>
@@ -49,6 +54,7 @@ function App() {
     overlays.showBulkMatchProgressPopup ? 'bulk-match' : null,
     overlays.showScanProgressPopup ? 'scan' : null,
     overlays.showCsvImportProgressPopup ? 'csv-import' : null,
+    overlays.showLibraryThingImportProgressPopup ? 'librarything-import' : null,
     overlays.coverRefreshNotice ? 'cover-refresh' : null,
   ].filter((key): key is string => Boolean(key))
   const bottomClassFor = (key: string) =>
@@ -147,6 +153,18 @@ function App() {
                 csvImportProgress={overlays.csvImportProgress}
                 bottomClassName={bottomClassFor('csv-import')}
                 onDismiss={overlays.onDismissCsvImportProgress}
+              />
+            </Suspense>
+          ) : null}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {overlays.showLibraryThingImportProgressPopup ? (
+            <Suspense fallback={null}>
+              <LibraryThingImportProgressOverlay
+                progress={overlays.libraryThingImportProgress}
+                bottomClassName={bottomClassFor('librarything-import')}
+                onDismiss={overlays.onDismissLibraryThingImportProgress}
               />
             </Suspense>
           ) : null}

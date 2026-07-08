@@ -106,7 +106,7 @@ export function useSettingsMutations(deps: {
     const importLibraryThingMutation = useMutation({
         mutationFn: (path: string) => api.importLibraryThingExport(path),
         onMutate: () => {
-            setLibraryThingNotice({ tone: 'loading', message: 'Importing LibraryThing export...' })
+            setLibraryThingNotice({ tone: 'loading', message: 'LibraryThing import started. Progress is shown in the lower-right popup.' })
         },
         onSuccess: (result: LibraryThingImportResult) => {
             invalidateLibraryData()

@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react'
-import { onBulkMatchProgress, onCsvImportProgress, onGoogleBooksQuotaNotice, onScanCompleted, onScanProgress } from '../../../lib/api'
+import { onBulkMatchProgress, onCsvImportProgress, onGoogleBooksQuotaNotice, onLibraryThingImportProgress, onScanCompleted, onScanProgress } from '../../../lib/api'
 import { formatDisplayMessagePaths, formatDisplayPath } from '../../../lib/format'
 import type { ScanSummary } from '../../../lib/types'
 
-import type { BulkMatchProgressState, CsvImportProgressState, KeyTestNotice, ScanProgressState } from '../model/types'
+import type { BulkMatchProgressState, CsvImportProgressState, KeyTestNotice, LibraryThingImportProgressState, ScanProgressState } from '../model/types'
 
 const UI_STATUS_UPDATE_INTERVAL_MS = 250
 const PHASE_LABELS: Partial<Record<ScanProgressState['phase'], string>> = {
@@ -57,6 +57,8 @@ export type EventListenerState = {
     setBulkMatchProgress: React.Dispatch<React.SetStateAction<BulkMatchProgressState>>
     csvImportProgress: CsvImportProgressState
     setCsvImportProgress: React.Dispatch<React.SetStateAction<CsvImportProgressState>>
+    libraryThingImportProgress: LibraryThingImportProgressState
+    setLibraryThingImportProgress: React.Dispatch<React.SetStateAction<LibraryThingImportProgressState>>
     scanStatus: string
     setScanStatus: React.Dispatch<React.SetStateAction<string>>
     keyTestNotice: KeyTestNotice | null
@@ -69,6 +71,7 @@ export function useEventListeners(state: EventListenerState) {
         setScanProgress,
         setBulkMatchProgress,
         setCsvImportProgress,
+        setLibraryThingImportProgress,
         setScanStatus,
         setKeyTestNotice,
         invalidateLibraryData,
@@ -76,6 +79,7 @@ export function useEventListeners(state: EventListenerState) {
 
     const lastProgressUiUpdateAt = useRef(0)
     const lastCsvImportUiUpdateAt = useRef(0)
+    const lastLibraryThingImportUiUpdateAt = useRef(0)
 
     useEffect(() => {
         let disposed = false
@@ -237,6 +241,78 @@ export function useEventListeners(state: EventListenerState) {
             )
         }))
 
+        register(onLibraryThingImportProgress((event) => {
+            if (disposed) return
+            setLibraryThingImportProgress((previous) => {
+                const nextPhase = event.phase ?? previous.phase
+                const totalRows = event.totalRows ?? previous.totalRows
+                const processedRows = event.processedRows ?? previous.processedRows
+                const matchedRows = event.matchedRows ?? previous.matchedRows
+                const createdRows = event.createdRows ?? previous.createdRows
+                const skippedRows = event.skippedRows ?? previous.skippedRows
+                const coverRows = event.coverRows ?? previous.coverRows
+                const errors = event.errors ?? previous.errors
+                const progressPercent =
+                    typeof event.progressPercent === 'number'
+                        ? Math.max(0, Math.min(nextPhase === 'completed' ? 100 : 99, event.progressPercent))
+                        : nextPhase === 'completed'
+                            ? 100
+                            : totalRows > 0
+                                ? Math.min(99, Math.round((processedRows / totalRows) * 100))
+                                : 0
+                return {
+                    active: nextPhase !== 'idle',
+                    phase: nextPhase,
+                    path: event.path ?? previous.path,
+                    totalRows,
+                    processedRows,
+                    matchedRows,
+                    createdRows,
+                    skippedRows,
+                    coverRows,
+                    currentTitle: event.currentTitle ?? previous.currentTitle,
+                    errors,
+                    progressPercent,
+                    message: event.message ? formatDisplayMessagePaths(event.message) : previous.message,
+                }
+            })
+
+            const phase = event.phase ?? 'importing'
+            if (phase === 'error') {
+                setScanStatus(event.message ? `LibraryThing import failed: ${formatDisplayMessagePaths(event.message)}` : 'LibraryThing import failed')
+                return
+            }
+            if (phase === 'completed') {
+                setScanStatus(
+                    event.message
+                        ? formatDisplayMessagePaths(event.message)
+                        : `LibraryThing import complete: ${event.processedRows ?? 0}/${event.totalRows ?? 0} processed`,
+                )
+                invalidateLibraryData()
+                return
+            }
+
+            const now = Date.now()
+            if (now - lastLibraryThingImportUiUpdateAt.current < UI_STATUS_UPDATE_INTERVAL_MS) return
+            lastLibraryThingImportUiUpdateAt.current = now
+
+            const processedRows = event.processedRows ?? 0
+            const totalRows = event.totalRows ?? 0
+            const action =
+                phase === 'parsing'
+                    ? 'Reading LibraryThing export'
+                    : phase === 'cover_lookup'
+                        ? 'Finding LibraryThing cover art'
+                        : 'Importing LibraryThing books'
+            setScanStatus(
+                event.message
+                    ? formatDisplayMessagePaths(event.message)
+                    : totalRows > 0
+                        ? `${action}: ${processedRows}/${totalRows}`
+                        : action,
+            )
+        }))
+
         register(onBulkMatchProgress((event) => {
             if (disposed) return
             setBulkMatchProgress((previous) => {
@@ -284,5 +360,5 @@ export function useEventListeners(state: EventListenerState) {
                 unlisten()
             }
         }
-    }, [invalidateLibraryData, setScanProgress, setBulkMatchProgress, setCsvImportProgress, setScanStatus, setKeyTestNotice])
+    }, [invalidateLibraryData, setScanProgress, setBulkMatchProgress, setCsvImportProgress, setLibraryThingImportProgress, setScanStatus, setKeyTestNotice])
 }

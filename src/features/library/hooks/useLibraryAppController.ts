@@ -13,6 +13,7 @@ import {
   COVER_ZOOM_MIN,
   COVER_ZOOM_STEP,
   INITIAL_CSV_IMPORT_PROGRESS,
+  INITIAL_LIBRARY_THING_IMPORT_PROGRESS,
   INITIAL_SCAN_PROGRESS,
 } from '../model/constants'
 import { libraryQueryKeys } from '../model/queryKeys'
@@ -22,7 +23,7 @@ import {
   optionToSort,
   sortToOption,
 } from '../model/selectors'
-import type { BulkMatchProgressState, ConfirmDialogState, CsvImportProgressState, ScanProgressState } from '../model/types'
+import type { BulkMatchProgressState, ConfirmDialogState, CsvImportProgressState, LibraryThingImportProgressState, ScanProgressState } from '../model/types'
 
 import { useEventListeners, progressPercentForPhase } from './useEventListeners'
 import { useScanMutations } from './useScanMutations'
@@ -45,6 +46,7 @@ export function useLibraryAppController() {
   const [scanProgress, setScanProgress] = useState<ScanProgressState>(INITIAL_SCAN_PROGRESS)
   const [bulkMatchProgress, setBulkMatchProgress] = useState<BulkMatchProgressState>(INITIAL_BULK_MATCH_PROGRESS)
   const [csvImportProgress, setCsvImportProgress] = useState<CsvImportProgressState>(INITIAL_CSV_IMPORT_PROGRESS)
+  const [libraryThingImportProgress, setLibraryThingImportProgress] = useState<LibraryThingImportProgressState>(INITIAL_LIBRARY_THING_IMPORT_PROGRESS)
   const [isAccentOpen, setIsAccentOpen] = useState(false)
   const [isSortOpen, setIsSortOpen] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -194,6 +196,8 @@ export function useLibraryAppController() {
     setBulkMatchProgress,
     csvImportProgress,
     setCsvImportProgress,
+    libraryThingImportProgress,
+    setLibraryThingImportProgress,
     scanStatus,
     setScanStatus,
     keyTestNotice: settingsMutations.keyTestNotice,
@@ -297,6 +301,9 @@ export function useLibraryAppController() {
   const isCsvImportProgressVisible = csvImportProgress.active
   const isCsvImportRunning = csvImportProgress.active && csvImportProgress.phase !== 'completed' && csvImportProgress.phase !== 'error'
   const isCsvImportActive = isCsvImportRunning || csvTransfer.importMutation.isPending
+  const isLibraryThingImportProgressVisible = libraryThingImportProgress.active
+  const isLibraryThingImportRunning = libraryThingImportProgress.active && libraryThingImportProgress.phase !== 'completed' && libraryThingImportProgress.phase !== 'error'
+  const isLibraryThingImportActive = isLibraryThingImportRunning || settingsMutations.importLibraryThingMutation.isPending
   const isScanProgressRunning = scanProgress.active && scanProgress.phase !== 'completed'
   const isScanTaskActive =
     isScanProgressRunning ||
@@ -313,10 +320,11 @@ export function useLibraryAppController() {
   const isBulkMatchProgressVisible = bulkMatchProgress.active
   const isBulkMatchRunning = bulkMatchProgress.active && bulkMatchProgress.phase !== 'completed'
   const isBulkMatchActive = isBulkMatchRunning || bookMutations.isMatchAllPending
-  const isScanning = isScanTaskActive || isCsvImportActive || isBulkMatchActive
+  const isScanning = isScanTaskActive || isCsvImportActive || isLibraryThingImportActive || isBulkMatchActive
   const showScanProgressPopup = isScanProgressPopupVisible && !scanMutations.refreshMissingCoversMutation.isPending
   const showBulkMatchProgressPopup = isBulkMatchProgressVisible || bookMutations.isMatchAllPending
   const showCsvImportProgressPopup = isCsvImportProgressVisible || csvTransfer.importMutation.isPending
+  const showLibraryThingImportProgressPopup = isLibraryThingImportProgressVisible || settingsMutations.importLibraryThingMutation.isPending
 
   const books = booksQuery.data?.items ?? EMPTY_BOOKS
   const hiddenBooks = hiddenBooksQuery.data?.items ?? EMPTY_BOOKS
@@ -601,15 +609,18 @@ export function useLibraryAppController() {
       showScanProgressPopup,
       showBulkMatchProgressPopup,
       showCsvImportProgressPopup,
+      showLibraryThingImportProgressPopup,
       scanStatus,
       progressPercent,
       scanProgress,
       bulkMatchProgress,
       bulkMatchProgressPercent,
       csvImportProgress,
+      libraryThingImportProgress,
       onDismissScanProgress: () => setScanProgress((prev) => ({ ...prev, active: false })),
       onDismissBulkMatchProgress: () => setBulkMatchProgress((prev) => ({ ...prev, active: false })),
       onDismissCsvImportProgress: () => setCsvImportProgress((prev) => ({ ...prev, active: false })),
+      onDismissLibraryThingImportProgress: () => setLibraryThingImportProgress((prev) => ({ ...prev, active: false })),
       coverRefreshNotice: scanMutations.coverRefreshNotice,
       onDismissCoverRefreshNotice: () => scanMutations.setCoverRefreshNotice(null),
     },
