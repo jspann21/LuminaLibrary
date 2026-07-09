@@ -163,15 +163,15 @@ export function ManualBookModal({
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-subtitle" className={labelClass}>Subtitle</label>
-                            <input id="manual-book-subtitle" className={inputClass} value={form.subtitle} onChange={(event) => updateField('subtitle', event.target.value)} />
+                            <input id="manual-book-subtitle" className={inputClass} placeholder="e.g., A Novel" value={form.subtitle} onChange={(event) => updateField('subtitle', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-authors" className={labelClass}>Author(s)</label>
-                            <input id="manual-book-authors" className={inputClass} value={form.authors} onChange={(event) => updateField('authors', event.target.value)} />
+                            <input id="manual-book-authors" className={inputClass} placeholder="e.g., J.R.R. Tolkien, Brandon Sanderson" value={form.authors} onChange={(event) => updateField('authors', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-publisher" className={labelClass}>Publisher</label>
-                            <input id="manual-book-publisher" className={inputClass} value={form.publisher} onChange={(event) => updateField('publisher', event.target.value)} />
+                            <input id="manual-book-publisher" className={inputClass} placeholder="e.g., Tor Books" value={form.publisher} onChange={(event) => updateField('publisher', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-publish-date" className={labelClass}>Published</label>
@@ -179,41 +179,42 @@ export function ManualBookModal({
                         </div>
                         <div>
                             <label htmlFor="manual-book-isbn13" className={labelClass}>ISBN-13</label>
-                            <input id="manual-book-isbn13" className={inputClass} value={form.isbn13} onChange={(event) => updateField('isbn13', event.target.value)} />
+                            <input id="manual-book-isbn13" className={inputClass} placeholder="e.g., 9781234567890" value={form.isbn13} onChange={(event) => updateField('isbn13', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-isbn10" className={labelClass}>ISBN-10</label>
-                            <input id="manual-book-isbn10" className={inputClass} value={form.isbn10} onChange={(event) => updateField('isbn10', event.target.value)} />
+                            <input id="manual-book-isbn10" className={inputClass} placeholder="e.g., 123456789X" value={form.isbn10} onChange={(event) => updateField('isbn10', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-language" className={labelClass}>Language</label>
-                            <input id="manual-book-language" className={inputClass} value={form.language} onChange={(event) => updateField('language', event.target.value)} />
+                            <input id="manual-book-language" className={inputClass} placeholder="e.g., en" value={form.language} onChange={(event) => updateField('language', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-page-count" className={labelClass}>Pages</label>
-                            <input id="manual-book-page-count" type="number" className={inputClass} value={form.pageCount} onChange={(event) => updateField('pageCount', event.target.value)} />
+                            <input id="manual-book-page-count" type="number" className={inputClass} placeholder="e.g., 400" value={form.pageCount} onChange={(event) => updateField('pageCount', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-series" className={labelClass}>Series</label>
-                            <input id="manual-book-series" className={inputClass} value={form.series} onChange={(event) => updateField('series', event.target.value)} />
+                            <input id="manual-book-series" className={inputClass} placeholder="e.g., The Lord of the Rings" value={form.series} onChange={(event) => updateField('series', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-series-index" className={labelClass}>Series #</label>
-                            <input id="manual-book-series-index" type="number" className={inputClass} value={form.seriesIndex} onChange={(event) => updateField('seriesIndex', event.target.value)} />
+                            <input id="manual-book-series-index" type="number" className={inputClass} placeholder="e.g., 1" value={form.seriesIndex} onChange={(event) => updateField('seriesIndex', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-cover-url" className={labelClass}>Cover URL</label>
-                            <input id="manual-book-cover-url" className={inputClass} value={form.coverUrl} onChange={(event) => updateField('coverUrl', event.target.value)} />
+                            <input id="manual-book-cover-url" className={inputClass} placeholder="e.g., https://example.com/cover.jpg" value={form.coverUrl} onChange={(event) => updateField('coverUrl', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-tags" className={labelClass}>Tags</label>
-                            <input id="manual-book-tags" className={inputClass} value={form.tags} onChange={(event) => updateField('tags', event.target.value)} />
+                            <input id="manual-book-tags" className={inputClass} placeholder="e.g., fantasy, magic" value={form.tags} onChange={(event) => updateField('tags', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-description" className={labelClass}>Description</label>
                             <textarea
                                 id="manual-book-description"
                                 className={`${inputClass} h-32 resize-none`}
+                                placeholder="Brief summary of the book..."
                                 value={form.description}
                                 onChange={(event) => updateField('description', event.target.value)}
                             />
