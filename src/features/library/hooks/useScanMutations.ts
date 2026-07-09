@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import { INITIAL_SCAN_PROGRESS } from '../model/constants'
@@ -116,15 +116,6 @@ export function useScanMutations(deps: {
         }, 1200)
         return () => window.clearTimeout(timer)
     }, [reconcileLocalFiles])
-
-    // Auto-dismiss maintenance notice
-    useEffect(() => {
-        if (!maintenanceNotice || maintenanceNotice.tone === 'loading') return
-        const timer = window.setTimeout(() => {
-            setMaintenanceNotice((current) => (current?.tone === 'loading' ? current : null))
-        }, 7000)
-        return () => window.clearTimeout(timer)
-    }, [maintenanceNotice])
 
     return {
         scanMutation,

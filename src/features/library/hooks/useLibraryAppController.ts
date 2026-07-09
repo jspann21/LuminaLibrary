@@ -179,7 +179,7 @@ export function useLibraryAppController() {
     },
     getDiscoveredItems: () => discoveredMatchItems,
   })
-  const { matchNotice, setMatchNotice } = bookMutations
+  const { matchNotice } = bookMutations
   const tagMutations = useTagMutations({
     tags: tagsQuery.data ?? [],
     selectedTag,
@@ -222,13 +222,6 @@ export function useLibraryAppController() {
       setLibraryThingCatalogLabelInput(appSettingsQuery.data.libraryThingCatalogLabel)
     }
   }, [appSettingsQuery.data?.libraryThingCatalogLabel, setLibraryThingCatalogLabelInput])
-
-  // Auto-dismiss match notice
-  useEffect(() => {
-    if (!matchNotice) return
-    const timer = window.setTimeout(() => setMatchNotice(null), 7000)
-    return () => window.clearTimeout(timer)
-  }, [matchNotice, setMatchNotice])
 
   // Book selection
   const toggleLibraryBookSelection = useCallback((bookId: string) => {
