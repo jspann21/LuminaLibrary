@@ -117,15 +117,6 @@ export function useScanMutations(deps: {
         return () => window.clearTimeout(timer)
     }, [reconcileLocalFiles])
 
-    // Auto-dismiss cover refresh notice
-    useEffect(() => {
-        if (!coverRefreshNotice || coverRefreshNotice.tone === 'loading') return
-        const timer = window.setTimeout(() => {
-            setCoverRefreshNotice((current) => (current?.tone === 'loading' ? current : null))
-        }, 7000)
-        return () => window.clearTimeout(timer)
-    }, [coverRefreshNotice])
-
     // Auto-dismiss maintenance notice
     useEffect(() => {
         if (!maintenanceNotice || maintenanceNotice.tone === 'loading') return
