@@ -1076,16 +1076,19 @@ impl OpenLibraryEnricher {
         let description = sanitize_metadata_value(info.description.as_deref().unwrap_or(""));
         let language = sanitize_metadata_value(info.language.as_deref().unwrap_or(""));
         let subtitle = sanitize_metadata_value(info.subtitle.as_deref().unwrap_or(""));
-        let cover_url = normalize_cover_url(info.image_links.and_then(|links| {
-          links
-            .medium
-            .or(links.small)
-            .or(links.thumbnail)
-            .or(links.small_thumbnail)
-            .or(links.large)
-            .or(links.extra_large)
-            .and_then(|value| normalize_google_cover_url(&value))
-        }));
+        let cover_url = info
+          .image_links
+          .and_then(|links| {
+            links
+              .medium
+              .or(links.small)
+              .or(links.thumbnail)
+              .or(links.small_thumbnail)
+              .or(links.large)
+              .or(links.extra_large)
+          })
+          .and_then(|value| normalize_google_cover_url(&value))
+          .and_then(|url| self.probe_cover_url(&url));
         let (isbn10, isbn13, matched_query_isbn) =
           extract_google_isbns(info.industry_identifiers, metadata);
 

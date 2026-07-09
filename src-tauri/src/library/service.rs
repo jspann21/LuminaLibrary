@@ -663,8 +663,17 @@ impl LibraryService {
   pub fn apply_manual_book_edit(&self, book_id: String, mut patch: BookPatch) -> anyhow::Result<BookDetail> {
     normalize_book_patch_isbns(&mut patch);
     validate_book_patch_cover_url(&mut patch)?;
+    let should_resolve_cover = patch
+      .cover_url
+      .as_deref()
+      .map(|value| !value.trim().is_empty())
+      .unwrap_or(false);
     self.repository.apply_manual_book_edit(&book_id, patch, &now_iso())?;
-    let _ = self.cache_book_cover_if_needed(&book_id)?;
+    if should_resolve_cover {
+      let _ = self.resolve_and_cache_book_cover_if_needed(&book_id)?;
+    } else {
+      let _ = self.cache_book_cover_if_needed(&book_id)?;
+    }
     self.get_detail_after_duplicate_consolidation(&book_id)
   }
 
@@ -678,6 +687,11 @@ impl LibraryService {
     validate_book_patch_cover_url(&mut patch)?;
     validate_tag_inputs(&tags)?;
     normalize_manual_create_patch(&mut patch)?;
+    let should_resolve_cover = patch
+      .cover_url
+      .as_deref()
+      .map(|value| !value.trim().is_empty())
+      .unwrap_or(false);
 
     let file = self
       .repository
@@ -722,7 +736,11 @@ impl LibraryService {
     if !tags.is_empty() {
       self.repository.set_book_tags(&book_id, tags, &now)?;
     }
-    let _ = self.cache_book_cover_if_needed(&book_id)?;
+    if should_resolve_cover {
+      let _ = self.resolve_and_cache_book_cover_if_needed(&book_id)?;
+    } else {
+      let _ = self.cache_book_cover_if_needed(&book_id)?;
+    }
     self.get_detail_after_duplicate_consolidation(&book_id)
   }
 
@@ -965,8 +983,17 @@ impl LibraryService {
           let mut touched_row = false;
           if has_patch_updates(&patch) {
             validate_book_patch_cover_url(&mut patch)?;
+            let should_resolve_cover = patch
+              .cover_url
+              .as_deref()
+              .map(|value| !value.trim().is_empty())
+              .unwrap_or(false);
             self.repository.apply_manual_book_edit(&book_id, patch, &now_iso())?;
-            let _ = self.cache_book_cover_if_needed(&book_id)?;
+            if should_resolve_cover {
+              let _ = self.resolve_and_cache_book_cover_if_needed(&book_id)?;
+            } else {
+              let _ = self.cache_book_cover_if_needed(&book_id)?;
+            }
             touched_row = true;
           }
           if !tags.is_empty() {
@@ -1418,10 +1445,22 @@ impl LibraryService {
   ) -> anyhow::Result<BookDetail> {
     validate_metadata_update_batch(&selection, &lock_updates)?;
     validate_metadata_selection_cover_urls(&mut selection)?;
+    let should_resolve_cover = selection.iter().any(|selected| {
+      selected.field == MetadataField::CoverUrl
+        && selected
+          .value
+          .as_deref()
+          .map(|value| !value.trim().is_empty())
+          .unwrap_or(false)
+    });
     self
       .repository
       .apply_curated_metadata(&book_id, selection, lock_updates, &now_iso())?;
-    let _ = self.cache_book_cover_if_needed(&book_id)?;
+    if should_resolve_cover {
+      let _ = self.resolve_and_cache_book_cover_if_needed(&book_id)?;
+    } else {
+      let _ = self.cache_book_cover_if_needed(&book_id)?;
+    }
     self.get_detail_after_duplicate_consolidation(&book_id)
   }
 
