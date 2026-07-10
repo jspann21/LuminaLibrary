@@ -30,6 +30,11 @@ type SettingsViewProps = {
   onSaveGoogleBooksApiKey: () => void
   onTestGoogleBooksApiKey: () => void
   onClearGoogleBooksApiKey: () => void
+  braveSearchApiKeyInput: string
+  onSetBraveSearchApiKeyInput: (value: string) => void
+  onSaveBraveSearchApiKey: () => void
+  onTestBraveSearchApiKey: () => void
+  onClearBraveSearchApiKey: () => void
   libraryThingCatalogLabelInput: string
   onSetLibraryThingCatalogLabelInput: (value: string) => void
   onSaveLibraryThingCatalogLabel: () => void
@@ -40,10 +45,14 @@ type SettingsViewProps = {
   onSetScanOnStartup: (enabled: boolean) => void
   isSetScanOnStartupPending: boolean
   keyTestNotice: KeyTestNotice | null
+  braveKeyTestNotice: KeyTestNotice | null
   libraryThingNotice: LibraryThingNotice | null
   isSetGoogleBooksApiKeyPending: boolean
   isClearGoogleBooksApiKeyPending: boolean
   isTestGoogleBooksApiKeyPending: boolean
+  isSetBraveSearchApiKeyPending: boolean
+  isClearBraveSearchApiKeyPending: boolean
+  isTestBraveSearchApiKeyPending: boolean
   isSetLibraryThingEnabledPending: boolean
   isSetLibraryThingCatalogLabelPending: boolean
   isImportLibraryThingPending: boolean
@@ -135,6 +144,11 @@ export function SettingsView(props: SettingsViewProps) {
           onSaveGoogleBooksApiKey={props.onSaveGoogleBooksApiKey}
           onTestGoogleBooksApiKey={props.onTestGoogleBooksApiKey}
           onClearGoogleBooksApiKey={props.onClearGoogleBooksApiKey}
+          braveSearchApiKeyInput={props.braveSearchApiKeyInput}
+          onSetBraveSearchApiKeyInput={props.onSetBraveSearchApiKeyInput}
+          onSaveBraveSearchApiKey={props.onSaveBraveSearchApiKey}
+          onTestBraveSearchApiKey={props.onTestBraveSearchApiKey}
+          onClearBraveSearchApiKey={props.onClearBraveSearchApiKey}
           libraryThingCatalogLabelInput={props.libraryThingCatalogLabelInput}
           onSetLibraryThingCatalogLabelInput={props.onSetLibraryThingCatalogLabelInput}
           onSaveLibraryThingCatalogLabel={props.onSaveLibraryThingCatalogLabel}
@@ -143,10 +157,14 @@ export function SettingsView(props: SettingsViewProps) {
           onClearLibraryThingIntegration={props.onClearLibraryThingIntegration}
           appSettings={props.appSettings}
           keyTestNotice={props.keyTestNotice}
+          braveKeyTestNotice={props.braveKeyTestNotice}
           libraryThingNotice={props.libraryThingNotice}
           isSetGoogleBooksApiKeyPending={props.isSetGoogleBooksApiKeyPending}
           isClearGoogleBooksApiKeyPending={props.isClearGoogleBooksApiKeyPending}
           isTestGoogleBooksApiKeyPending={props.isTestGoogleBooksApiKeyPending}
+          isSetBraveSearchApiKeyPending={props.isSetBraveSearchApiKeyPending}
+          isClearBraveSearchApiKeyPending={props.isClearBraveSearchApiKeyPending}
+          isTestBraveSearchApiKeyPending={props.isTestBraveSearchApiKeyPending}
           isSetLibraryThingEnabledPending={props.isSetLibraryThingEnabledPending}
           isSetLibraryThingCatalogLabelPending={props.isSetLibraryThingCatalogLabelPending}
           isImportLibraryThingPending={props.isImportLibraryThingPending}

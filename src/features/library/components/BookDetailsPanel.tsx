@@ -387,6 +387,8 @@ export function BookDetailsPanel({
           currentCoverUrl={form.coverUrl || book.coverUrl || ''}
           bookTitle={form.title}
           bookAuthors={form.authors}
+          bookIsbn10={form.isbn10}
+          bookIsbn13={form.isbn13}
           onSelect={(url) => {
             setShowCoverPicker(false)
             if (isEditing) {

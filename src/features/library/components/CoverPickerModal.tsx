@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ClipboardEvent } from 'react'
 import { motion } from 'motion/react'
-import { Check, ImagePlus, Link2, Loader2, Trash2, Upload, X } from 'lucide-react'
+import { Check, ImagePlus, Link2, Loader2, Search, Trash2, Upload, X } from 'lucide-react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { cx } from '../lib/cx'
+import {
+    buildCoverImageSearchQuery,
+    combineCoverCandidates,
+    getDefaultCoverImageSearchFields,
+    getCoverImageSearchValues,
+} from '../lib/coverImageSearch'
+import type { CoverImageSearchField } from '../lib/coverImageSearch'
 import { api } from '../../../lib/api'
 import type { CoverCandidate } from '../../../lib/types'
 
@@ -12,6 +19,8 @@ type CoverPickerModalProps = {
     currentCoverUrl: string
     bookTitle: string
     bookAuthors: string
+    bookIsbn10: string
+    bookIsbn13: string
     onSelect: (url: string) => void
     onClose: () => void
 }
@@ -25,6 +34,7 @@ const SOURCE_LABELS: Record<string, string> = {
     current: 'Current',
     open_library: 'Open Library',
     google_books: 'Google Books',
+    brave: 'Brave Search',
     local: 'Local File',
     custom: 'Custom URL',
 }
@@ -33,11 +43,17 @@ const SOURCE_COLORS: Record<string, string> = {
     current: 'bg-accent-100 text-accent-700 dark:bg-accent-900/30 dark:text-accent-300',
     open_library: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
     google_books: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300',
+    brave: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
     local: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
     custom: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
 }
 
 const IMAGE_LOAD_TIMEOUT_MS = 8000
+const IMAGE_SEARCH_FIELD_LABELS: Record<CoverImageSearchField, string> = {
+    isbn: 'ISBN',
+    title: 'Title',
+    author: 'Author',
+}
 
 function getCustomCoverUrlFormatError(value: string) {
     const url = value.trim()
@@ -86,7 +102,22 @@ function canLoadImageUrl(url: string) {
     })
 }
 
-export function CoverPickerModal({ bookId, currentCoverUrl, bookTitle, bookAuthors, onSelect, onClose }: CoverPickerModalProps) {
+export function CoverPickerModal({
+    bookId,
+    currentCoverUrl,
+    bookTitle,
+    bookAuthors,
+    bookIsbn10,
+    bookIsbn13,
+    onSelect,
+    onClose,
+}: CoverPickerModalProps) {
+    const imageSearchData = {
+        isbn10: bookIsbn10,
+        isbn13: bookIsbn13,
+        title: bookTitle,
+        author: bookAuthors,
+    }
     const [coverSearch, setCoverSearch] = useState<CoverSearchState>({
         bookId,
         status: 'loading',
@@ -98,6 +129,13 @@ export function CoverPickerModal({ bookId, currentCoverUrl, bookTitle, bookAutho
     const [customUrlError, setCustomUrlError] = useState<string | null>(null)
     const [isCheckingCustomUrl, setIsCheckingCustomUrl] = useState(false)
     const [showUrlInput, setShowUrlInput] = useState(false)
+    const [showImageSearch, setShowImageSearch] = useState(false)
+    const [imageSearchFields, setImageSearchFields] = useState<CoverImageSearchField[]>(
+        () => getDefaultCoverImageSearchFields(imageSearchData),
+    )
+    const [imageSearchError, setImageSearchError] = useState<string | null>(null)
+    const [isSearchingImages, setIsSearchingImages] = useState(false)
+    const [imageSearchResults, setImageSearchResults] = useState<CoverCandidate[]>([])
     const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
     const mountedRef = useRef(true)
     const customUrlRef = useRef(customUrl)
@@ -136,9 +174,10 @@ export function CoverPickerModal({ bookId, currentCoverUrl, bookTitle, bookAutho
         }
     }, [bookId])
 
-    const isLoading = coverSearch.bookId !== bookId || coverSearch.status === 'loading'
-    const error = coverSearch.bookId === bookId ? coverSearch.error : null
-    const candidates = coverSearch.bookId === bookId ? coverSearch.candidates : []
+    const baseCandidates = coverSearch.bookId === bookId ? coverSearch.candidates : []
+    const candidates = combineCoverCandidates(baseCandidates, imageSearchResults)
+    const isLoading = (coverSearch.bookId !== bookId || coverSearch.status === 'loading') && candidates.length === 0
+    const error = coverSearch.bookId === bookId && candidates.length === 0 ? coverSearch.error : null
 
     const handleUpload = async () => {
         try {
@@ -250,8 +289,55 @@ export function CoverPickerModal({ bookId, currentCoverUrl, bookTitle, bookAutho
     const handleToggleUrlInput = () => {
         setShowUrlInput((value) => {
             if (value) setCustomUrlError(null)
+            if (!value) setShowImageSearch(false)
             return !value
         })
+    }
+
+    const imageSearchValues = getCoverImageSearchValues(imageSearchData)
+    const imageSearchQuery = buildCoverImageSearchQuery(imageSearchFields, imageSearchData)
+
+    const handleToggleImageSearch = () => {
+        setShowImageSearch((value) => {
+            if (!value) {
+                setShowUrlInput(false)
+                setImageSearchError(null)
+            }
+            return !value
+        })
+    }
+
+    const handleToggleImageSearchField = (field: CoverImageSearchField) => {
+        if (!imageSearchValues[field]) return
+        setImageSearchFields((fields) => (
+            fields.includes(field) ? fields.filter((item) => item !== field) : [...fields, field]
+        ))
+        setImageSearchError(null)
+    }
+
+    const handleImageSearch = async () => {
+        if (!imageSearchQuery) {
+            setImageSearchError('Select at least one available book detail to search.')
+            return
+        }
+
+        setImageSearchError(null)
+        setIsSearchingImages(true)
+        try {
+            const results = await api.searchBraveCoverImages(imageSearchQuery)
+            if (!mountedRef.current) return
+            if (results.length === 0) {
+                setImageSearchError('No image results found. Try a different combination of book details.')
+                return
+            }
+            setImageSearchResults(results)
+            setShowImageSearch(false)
+        } catch (err) {
+            if (!mountedRef.current) return
+            setImageSearchError(err instanceof Error ? err.message : 'Image search failed')
+        } finally {
+            if (mountedRef.current) setIsSearchingImages(false)
+        }
     }
 
     const visibleCandidates = candidates.filter((c) => !failedUrls.has(c.url))
@@ -306,6 +392,18 @@ export function CoverPickerModal({ bookId, currentCoverUrl, bookTitle, bookAutho
                         Paste URL
                     </button>
                     <button
+                        onClick={handleToggleImageSearch}
+                        className={cx(
+                            'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                            showImageSearch
+                                ? 'border-accent-300 bg-accent-50 text-accent-700 dark:border-accent-700 dark:bg-accent-900/20 dark:text-accent-300'
+                                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700',
+                        )}
+                    >
+                        <Search size={14} />
+                        Search Images
+                    </button>
+                    <button
                         onClick={handleRemoveCover}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50 dark:border-rose-800 dark:bg-slate-800 dark:text-rose-400 dark:hover:bg-rose-900/20"
                     >
@@ -313,6 +411,61 @@ export function CoverPickerModal({ bookId, currentCoverUrl, bookTitle, bookAutho
                         Remove Cover
                     </button>
                 </div>
+
+                {/* Embedded Image Search */}
+                {showImageSearch ? (
+                    <div className="border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+                        <div className="flex flex-col gap-3">
+                            <div>
+                                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Search using</p>
+                                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Choose one or more book details. Results appear in this cover grid.</p>
+                            </div>
+                            <div role="group" aria-label="Book details to search" className="flex flex-wrap gap-2">
+                                {(Object.keys(IMAGE_SEARCH_FIELD_LABELS) as CoverImageSearchField[]).map((field) => {
+                                    const value = imageSearchValues[field]
+                                    const isSelected = imageSearchFields.includes(field)
+                                    return (
+                                        <button
+                                            key={field}
+                                            type="button"
+                                            aria-pressed={isSelected}
+                                            disabled={!value}
+                                            onClick={() => handleToggleImageSearchField(field)}
+                                            title={value || `${IMAGE_SEARCH_FIELD_LABELS[field]} is unavailable`}
+                                            className={cx(
+                                                'inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40',
+                                                isSelected
+                                                    ? 'border-accent-300 bg-accent-50 text-accent-700 dark:border-accent-700 dark:bg-accent-900/20 dark:text-accent-300'
+                                                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700',
+                                            )}
+                                        >
+                                            <span className={cx('flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border', isSelected ? 'border-accent-500 bg-accent-600' : 'border-slate-300 dark:border-slate-600')}>
+                                                {isSelected ? <Check size={10} className="text-white" /> : null}
+                                            </span>
+                                            <span className="font-semibold">{IMAGE_SEARCH_FIELD_LABELS[field]}</span>
+                                            {value ? <span className="max-w-52 truncate text-slate-400 dark:text-slate-500">{value}</span> : null}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <p className="min-w-0 truncate font-mono text-xs text-slate-400" title={imageSearchQuery || undefined}>
+                                    {imageSearchQuery || 'Select a search field'}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => { void handleImageSearch() }}
+                                    disabled={!imageSearchQuery || isSearchingImages}
+                                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accent-700 disabled:opacity-50"
+                                >
+                                    {isSearchingImages ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                                    {isSearchingImages ? 'Searching' : 'Search'}
+                                </button>
+                            </div>
+                            {imageSearchError ? <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">{imageSearchError}</p> : null}
+                        </div>
+                    </div>
+                ) : null}
 
                 {/* URL Input */}
                 {showUrlInput ? (
@@ -370,7 +523,7 @@ export function CoverPickerModal({ bookId, currentCoverUrl, bookTitle, bookAutho
                     ) : visibleCandidates.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-3 py-16">
                             <ImagePlus size={36} className="text-slate-300 dark:text-slate-600" />
-                            <p className="text-sm text-slate-500 dark:text-slate-400">No cover images found. Try uploading an image or pasting a URL.</p>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">No cover images found. Try image search, upload an image, or paste a URL.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-3 gap-4 sm:grid-cols-4">
@@ -389,8 +542,9 @@ export function CoverPickerModal({ bookId, currentCoverUrl, bookTitle, bookAutho
                                     >
                                         <div className="relative aspect-[2/3] w-full bg-slate-100 dark:bg-slate-800">
                                             <img
-                                                src={candidate.url}
-                                                alt="Cover candidate"
+                                                src={candidate.thumbnailUrl || candidate.url}
+                                                alt={candidate.title || 'Cover candidate'}
+                                                title={candidate.title || undefined}
                                                 className="h-full w-full object-cover"
                                                 loading="lazy"
                                                 referrerPolicy="no-referrer"

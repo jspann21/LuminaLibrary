@@ -321,6 +321,39 @@ pub fn open_library_thing_url(state: State<'_, AppState>, url: String) -> Result
 }
 
 #[tauri::command]
+pub fn set_brave_search_api_key(
+  state: State<'_, AppState>,
+  api_key: String,
+) -> Result<AppSettings, String> {
+  to_result(state.service.set_brave_search_api_key(api_key))
+}
+
+#[tauri::command]
+pub fn clear_brave_search_api_key(state: State<'_, AppState>) -> Result<AppSettings, String> {
+  to_result(state.service.clear_brave_search_api_key())
+}
+
+#[tauri::command]
+pub fn test_brave_search_api_key(
+  state: State<'_, AppState>,
+  api_key: Option<String>,
+) -> Result<ApiKeyTestResult, String> {
+  to_result(state.service.test_brave_search_api_key(api_key))
+}
+
+#[tauri::command]
+pub async fn search_brave_cover_images(
+  state: State<'_, AppState>,
+  query: String,
+) -> Result<Vec<CoverCandidate>, String> {
+  let service = state.service.clone();
+  tauri::async_runtime::spawn_blocking(move || service.search_brave_cover_images(query))
+    .await
+    .map_err(|err| format!("image search task join error: {err}"))?
+    .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
 pub fn get_library_tags(state: State<'_, AppState>) -> Result<Vec<TagCount>, String> {
   to_result(state.service.get_library_tags())
 }

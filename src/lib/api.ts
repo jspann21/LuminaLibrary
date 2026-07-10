@@ -68,6 +68,11 @@ export const api = {
   clearGoogleBooksApiKey: () => invokeOrThrow<AppSettings>('clear_google_books_api_key'),
   testGoogleBooksApiKey: (apiKey?: string) =>
     invokeOrThrow<ApiKeyTestResult>('test_google_books_api_key', { apiKey }),
+  setBraveSearchApiKey: (apiKey: string) =>
+    invokeOrThrow<AppSettings>('set_brave_search_api_key', { apiKey }),
+  clearBraveSearchApiKey: () => invokeOrThrow<AppSettings>('clear_brave_search_api_key'),
+  testBraveSearchApiKey: (apiKey?: string) =>
+    invokeOrThrow<ApiKeyTestResult>('test_brave_search_api_key', { apiKey }),
   startScan: (folderId?: string) => invokeOrThrow<ScanSummary>('start_scan', { folderId }),
   rescanMissingMetadata: () => invokeOrThrow<ScanSummary>('rescan_missing_metadata'),
   refreshMissingCovers: () => invokeOrThrow<ScanSummary>('refresh_missing_covers'),
@@ -136,6 +141,8 @@ export const api = {
   openLocalFile: (absPath: string) => invokeOrThrow<void>('open_local_file', { absPath }),
   openLocalFileFolder: (absPath: string) => invokeOrThrow<void>('open_local_file_folder', { absPath }),
   openLibraryThingUrl: (url: string) => invokeOrThrow<void>('open_library_thing_url', { url }),
+  searchBraveCoverImages: (query: string) =>
+    invokeOrThrow<CoverCandidate[]>('search_brave_cover_images', { query }),
   browseForFolder: async () => {
     if (!isTauri()) {
       throw new Error('Tauri runtime not detected. Run with `pnpm tauri:dev`.')

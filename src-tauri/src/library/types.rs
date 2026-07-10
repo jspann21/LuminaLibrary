@@ -45,6 +45,9 @@ pub struct AppSettings {
   pub google_books_api_key_configured: bool,
   pub google_books_api_key_managed_by_app: bool,
   pub google_books_api_key_from_environment: bool,
+  pub brave_search_api_key_configured: bool,
+  pub brave_search_api_key_managed_by_app: bool,
+  pub brave_search_api_key_from_environment: bool,
   pub scan_on_startup: bool,
   pub library_thing_enabled: bool,
   pub library_thing_catalog_label: Option<String>,
@@ -316,6 +319,9 @@ pub struct MatchPreview {
 pub struct CoverCandidate {
   pub url: String,
   pub source: String,
+  pub thumbnail_url: Option<String>,
+  pub source_page_url: Option<String>,
+  pub title: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

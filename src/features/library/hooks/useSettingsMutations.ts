@@ -16,8 +16,10 @@ export function useSettingsMutations(deps: {
 
     const [folderPath, setFolderPath] = useState('')
     const [googleBooksApiKeyInput, setGoogleBooksApiKeyInput] = useState('')
+    const [braveSearchApiKeyInput, setBraveSearchApiKeyInput] = useState('')
     const [libraryThingCatalogLabelInput, setLibraryThingCatalogLabelInput] = useState('')
     const [keyTestNotice, setKeyTestNotice] = useState<KeyTestNotice | null>(null)
+    const [braveKeyTestNotice, setBraveKeyTestNotice] = useState<KeyTestNotice | null>(null)
     const [libraryThingNotice, setLibraryThingNotice] = useState<LibraryThingNotice | null>(null)
 
     const addFolderMutation = useMutation({
@@ -73,6 +75,30 @@ export function useSettingsMutations(deps: {
         },
         onError: (error: unknown) => {
             setScanStatus(error instanceof Error ? error.message : 'Failed to update startup scan setting')
+        },
+    })
+    const setBraveSearchApiKeyMutation = useMutation({
+        mutationFn: (apiKey: string) => api.setBraveSearchApiKey(apiKey),
+        onSuccess: () => {
+            setBraveSearchApiKeyInput('')
+            setBraveKeyTestNotice(null)
+            void queryClient.invalidateQueries({ queryKey: libraryQueryKeys.appSettings() })
+            setScanStatus('Brave Search API key saved to secure OS credential storage')
+        },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to save Brave Search API key')
+        },
+    })
+    const clearBraveSearchApiKeyMutation = useMutation({
+        mutationFn: () => api.clearBraveSearchApiKey(),
+        onSuccess: () => {
+            setBraveSearchApiKeyInput('')
+            setBraveKeyTestNotice(null)
+            void queryClient.invalidateQueries({ queryKey: libraryQueryKeys.appSettings() })
+            setScanStatus('Brave Search API key removed from secure OS credential storage')
+        },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to clear Brave Search API key')
         },
     })
     const setLibraryThingEnabledMutation = useMutation({
@@ -164,6 +190,26 @@ export function useSettingsMutations(deps: {
             setScanStatus(error instanceof Error ? error.message : 'Failed to test Google Books API key')
         },
     })
+    const testBraveSearchApiKeyMutation = useMutation({
+        mutationFn: (apiKey?: string) => api.testBraveSearchApiKey(apiKey),
+        onMutate: () => {
+            setBraveKeyTestNotice({ tone: 'loading', message: 'Testing Brave Search API key...' })
+        },
+        onSuccess: (result: ApiKeyTestResult) => {
+            setBraveKeyTestNotice({
+                tone: result.ok ? 'success' : 'error',
+                message: result.message,
+            })
+            setScanStatus(result.ok ? result.message : `Key test failed: ${result.message}`)
+        },
+        onError: (error: unknown) => {
+            setBraveKeyTestNotice({
+                tone: 'error',
+                message: error instanceof Error ? error.message : 'Failed to test Brave Search API key',
+            })
+            setScanStatus(error instanceof Error ? error.message : 'Failed to test Brave Search API key')
+        },
+    })
 
     const browseForFolder = async () => {
         try {
@@ -220,6 +266,27 @@ export function useSettingsMutations(deps: {
         const value = googleBooksApiKeyInput.trim()
         testGoogleBooksApiKeyMutation.mutate(value || undefined)
     }
+    const saveBraveSearchApiKey = () => {
+        const value = braveSearchApiKeyInput.trim()
+        if (!value) {
+            setScanStatus('Enter a Brave Search API key before saving')
+            return
+        }
+        setBraveSearchApiKeyMutation.mutate(value)
+    }
+    const clearBraveSearchApiKey = () => {
+        openConfirmDialog({
+            title: 'Clear Brave Search API key?',
+            message: 'This removes the key from secure OS credential storage for this app.',
+            confirmLabel: 'Clear Key',
+            tone: 'warning',
+            onConfirm: () => clearBraveSearchApiKeyMutation.mutate(),
+        })
+    }
+    const testBraveSearchApiKey = () => {
+        const value = braveSearchApiKeyInput.trim()
+        testBraveSearchApiKeyMutation.mutate(value || undefined)
+    }
     const browseAndImportLibraryThing = async () => {
         try {
             const selected = await api.browseForLibraryThingImport()
@@ -250,28 +317,38 @@ export function useSettingsMutations(deps: {
         setFolderPath,
         googleBooksApiKeyInput,
         setGoogleBooksApiKeyInput,
+        braveSearchApiKeyInput,
+        setBraveSearchApiKeyInput,
         libraryThingCatalogLabelInput,
         setLibraryThingCatalogLabelInput,
         keyTestNotice,
         setKeyTestNotice,
+        braveKeyTestNotice,
+        setBraveKeyTestNotice,
         libraryThingNotice,
         setLibraryThingNotice,
         addFolderMutation,
         removeFolderMutation,
         setGoogleBooksApiKeyMutation,
         clearGoogleBooksApiKeyMutation,
+        setBraveSearchApiKeyMutation,
+        clearBraveSearchApiKeyMutation,
         setScanOnStartupMutation,
         setLibraryThingEnabledMutation,
         setLibraryThingCatalogLabelMutation,
         importLibraryThingMutation,
         clearLibraryThingMutation,
         testGoogleBooksApiKeyMutation,
+        testBraveSearchApiKeyMutation,
         browseForFolder,
         quickAddBooks,
         requestRemoveFolder,
         saveGoogleBooksApiKey,
         clearGoogleBooksApiKey,
         testGoogleBooksApiKey,
+        saveBraveSearchApiKey,
+        clearBraveSearchApiKey,
+        testBraveSearchApiKey,
         browseAndImportLibraryThing,
         saveLibraryThingCatalogLabel,
         clearLibraryThingIntegration,

@@ -1382,7 +1382,13 @@ impl OpenLibraryEnricher {
 
     let push_candidate = |url: String, source: &str, seen: &mut HashSet<String>, out: &mut Vec<CoverCandidate>| {
       if seen.insert(url.clone()) {
-        out.push(CoverCandidate { url, source: source.to_string() });
+        out.push(CoverCandidate {
+          url,
+          source: source.to_string(),
+          thumbnail_url: None,
+          source_page_url: None,
+          title: None,
+        });
       }
     };
 

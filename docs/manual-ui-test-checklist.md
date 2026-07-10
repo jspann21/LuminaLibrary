@@ -65,3 +65,10 @@
 4. Verify status changes to `Key configured` and no raw key is displayed.
 5. Restart app and verify key status persists.
 6. Click `Clear Key`, confirm prompt, and verify status returns to `No key configured` unless env fallback is active.
+
+## 12. Embedded cover image search
+1. Open `Settings` -> `Integrations`, save a Brave Search API key, and verify `Test Key` succeeds.
+2. Open a book, click its cover, then choose `Search Images`.
+3. Verify ISBN is selected by default when available and title/author can be toggled independently.
+4. Run the search and verify image results appear inside the cover grid without opening a browser.
+5. Select a result, click `Apply`, and verify the chosen cover persists after reopening the book.

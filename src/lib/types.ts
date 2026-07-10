@@ -37,6 +37,9 @@ export type AppSettings = {
   googleBooksApiKeyConfigured: boolean
   googleBooksApiKeyManagedByApp: boolean
   googleBooksApiKeyFromEnvironment: boolean
+  braveSearchApiKeyConfigured: boolean
+  braveSearchApiKeyManagedByApp: boolean
+  braveSearchApiKeyFromEnvironment: boolean
   scanOnStartup: boolean
   libraryThingEnabled: boolean
   libraryThingCatalogLabel?: string | null
@@ -268,6 +271,9 @@ export type MatchPreview = {
 export type CoverCandidate = {
   url: string
   source: string
+  thumbnailUrl?: string | null
+  sourcePageUrl?: string | null
+  title?: string | null
 }
 
 export type TagCount = {

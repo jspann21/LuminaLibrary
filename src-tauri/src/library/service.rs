@@ -25,7 +25,7 @@ use crate::library::metadata::{
 use crate::library::scanner::{Scanner, FolderWatcher};
 use crate::library::secrets::SecretStore;
 use crate::library::types::{
-  ApiKeyTestResult, AppSettings, BookDetail, BookFilters, BookPatch, ExportResult,
+  ApiKeyTestResult, AppSettings, BookDetail, BookFilters, BookPatch, CoverCandidate, ExportResult,
   FileRecord, FolderRemovalPreview, ImportResult, LibraryFolder, LibraryMaintenanceResult, LibraryThingImportResult, MatchPreview, MatchResult, Paged,
   MetadataCandidate, MetadataField, MetadataFieldSelection, MetadataLockUpdate, MetadataRescanPreview, MetadataSourceStatus,
   ParsedMetadata, ScanSummary, SortSpec,
@@ -163,10 +163,15 @@ impl LibraryService {
   }
 
   pub fn get_app_settings(&self) -> anyhow::Result<AppSettings> {
+    let brave_search_api_key_managed_by_app = self.secret_store.has_brave_search_api_key()?;
+    let brave_search_api_key_from_environment = env_brave_search_api_key().is_some();
     Ok(AppSettings {
       google_books_api_key_configured: self.scanner.google_books_api_key_configured(),
       google_books_api_key_managed_by_app: self.secret_store.has_google_books_api_key()?,
       google_books_api_key_from_environment: env_google_books_api_key().is_some(),
+      brave_search_api_key_configured: brave_search_api_key_managed_by_app || brave_search_api_key_from_environment,
+      brave_search_api_key_managed_by_app,
+      brave_search_api_key_from_environment,
       scan_on_startup: self.repository.get_scan_on_startup()?,
       library_thing_enabled: self.repository.get_library_thing_enabled()?,
       library_thing_catalog_label: self.repository.get_library_thing_catalog_label()?,
@@ -271,6 +276,61 @@ impl LibraryService {
       "Google Books rate limit reached while testing the key. Try again later.".to_string()
     } else {
       format!("Google Books API test failed with status {}.", status.as_u16())
+    };
+
+    Ok(ApiKeyTestResult { ok: false, message })
+  }
+
+  pub fn set_brave_search_api_key(&self, api_key: String) -> anyhow::Result<AppSettings> {
+    let normalized = normalize_brave_search_api_key(&api_key)?;
+    self.secret_store.set_brave_search_api_key(&normalized)?;
+    self.get_app_settings()
+  }
+
+  pub fn clear_brave_search_api_key(&self) -> anyhow::Result<AppSettings> {
+    self.secret_store.clear_brave_search_api_key()?;
+    self.get_app_settings()
+  }
+
+  pub fn test_brave_search_api_key(&self, api_key: Option<String>) -> anyhow::Result<ApiKeyTestResult> {
+    let (resolved_key, source_label) = if let Some(candidate) = api_key {
+      (normalize_brave_search_api_key(&candidate)?, "provided input")
+    } else if let Some(stored) = self.secret_store.get_brave_search_api_key()? {
+      (stored, "secure storage")
+    } else if let Some(environment) = env_brave_search_api_key() {
+      (environment, "environment variable")
+    } else {
+      return Ok(ApiKeyTestResult {
+        ok: false,
+        message: "No Brave Search API key provided. Enter a key or save one first.".to_string(),
+      });
+    };
+
+    let response = brave_image_search_request(&resolved_key, "9780140328721 book cover", 1);
+    let response = match response {
+      Ok(value) => value,
+      Err(_) => {
+        return Ok(ApiKeyTestResult {
+          ok: false,
+          message: "Could not reach Brave Search. Check the internet connection and try again.".to_string(),
+        });
+      }
+    };
+
+    if response.status().is_success() {
+      return Ok(ApiKeyTestResult {
+        ok: true,
+        message: format!("Brave Search API key test succeeded ({source_label})."),
+      });
+    }
+
+    let status = response.status();
+    let message = if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
+      "Brave Search rejected the API key. Verify the key in the Brave Search dashboard.".to_string()
+    } else if status == StatusCode::TOO_MANY_REQUESTS {
+      "Brave Search rate limit or monthly quota reached. Try again later or check the API plan.".to_string()
+    } else {
+      format!("Brave Search API test failed with status {}.", status.as_u16())
     };
 
     Ok(ApiKeyTestResult { ok: false, message })
@@ -1596,8 +1656,7 @@ impl LibraryService {
     }
   }
 
-  pub fn search_cover_candidates(&self, book_id: String) -> anyhow::Result<Vec<crate::library::types::CoverCandidate>> {
-    use crate::library::types::CoverCandidate;
+  pub fn search_cover_candidates(&self, book_id: String) -> anyhow::Result<Vec<CoverCandidate>> {
     let detail = self.repository.get_book_detail(&book_id)?;
     let mut candidates: Vec<CoverCandidate> = Vec::new();
 
@@ -1607,6 +1666,9 @@ impl LibraryService {
         candidates.push(CoverCandidate {
           url: current_url.clone(),
           source: "current".to_string(),
+          thumbnail_url: None,
+          source_page_url: None,
+          title: None,
         });
       }
     }
@@ -1624,6 +1686,45 @@ impl LibraryService {
     candidates.extend(remote);
 
     Ok(candidates)
+  }
+
+  pub fn search_brave_cover_images(&self, query: String) -> anyhow::Result<Vec<CoverCandidate>> {
+    let query = query.trim();
+    ensure!(!query.is_empty(), "Image search needs at least one search term");
+    ensure!(
+      query.chars().count() <= MAX_SEARCH_QUERY_CHARS,
+      "Image search must be 256 characters or fewer"
+    );
+    ensure!(
+      query.split_whitespace().count() <= 50,
+      "Image search must contain 50 words or fewer"
+    );
+    ensure!(
+      !query.chars().any(char::is_control),
+      "Image search cannot contain control characters"
+    );
+
+    let api_key = self
+      .secret_store
+      .get_brave_search_api_key()?
+      .or_else(env_brave_search_api_key)
+      .ok_or_else(|| anyhow!("Brave Search API key is not configured. Add one in Settings > Integrations."))?;
+    let response = brave_image_search_request(&api_key, query, 30)
+      .context("Could not reach Brave Search. Check the internet connection and try again.")?;
+
+    let status = response.status();
+    if !status.is_success() {
+      if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
+        return Err(anyhow!("Brave Search rejected the API key. Update it in Settings > Integrations."));
+      }
+      if status == StatusCode::TOO_MANY_REQUESTS {
+        return Err(anyhow!("Brave Search rate limit or monthly quota reached. Try again later."));
+      }
+      return Err(anyhow!("Brave image search failed with status {}", status.as_u16()));
+    }
+
+    let payload: JsonValue = response.json().context("Brave Search returned an invalid response")?;
+    Ok(parse_brave_image_results(&payload))
   }
 }
 
@@ -2580,6 +2681,87 @@ fn normalize_google_books_api_key(input: &str) -> anyhow::Result<String> {
   Ok(trimmed.to_string())
 }
 
+fn env_brave_search_api_key() -> Option<String> {
+  std::env::var("BRAVE_SEARCH_API_KEY")
+    .ok()
+    .and_then(|value| normalize_brave_search_api_key(&value).ok())
+}
+
+fn normalize_brave_search_api_key(input: &str) -> anyhow::Result<String> {
+  let trimmed = input.trim();
+  if trimmed.is_empty() {
+    return Err(anyhow!("Brave Search API key is required"));
+  }
+  if trimmed.len() < 20 || trimmed.len() > 512 {
+    return Err(anyhow!("Brave Search API key must be between 20 and 512 characters"));
+  }
+  if trimmed.chars().any(|ch| ch.is_whitespace() || !ch.is_ascii_graphic()) {
+    return Err(anyhow!("Brave Search API key must not contain whitespace or control characters"));
+  }
+  Ok(trimmed.to_string())
+}
+
+fn brave_image_search_request(api_key: &str, query: &str, count: u16) -> anyhow::Result<reqwest::blocking::Response> {
+  let count = count.to_string();
+  let client = HttpClient::builder()
+    .timeout(Duration::from_secs(15))
+    .user_agent("lumina-library-desktop/0.1")
+    .build()
+    .context("failed to initialize Brave Search client")?;
+  client
+    .get("https://api.search.brave.com/res/v1/images/search")
+    .header("Accept", "application/json")
+    .header("X-Subscription-Token", api_key)
+    .query(&[
+      ("q", query),
+      ("count", count.as_str()),
+      ("safesearch", "strict"),
+      ("search_lang", "en"),
+      ("country", "US"),
+      ("spellcheck", "1"),
+    ])
+    .send()
+    .context("Brave Search request failed")
+}
+
+fn parse_brave_image_results(payload: &JsonValue) -> Vec<CoverCandidate> {
+  let mut seen = std::collections::HashSet::new();
+  payload
+    .get("results")
+    .and_then(JsonValue::as_array)
+    .into_iter()
+    .flatten()
+    .filter_map(|result| {
+      let url = valid_https_url(result.pointer("/properties/url").and_then(JsonValue::as_str))?;
+      if !seen.insert(url.clone()) {
+        return None;
+      }
+      Some(CoverCandidate {
+        url,
+        source: "brave".to_string(),
+        thumbnail_url: valid_https_url(result.pointer("/thumbnail/src").and_then(JsonValue::as_str)),
+        source_page_url: valid_https_url(result.get("url").and_then(JsonValue::as_str)),
+        title: result
+          .get("title")
+          .and_then(JsonValue::as_str)
+          .map(str::trim)
+          .filter(|value| !value.is_empty())
+          .map(|value| value.chars().take(200).collect()),
+      })
+    })
+    .collect()
+}
+
+fn valid_https_url(value: Option<&str>) -> Option<String> {
+  let value = value?.trim();
+  let parsed = Url::parse(value).ok()?;
+  if parsed.scheme() == "https" && parsed.host_str().is_some() {
+    Some(value.to_string())
+  } else {
+    None
+  }
+}
+
 #[cfg(target_os = "windows")]
 fn open_file_with_system_app(path: &Path) -> anyhow::Result<()> {
   let mut command = Command::new("explorer.exe");
@@ -2641,7 +2823,7 @@ fn open_url_with_system_app(url: &str) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
   use super::{
-    csv_import_progress_percent, library_thing_book_url, parse_library_thing_export, normalize_book_patch_isbns,
+    csv_import_progress_percent, library_thing_book_url, parse_brave_image_results, parse_library_thing_export, normalize_book_patch_isbns,
     validate_book_id_batch, validate_cover_url_value, validate_csv_export_path, validate_csv_import_path,
     validate_library_thing_import_path, validate_metadata_update_batch, validate_search_query, validate_tag_inputs,
     MAX_CSV_IMPORT_BYTES, MAX_LIBRARY_THING_IMPORT_BYTES,
@@ -2650,6 +2832,33 @@ mod tests {
   use crate::library::types::{BookPatch, MetadataField, MetadataFieldSelection, MetadataLockUpdate, ParsedMetadata};
   use std::{fs, path::PathBuf};
   use uuid::Uuid;
+
+  #[test]
+  fn brave_image_results_keep_safe_urls_and_metadata() {
+    let payload = serde_json::json!({
+      "results": [
+        {
+          "title": "Dune cover",
+          "url": "https://example.com/dune",
+          "thumbnail": { "src": "https://imgs.search.brave.com/thumb" },
+          "properties": { "url": "https://example.com/dune.jpg" }
+        },
+        {
+          "title": "Unsafe duplicate",
+          "url": "http://example.com/dune",
+          "thumbnail": { "src": "http://example.com/thumb" },
+          "properties": { "url": "https://example.com/dune.jpg" }
+        },
+        { "properties": { "url": "http://example.com/unsafe.jpg" } }
+      ]
+    });
+    let results = parse_brave_image_results(&payload);
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].url, "https://example.com/dune.jpg");
+    assert_eq!(results[0].thumbnail_url.as_deref(), Some("https://imgs.search.brave.com/thumb"));
+    assert_eq!(results[0].source_page_url.as_deref(), Some("https://example.com/dune"));
+    assert_eq!(results[0].title.as_deref(), Some("Dune cover"));
+  }
 
   #[test]
   fn library_thing_json_parser_reads_export_rows() {

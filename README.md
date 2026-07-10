@@ -100,6 +100,8 @@ pnpm tauri:dev
 
 Optional: set `GOOGLE_BOOKS_API_KEY` in your environment to improve cover lookup reliability when Open Library has no cover image. You can also set, test, or clear this key in `Settings -> Integrations`; Lumina stores app-managed keys in your OS credential manager.
 
+Optional: set `BRAVE_SEARCH_API_KEY` in your environment to enable embedded web image results in the cover picker. You can also manage this key in `Settings -> Integrations`.
+
 ## Build
 
 ```bash
