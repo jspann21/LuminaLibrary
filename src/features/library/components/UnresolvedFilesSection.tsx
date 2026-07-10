@@ -146,12 +146,18 @@ export function UnresolvedFilesSection({
                             placeholder="Search unresolved files..."
                             value={discoveredQuery}
                             onChange={(event) => onSetDiscoveredQuery(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Escape') {
+                                    if (discoveredQuery) onSetDiscoveredQuery('')
+                                    else event.currentTarget.blur()
+                                }
+                            }}
                         />
                         {discoveredQuery ? (
                             <button
                                 type="button"
                                 aria-label="Clear unresolved files search"
-                                title="Clear search"
+                                title="Clear search (Esc)"
                                 onClick={() => onSetDiscoveredQuery('')}
                                 className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                             >
@@ -191,12 +197,24 @@ export function UnresolvedFilesSection({
             <div className="overflow-x-auto px-3 py-4">
                 {discoveredItems.length === 0 ? (
                     <div className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">
-                        <p>{discoveredQuery ? 'No unresolved files match your search.' : 'No unresolved files.'}</p>
-                        {!discoveredQuery ? (
-                            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                                Add more library folders in Settings if you expected files here.
-                            </p>
-                        ) : null}
+                        {discoveredQuery ? (
+                            <div className="flex flex-col items-center justify-center gap-2">
+                                <p>No unresolved files match your search.</p>
+                                <button
+                                    onClick={() => onSetDiscoveredQuery('')}
+                                    className="text-sm font-medium text-accent-600 transition-colors hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300"
+                                >
+                                    Clear search
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <p>No unresolved files.</p>
+                                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                                    Add more library folders in Settings if you expected files here.
+                                </p>
+                            </>
+                        )}
                     </div>
                 ) : (
                     <table className="w-full min-w-[980px] table-fixed border-separate border-spacing-0">
