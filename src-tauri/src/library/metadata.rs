@@ -361,6 +361,7 @@ impl OpenLibraryEnricher {
 
     let mut all_candidates: Vec<EnrichedBook> = Vec::new();
     let mut seen_keys: HashSet<String> = HashSet::new();
+    let mut edition_isbn_cache: HashMap<String, (Option<String>, Option<String>)> = HashMap::new();
 
     for mut query_set in deduped_sets {
       query_set.push(("limit".to_string(), "8".to_string()));
@@ -380,6 +381,7 @@ impl OpenLibraryEnricher {
         Err(_) => continue,
       };
       for doc in payload.docs {
+        let edition_keys = open_library_search_doc_edition_keys(&doc);
         let title = doc.title.unwrap_or_default();
         if title.trim().is_empty() {
           continue;
@@ -423,6 +425,16 @@ impl OpenLibraryEnricher {
             {
               matched_query_isbn = true;
             }
+          }
+        }
+        if isbn10.is_none() || isbn13.is_none() {
+          let (edition_isbn10, edition_isbn13) =
+            self.open_library_isbns_from_editions(&edition_keys, &mut edition_isbn_cache);
+          if isbn10.is_none() {
+            isbn10 = edition_isbn10;
+          }
+          if isbn13.is_none() {
+            isbn13 = edition_isbn13;
           }
         }
 
@@ -756,6 +768,56 @@ impl OpenLibraryEnricher {
       }
       _ => book,
     }
+  }
+
+  fn open_library_isbns_from_editions(
+    &self,
+    edition_keys: &[String],
+    cache: &mut HashMap<String, (Option<String>, Option<String>)>,
+  ) -> (Option<String>, Option<String>) {
+    let mut isbn10: Option<String> = None;
+    let mut isbn13: Option<String> = None;
+
+    for key in edition_keys {
+      let (candidate_isbn10, candidate_isbn13) = if let Some(cached) = cache.get(key) {
+        cached.clone()
+      } else {
+        let fetched = self.open_library_isbns_from_edition(key);
+        cache.insert(key.clone(), fetched.clone());
+        fetched
+      };
+
+      if isbn10.is_none() {
+        isbn10 = candidate_isbn10;
+      }
+      if isbn13.is_none() {
+        isbn13 = candidate_isbn13;
+      }
+      if isbn10.is_some() && isbn13.is_some() {
+        break;
+      }
+    }
+
+    (isbn10, isbn13)
+  }
+
+  fn open_library_isbns_from_edition(&self, edition_key: &str) -> (Option<String>, Option<String>) {
+    let Some(key) = normalize_open_library_edition_key(edition_key) else {
+      return (None, None);
+    };
+    let url = format!("https://openlibrary.org/books/{key}.json");
+    let response = match self.client.get(url).send() {
+      Ok(value) => value,
+      Err(_) => return (None, None),
+    };
+    if !response.status().is_success() {
+      return (None, None);
+    }
+    let detail: OpenLibraryEditionData = match response.json() {
+      Ok(value) => value,
+      Err(_) => return (None, None),
+    };
+    open_library_edition_isbns(&detail)
   }
 
   fn with_resolved_cover(
@@ -1465,6 +1527,8 @@ struct OpenLibraryDoc {
   language: Option<Vec<String>>,
   first_sentence: Option<OpenLibraryTextValue>,
   cover_i: Option<i64>,
+  cover_edition_key: Option<String>,
+  edition_key: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1497,6 +1561,58 @@ struct OpenLibraryCover {
   small: Option<String>,
   medium: Option<String>,
   large: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenLibraryEditionData {
+  isbn_10: Option<Vec<String>>,
+  isbn_13: Option<Vec<String>>,
+}
+
+fn open_library_search_doc_edition_keys(doc: &OpenLibraryDoc) -> Vec<String> {
+  let mut keys = Vec::new();
+  let mut seen = HashSet::new();
+
+  if let Some(key) = doc.cover_edition_key.as_deref().and_then(normalize_open_library_edition_key) {
+    seen.insert(key.clone());
+    keys.push(key);
+  }
+  for key in doc.edition_key.as_deref().unwrap_or(&[]) {
+    if let Some(key) = normalize_open_library_edition_key(key) {
+      if seen.insert(key.clone()) {
+        keys.push(key);
+      }
+    }
+  }
+
+  keys
+}
+
+fn normalize_open_library_edition_key(key: &str) -> Option<String> {
+  let trimmed = key.trim().trim_start_matches("/books/");
+  if trimmed.is_empty() {
+    return None;
+  }
+  let valid = trimmed
+    .chars()
+    .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_'));
+  valid.then(|| trimmed.to_string())
+}
+
+fn open_library_edition_isbns(detail: &OpenLibraryEditionData) -> (Option<String>, Option<String>) {
+  let isbn10 = detail
+    .isbn_10
+    .as_deref()
+    .unwrap_or(&[])
+    .iter()
+    .find_map(|value| normalize_valid_isbn(value).filter(|isbn| isbn.len() == 10));
+  let isbn13 = detail
+    .isbn_13
+    .as_deref()
+    .unwrap_or(&[])
+    .iter()
+    .find_map(|value| normalize_valid_isbn(value).filter(|isbn| isbn.len() == 13));
+  (isbn10, isbn13)
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -2511,8 +2627,9 @@ mod tests {
     confidence_score, extract_isbn, first_author_token, infer_metadata_from_filename,
     is_google_books_cover_url, is_google_books_quota_exceeded, is_known_google_placeholder_hash,
     is_known_google_placeholder_image,
-    normalize_google_cover_url, normalize_isbn, normalize_valid_isbn, parse_pdf_authors, title_query_candidates,
-    OpenLibraryEnricher,
+    normalize_google_cover_url, normalize_isbn, normalize_open_library_edition_key, normalize_valid_isbn,
+    open_library_edition_isbns, open_library_search_doc_edition_keys, parse_pdf_authors, title_query_candidates,
+    OpenLibraryDoc, OpenLibraryEditionData, OpenLibraryEnricher,
     ParsedMetadata,
   };
   use reqwest::StatusCode;
@@ -2535,6 +2652,56 @@ mod tests {
     assert_eq!(normalize_valid_isbn("1396245095"), None);
     assert_eq!(extract_isbn("ISBN 1396245095"), None);
     assert_eq!(normalize_valid_isbn("1555406432").as_deref(), Some("1555406432"));
+  }
+
+  #[test]
+  fn normalizes_open_library_edition_keys() {
+    assert_eq!(
+      normalize_open_library_edition_key("/books/OL29001506M").as_deref(),
+      Some("OL29001506M")
+    );
+    assert_eq!(
+      normalize_open_library_edition_key(" OL28281857M ").as_deref(),
+      Some("OL28281857M")
+    );
+    assert_eq!(normalize_open_library_edition_key("../bad"), None);
+  }
+
+  #[test]
+  fn collects_open_library_search_doc_edition_keys_in_preferred_order() {
+    let doc = OpenLibraryDoc {
+      title: None,
+      author_name: None,
+      publisher: None,
+      first_publish_year: None,
+      isbn: None,
+      language: None,
+      first_sentence: None,
+      cover_i: None,
+      cover_edition_key: Some("OL28281857M".to_string()),
+      edition_key: Some(vec![
+        "OL28281857M".to_string(),
+        "/books/OL29001506M".to_string(),
+        "../bad".to_string(),
+      ]),
+    };
+
+    assert_eq!(
+      open_library_search_doc_edition_keys(&doc),
+      vec!["OL28281857M".to_string(), "OL29001506M".to_string()]
+    );
+  }
+
+  #[test]
+  fn extracts_valid_open_library_edition_isbns() {
+    let detail = OpenLibraryEditionData {
+      isbn_10: Some(vec!["not-an-isbn".to_string(), "0-9770234-0-0".to_string()]),
+      isbn_13: Some(vec!["978-0-9770234-0-0".to_string()]),
+    };
+
+    let (isbn10, isbn13) = open_library_edition_isbns(&detail);
+    assert_eq!(isbn10.as_deref(), Some("0977023400"));
+    assert_eq!(isbn13.as_deref(), Some("9780977023400"));
   }
 
   #[test]
