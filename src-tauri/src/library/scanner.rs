@@ -1737,6 +1737,7 @@ impl Scanner {
 #[derive(Clone)]
 pub(crate) struct FolderWatcher {
   watched_paths: Arc<Mutex<HashMap<String, String>>>,
+  last_scan_by_folder: Arc<Mutex<HashMap<String, Instant>>>,
   watcher: Arc<Mutex<RecommendedWatcher>>,
 }
 
@@ -1744,6 +1745,8 @@ impl FolderWatcher {
   pub(crate) fn new(scanner: Scanner, repository: Repository, app_handle: AppHandle) -> anyhow::Result<Self> {
     let watched_paths = Arc::new(Mutex::new(HashMap::<String, String>::new()));
     let watched_paths_for_thread = watched_paths.clone();
+    let last_scan_by_folder = Arc::new(Mutex::new(HashMap::<String, Instant>::new()));
+    let last_scan_by_folder_for_thread = last_scan_by_folder.clone();
 
     let (tx, rx) = mpsc::sync_channel::<notify::Result<Event>>(WATCHER_EVENT_QUEUE_CAPACITY);
     let watcher = RecommendedWatcher::new(
@@ -1761,7 +1764,6 @@ impl FolderWatcher {
     let app_for_thread = app_handle.clone();
 
     thread::spawn(move || {
-      let mut last_scan_by_folder: HashMap<String, Instant> = HashMap::new();
       loop {
         let Ok(event) = rx.recv() else {
           break;
@@ -1798,12 +1800,15 @@ impl FolderWatcher {
 
         if let Some(folder_id) = folder_match {
           let now = Instant::now();
-          if let Some(previous) = last_scan_by_folder.get(&folder_id) {
-            if now.duration_since(*previous) < Duration::from_secs(2) {
-              continue;
+          {
+            let mut last_scans = last_scan_by_folder_for_thread.lock();
+            if let Some(previous) = last_scans.get(&folder_id) {
+              if now.duration_since(*previous) < Duration::from_secs(2) {
+                continue;
+              }
             }
+            last_scans.insert(folder_id.clone(), now);
           }
-          last_scan_by_folder.insert(folder_id.clone(), now);
 
           let _ = app_for_thread.emit(
             "watcher_file_changed",
@@ -1831,6 +1836,7 @@ impl FolderWatcher {
 
     Ok(Self {
       watched_paths,
+      last_scan_by_folder,
       watcher: Arc::new(Mutex::new(watcher)),
     })
   }
@@ -1841,17 +1847,22 @@ impl FolderWatcher {
       return Ok(());
     }
     self.watcher.lock().watch(path, RecursiveMode::Recursive)?;
-    self
+    let replaced_folder_id = self
       .watched_paths
       .lock()
       .insert(folder.path.clone(), folder.id.clone());
+    if let Some(replaced_folder_id) = replaced_folder_id.filter(|id| id != &folder.id) {
+      self.last_scan_by_folder.lock().remove(&replaced_folder_id);
+    }
     Ok(())
   }
 
   pub(crate) fn unwatch_folder(&self, folder_path: &str) -> anyhow::Result<()> {
     let path = Path::new(folder_path);
     let _ = self.watcher.lock().unwatch(path);
-    self.watched_paths.lock().remove(folder_path);
+    if let Some(folder_id) = self.watched_paths.lock().remove(folder_path) {
+      self.last_scan_by_folder.lock().remove(&folder_id);
+    }
     Ok(())
   }
 }
