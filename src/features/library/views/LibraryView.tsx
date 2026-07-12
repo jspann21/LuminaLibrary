@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import { FolderOpen, Plus } from 'lucide-react'
+import { FolderOpen, Loader2, Plus } from 'lucide-react'
 import type { BookCard } from '../../../lib/types'
 import type { ViewMode } from '../model/types'
 import { CoverThumb } from '../components/CoverThumb'
@@ -53,7 +53,8 @@ export function LibraryView({
 
   if (isLoading && !hasHiddenBooks) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800">
+        <Loader2 size={18} className="animate-spin text-accent-500" />
         Loading library...
       </div>
     )
@@ -125,7 +126,10 @@ export function LibraryView({
       {hasVisibleBooks ? (
         <>
           {isFetching ? (
-            <div className="mb-3 text-xs text-slate-500 dark:text-slate-400">Updating library results...</div>
+            <div className="mb-3 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <Loader2 size={14} className="animate-spin" />
+              Updating library results...
+            </div>
           ) : null}
           <VirtualizedLibraryBooks
             books={books}
@@ -155,7 +159,10 @@ export function LibraryView({
           </span>
         </div>
         {isHiddenLoading ? (
-          <p className="text-xs text-slate-500 dark:text-slate-400">Loading hidden books...</p>
+          <p className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <Loader2 size={14} className="animate-spin" />
+            Loading hidden books...
+          </p>
         ) : hiddenBooks.length === 0 ? (
           <p className="text-xs text-slate-500 dark:text-slate-400">No hidden books.</p>
         ) : (

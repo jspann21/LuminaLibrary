@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/refs */
 import { lazy, Suspense } from 'react'
 import { AnimatePresence } from 'motion/react'
-import { Minus, Plus } from 'lucide-react'
+import { Loader2, Minus, Plus } from 'lucide-react'
 import { ConfirmDialog } from './features/library/components/ConfirmDialog'
 import { LibraryHeader } from './features/library/components/LibraryHeader'
 import { LibrarySidebar } from './features/library/components/LibrarySidebar'
@@ -222,7 +222,8 @@ function App() {
 
 function ViewFallback() {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+    <div className="flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+      <Loader2 size={16} className="animate-spin text-accent-500" />
       Loading...
     </div>
   )
