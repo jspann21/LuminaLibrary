@@ -1791,7 +1791,8 @@ impl FolderWatcher {
         let folder_match = {
           let map = watched_paths_for_thread.lock();
           map.iter()
-            .find(|(path, _)| changed.starts_with(path.as_str()))
+            .filter(|(path, _)| Path::new(&changed).starts_with(Path::new(path.as_str())))
+            .max_by_key(|(path, _)| Path::new(path.as_str()).components().count())
             .map(|(_, folder_id)| folder_id.clone())
         };
 
