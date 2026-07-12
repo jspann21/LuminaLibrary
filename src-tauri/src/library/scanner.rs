@@ -572,43 +572,8 @@ impl Scanner {
 
     let existing_by_path = Arc::new(existing_by_path);
     let mut pending_enrichment: Vec<PendingEnrichment> = Vec::new();
-    let mut handles = Vec::new();
-    let mut work_tx: Option<mpsc::SyncSender<ScanCandidate>> = None;
-    let mut result_rx: Option<mpsc::Receiver<(String, anyhow::Result<ScanPreparedOutcome>)>> = None;
-    if pending_files > 0 {
-      let worker_count = scan_worker_count().min(pending_files as usize).max(1);
-      let (tx, rx) = mpsc::sync_channel::<ScanCandidate>(SCAN_WORK_QUEUE_CAPACITY);
-      let rx = Arc::new(StdMutex::new(rx));
-      let (prepared_tx, prepared_rx) = mpsc::channel::<(String, anyhow::Result<ScanPreparedOutcome>)>();
-      for _ in 0..worker_count {
-        let rx = Arc::clone(&rx);
-        let prepared_tx = prepared_tx.clone();
-        let scanner = self.clone();
-        let folder = folder.clone();
-        let existing_by_path = Arc::clone(&existing_by_path);
-        handles.push(thread::spawn(move || loop {
-          let candidate = {
-            let receiver = match rx.lock() {
-              Ok(receiver) => receiver,
-              Err(_) => return,
-            };
-            match receiver.recv() {
-              Ok(candidate) => candidate,
-              Err(_) => return,
-            }
-          };
-          let path = candidate.abs_path.clone();
-          let existing = existing_by_path.get(&candidate.abs_path);
-          let result = scanner.scan_prepared_candidate(&folder, &candidate, existing, ScanComputeProfile::BulkSafe, false);
-          let _ = prepared_tx.send((path, result));
-        }));
-      }
-      drop(prepared_tx);
-      work_tx = Some(tx);
-      result_rx = Some(prepared_rx);
-    }
+    let mut pending_candidates = Vec::with_capacity(pending_files as usize);
 
-    let mut queued_for_processing = 0u64;
     for candidate in candidates {
       seen_paths.insert(candidate.abs_path.clone());
       summary.scanned_files += 1;
@@ -667,66 +632,43 @@ impl Scanner {
         continue;
       }
 
-      let path_for_error = candidate.abs_path.clone();
-      match &work_tx {
-        Some(tx) => {
-          if tx.send(candidate).is_ok() {
-            queued_for_processing += 1;
-          } else {
-            summary.errors += 1;
-            processed_files += 1;
-            let _ = self.app_handle.emit(
-              "scan_progress",
-              json!({
-                "phase": "local_scan",
-                "folderId": folder.id,
-                "path": path_for_error,
-                "error": "scan_worker_queue_closed",
-                "totalFound": total_found,
-                "pendingFiles": pending_files,
-                "processedFiles": processed_files,
-                "newFiles": summary.new_files,
-                "updatedFiles": summary.updated_files,
-                "unchangedFiles": summary.unchanged_files,
-                "matchedFiles": summary.matched_files,
-                "discoveredFiles": summary.discovered_files,
-                "errors": summary.errors,
-              }),
-            );
-            processed_since_emit = 0;
-            last_emit = Instant::now();
-          }
-        }
-        None => {
-          summary.errors += 1;
-          processed_files += 1;
-          let _ = self.app_handle.emit(
-            "scan_progress",
-            json!({
-              "phase": "local_scan",
-              "folderId": folder.id,
-              "path": path_for_error,
-              "error": "scan_worker_unavailable",
-              "totalFound": total_found,
-              "pendingFiles": pending_files,
-              "processedFiles": processed_files,
-              "newFiles": summary.new_files,
-              "updatedFiles": summary.updated_files,
-              "unchangedFiles": summary.unchanged_files,
-              "matchedFiles": summary.matched_files,
-              "discoveredFiles": summary.discovered_files,
-              "errors": summary.errors,
-            }),
-          );
-          processed_since_emit = 0;
-          last_emit = Instant::now();
-        }
-      }
+      pending_candidates.push(candidate);
     }
 
-    drop(work_tx);
+    let queued_for_processing = pending_candidates.len() as u64;
+    let mut handles = Vec::new();
+    if queued_for_processing > 0 {
+      let worker_count = scan_worker_count().min(pending_candidates.len()).max(1);
+      let work_iter = Arc::new(StdMutex::new(pending_candidates.into_iter()));
+      let (prepared_tx, result_rx) =
+        mpsc::sync_channel::<(String, anyhow::Result<ScanPreparedOutcome>)>(SCAN_WORK_QUEUE_CAPACITY);
+      for _ in 0..worker_count {
+        let work_iter = Arc::clone(&work_iter);
+        let prepared_tx = prepared_tx.clone();
+        let scanner = self.clone();
+        let folder = folder.clone();
+        let existing_by_path = Arc::clone(&existing_by_path);
+        handles.push(thread::spawn(move || loop {
+          let candidate = {
+            let mut work = match work_iter.lock() {
+              Ok(work) => work,
+              Err(_) => return,
+            };
+            match work.next() {
+              Some(candidate) => candidate,
+              None => return,
+            }
+          };
+          let path = candidate.abs_path.clone();
+          let existing = existing_by_path.get(&candidate.abs_path);
+          let result = scanner.scan_prepared_candidate(&folder, &candidate, existing, ScanComputeProfile::BulkSafe, false);
+          if prepared_tx.send((path, result)).is_err() {
+            return;
+          }
+        }));
+      }
+      drop(prepared_tx);
 
-    if let Some(result_rx) = result_rx {
       for _ in 0..queued_for_processing {
         let Ok((candidate_path, result)) = result_rx.recv() else {
           break;
