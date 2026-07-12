@@ -1,6 +1,7 @@
 use std::{
   collections::HashMap,
   fs::{self, File},
+  io::Read,
   path::Path,
   process::Command,
   sync::{mpsc, Arc, Mutex as StdMutex},
@@ -40,6 +41,7 @@ const MAX_METADATA_FIELD_UPDATES: usize = 32;
 const MAX_SEARCH_QUERY_CHARS: usize = 256;
 const MAX_TAGS_PER_REQUEST: usize = 100;
 const MAX_TAG_LABEL_CHARS: usize = 80;
+const MAX_BRAVE_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
 const COVER_CACHE_WORKERS: usize = 4;
 const LIBRARY_THING_PROGRESS_EMIT_INTERVAL: Duration = Duration::from_millis(500);
 
@@ -1733,7 +1735,7 @@ impl LibraryService {
       return Err(anyhow!("Brave image search failed with status {}", status.as_u16()));
     }
 
-    let payload: JsonValue = response.json().context("Brave Search returned an invalid response")?;
+    let payload = read_brave_image_payload(response)?;
     Ok(parse_brave_image_results(&payload))
   }
 }
@@ -2760,6 +2762,19 @@ fn parse_brave_image_results(payload: &JsonValue) -> Vec<CoverCandidate> {
       })
     })
     .collect()
+}
+
+fn read_brave_image_payload(response: reqwest::blocking::Response) -> anyhow::Result<JsonValue> {
+  if let Some(content_length) = response.content_length() {
+    ensure!(content_length <= MAX_BRAVE_RESPONSE_BYTES, "Brave Search response is too large");
+  }
+  let initial_capacity = response.content_length().unwrap_or(0) as usize;
+  let mut bytes = Vec::with_capacity(initial_capacity);
+  response
+    .take(MAX_BRAVE_RESPONSE_BYTES + 1)
+    .read_to_end(&mut bytes)?;
+  ensure!(bytes.len() as u64 <= MAX_BRAVE_RESPONSE_BYTES, "Brave Search response is too large");
+  serde_json::from_slice(&bytes).context("Brave Search returned an invalid response")
 }
 
 fn valid_https_url(value: Option<&str>) -> Option<String> {
