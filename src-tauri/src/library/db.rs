@@ -2416,7 +2416,6 @@ impl Repository {
   }
 
   pub fn apply_manual_book_edit(&self, book_id: &str, patch: BookPatch, now: &str) -> anyhow::Result<()> {
-    let conn = self.conn()?;
     let mut updates: Vec<String> = Vec::new();
     let mut values: Vec<Value> = Vec::new();
     let mut overrides: Vec<(String, Option<String>)> = Vec::new();
@@ -2467,19 +2466,22 @@ impl Repository {
     }
 
     if !updates.is_empty() {
+      let mut conn = self.conn()?;
+      let tx = conn.transaction()?;
       updates.push("metadata_source = 'manual'".to_string());
       updates.push("updated_at = ?".to_string());
       values.push(Value::from(now.to_string()));
       values.push(Value::from(book_id.to_string()));
       let sql = format!("UPDATE books SET {} WHERE id = ?", updates.join(", "));
-      conn.execute(&sql, params_from_iter(values.iter()))?;
+      tx.execute(&sql, params_from_iter(values.iter()))?;
 
       for (field_name, field_value) in overrides {
-        conn.execute(
+        tx.execute(
           "INSERT INTO manual_overrides(id, book_id, field_name, field_value, edited_at) VALUES(?1, ?2, ?3, ?4, ?5) ON CONFLICT(book_id, field_name) DO UPDATE SET field_value = excluded.field_value, edited_at = excluded.edited_at",
           params![Uuid::new_v4().to_string(), book_id, field_name, field_value, now],
         )?;
       }
+      tx.commit()?;
     }
     Ok(())
   }
