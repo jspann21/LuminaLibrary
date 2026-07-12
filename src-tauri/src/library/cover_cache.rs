@@ -1,17 +1,18 @@
 use std::{
     collections::HashSet,
     fs::{self, File},
-    io::BufWriter,
+    io::{BufWriter, Cursor},
     path::{Path, PathBuf},
     time::Duration,
 };
 
 use anyhow::{ensure, Context};
-use image::{codecs::jpeg::JpegEncoder, ImageEncoder};
+use image::{codecs::jpeg::JpegEncoder, ImageEncoder, ImageReader, Limits};
 use reqwest::{blocking::Client as HttpClient, Url};
 use sha2::{Digest, Sha256};
 
 const MAX_COVER_BYTES: u64 = 8 * 1024 * 1024;
+const MAX_COVER_DECODE_BYTES: u64 = 64 * 1024 * 1024;
 const COVER_THUMB_MAX_WIDTH: u32 = 384;
 const COVER_THUMB_MAX_HEIGHT: u32 = 576;
 
@@ -73,7 +74,13 @@ impl CoverCache {
             "cover image is too large"
         );
 
-        let image = image::load_from_memory(&bytes).context("failed to decode cover image")?;
+        let mut reader = ImageReader::new(Cursor::new(&bytes))
+            .with_guessed_format()
+            .context("failed to detect cover image format")?;
+        let mut limits = Limits::default();
+        limits.max_alloc = Some(MAX_COVER_DECODE_BYTES);
+        reader.limits(limits);
+        let image = reader.decode().context("failed to decode cover image")?;
         let thumb = image
             .thumbnail(COVER_THUMB_MAX_WIDTH, COVER_THUMB_MAX_HEIGHT)
             .to_rgb8();
