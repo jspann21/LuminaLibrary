@@ -80,23 +80,32 @@ function getInputValueAfterPaste(event: ClipboardEvent<HTMLInputElement>) {
     return `${input.value.slice(0, selectionStart)}${pastedText}${input.value.slice(selectionEnd)}`
 }
 
-function canLoadImageUrl(url: string) {
+function canLoadImageUrl(url: string, signal: AbortSignal) {
     return new Promise<boolean>((resolve) => {
         const image = new Image()
         let settled = false
+        let timeoutId = 0
 
         const finish = (result: boolean) => {
             if (settled) return
             settled = true
             clearTimeout(timeoutId)
+            signal.removeEventListener('abort', handleAbort)
             image.onload = null
             image.onerror = null
+            if (!result) image.src = ''
             resolve(result)
         }
+        const handleAbort = () => finish(false)
 
-        const timeoutId = window.setTimeout(() => finish(false), IMAGE_LOAD_TIMEOUT_MS)
+        timeoutId = window.setTimeout(() => finish(false), IMAGE_LOAD_TIMEOUT_MS)
         image.onload = () => finish(image.naturalWidth > 0 && image.naturalHeight > 0)
         image.onerror = () => finish(false)
+        signal.addEventListener('abort', handleAbort, { once: true })
+        if (signal.aborted) {
+            finish(false)
+            return
+        }
         image.referrerPolicy = 'no-referrer'
         image.src = url
     })
@@ -140,11 +149,13 @@ export function CoverPickerModal({
     const mountedRef = useRef(true)
     const customUrlRef = useRef(customUrl)
     const customUrlCheckRef = useRef(0)
+    const customUrlAbortRef = useRef<AbortController | null>(null)
 
     useEffect(() => {
         mountedRef.current = true
         return () => {
             mountedRef.current = false
+            customUrlAbortRef.current?.abort()
         }
     }, [])
 
@@ -207,6 +218,8 @@ export function CoverPickerModal({
     const validateCustomImageUrl = async (url: string) => {
         const formatError = getCustomCoverUrlFormatError(url)
         if (formatError) {
+            customUrlAbortRef.current?.abort()
+            customUrlAbortRef.current = null
             customUrlCheckRef.current += 1
             setIsCheckingCustomUrl(false)
             setCustomUrlError(formatError)
@@ -215,10 +228,14 @@ export function CoverPickerModal({
 
         const checkId = customUrlCheckRef.current + 1
         customUrlCheckRef.current = checkId
+        customUrlAbortRef.current?.abort()
+        const abortController = new AbortController()
+        customUrlAbortRef.current = abortController
         setCustomUrlError(null)
         setIsCheckingCustomUrl(true)
 
-        const didLoad = await canLoadImageUrl(url)
+        const didLoad = await canLoadImageUrl(url, abortController.signal)
+        if (customUrlAbortRef.current === abortController) customUrlAbortRef.current = null
         if (!mountedRef.current || customUrlCheckRef.current !== checkId || customUrlRef.current.trim() !== url) return false
 
         setIsCheckingCustomUrl(false)
@@ -266,6 +283,8 @@ export function CoverPickerModal({
         customUrlRef.current = nextUrl
         setCustomUrl(nextUrl)
         if (!nextUrl) {
+            customUrlAbortRef.current?.abort()
+            customUrlAbortRef.current = null
             customUrlCheckRef.current += 1
             setIsCheckingCustomUrl(false)
             setCustomUrlError(null)
@@ -275,6 +294,8 @@ export function CoverPickerModal({
     }
 
     const handleCustomUrlChange = (value: string) => {
+        customUrlAbortRef.current?.abort()
+        customUrlAbortRef.current = null
         customUrlCheckRef.current += 1
         customUrlRef.current = value
         setCustomUrl(value)
@@ -287,6 +308,10 @@ export function CoverPickerModal({
     }
 
     const handleToggleUrlInput = () => {
+        if (showUrlInput) {
+            customUrlAbortRef.current?.abort()
+            customUrlAbortRef.current = null
+        }
         setShowUrlInput((value) => {
             if (value) setCustomUrlError(null)
             if (!value) setShowImageSearch(false)
