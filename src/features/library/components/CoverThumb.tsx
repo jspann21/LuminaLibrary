@@ -4,6 +4,12 @@ import { BookOpen } from 'lucide-react'
 import { cx } from '../lib/cx'
 import type { CoverThumbProps } from '../model/types'
 
+type CoverLoadState = {
+  sourceKey: string
+  failedSrcs: string[]
+  loadedSrc: string | null
+}
+
 export const CoverThumb = memo(function CoverThumb({
   coverUrl,
   coverLocalPath,
@@ -16,8 +22,10 @@ export const CoverThumb = memo(function CoverThumb({
   const normalizedRemoteSrc = coverUrl?.trim() || ''
   const normalizedLocalPath = coverLocalPath?.trim() || ''
   const localSrc = normalizedLocalPath ? convertFileSrc(normalizedLocalPath) : ''
-  const [failedSrcs, setFailedSrcs] = useState<string[]>([])
-  const [loadedSrc, setLoadedSrc] = useState<string | null>(null)
+  const sourceKey = `${localSrc}\n${normalizedRemoteSrc}`
+  const [loadState, setLoadState] = useState<CoverLoadState>({ sourceKey, failedSrcs: [], loadedSrc: null })
+  const failedSrcs = loadState.sourceKey === sourceKey ? loadState.failedSrcs : []
+  const loadedSrc = loadState.sourceKey === sourceKey ? loadState.loadedSrc : null
   const srcCandidates = [localSrc, normalizedRemoteSrc].filter(Boolean)
   const src = srcCandidates.find((candidate) => !failedSrcs.includes(candidate)) ?? ''
 
@@ -51,8 +59,12 @@ export const CoverThumb = memo(function CoverThumb({
         fetchPriority={fetchPriority}
         decoding="async"
         referrerPolicy="no-referrer"
-        onLoad={() => setLoadedSrc(src)}
-        onError={() => setFailedSrcs((current) => (current.includes(src) ? current : [...current, src]))}
+        onLoad={() => setLoadState({ sourceKey, failedSrcs, loadedSrc: src })}
+        onError={() => setLoadState({
+          sourceKey,
+          failedSrcs: failedSrcs.includes(src) ? failedSrcs : [...failedSrcs, src],
+          loadedSrc,
+        })}
       />
       {libraryThingBadge ? <LibraryThingBadge /> : null}
     </div>
