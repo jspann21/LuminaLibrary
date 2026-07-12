@@ -65,6 +65,18 @@ impl Repository {
     Ok(())
   }
 
+  pub fn referenced_cover_paths(&self) -> anyhow::Result<HashSet<PathBuf>> {
+    let conn = self.conn()?;
+    let mut stmt = conn.prepare(
+      "SELECT DISTINCT cover_local_path FROM books WHERE cover_local_path IS NOT NULL AND cover_local_path <> ''",
+    )?;
+    let mut paths = HashSet::new();
+    for row in stmt.query_map([], |row| row.get::<_, String>(0))? {
+      paths.insert(PathBuf::from(row?));
+    }
+    Ok(paths)
+  }
+
   pub fn init_schema(&self) -> anyhow::Result<()> {
     let conn = self.conn()?;
     conn.execute_batch(

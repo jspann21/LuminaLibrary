@@ -79,6 +79,14 @@ impl LibraryService {
     }
 
     let cover_cache = CoverCache::new(app_data_dir.join("covers"))?;
+    match repository
+      .referenced_cover_paths()
+      .and_then(|paths| cover_cache.prune_unreferenced(&paths))
+    {
+      Ok(removed) if removed > 0 => log::info!("startup_cover_cache_cleanup removed_files={removed}"),
+      Err(err) => log::warn!("startup_cover_cache_cleanup_failed error={err}"),
+      _ => {}
+    }
     let http = HttpClient::builder()
       .timeout(Duration::from_secs(15))
       .user_agent("lumina-library-desktop/0.1")

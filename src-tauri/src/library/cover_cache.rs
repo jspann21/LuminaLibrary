@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs::{self, File},
     io::BufWriter,
     path::{Path, PathBuf},
@@ -96,6 +97,22 @@ impl CoverCache {
 
     pub fn cached_file_exists(path: &str) -> bool {
         is_existing_file(Path::new(path))
+    }
+
+    pub fn prune_unreferenced(&self, referenced_paths: &HashSet<PathBuf>) -> anyhow::Result<usize> {
+        let mut removed = 0;
+        for entry in fs::read_dir(&self.cache_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().and_then(|extension| extension.to_str()) != Some("jpg")
+                || referenced_paths.contains(&path)
+            {
+                continue;
+            }
+            fs::remove_file(&path)?;
+            removed += 1;
+        }
+        Ok(removed)
     }
 
     fn cache_path(&self, book_id: &str, cover_url: &str) -> PathBuf {
