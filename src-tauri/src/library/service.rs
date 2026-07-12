@@ -50,6 +50,7 @@ pub struct LibraryService {
   scanner: Scanner,
   watcher: FolderWatcher,
   cover_cache: CoverCache,
+  http: HttpClient,
 }
 
 impl LibraryService {
@@ -78,6 +79,11 @@ impl LibraryService {
     }
 
     let cover_cache = CoverCache::new(app_data_dir.join("covers"))?;
+    let http = HttpClient::builder()
+      .timeout(Duration::from_secs(15))
+      .user_agent("lumina-library-desktop/0.1")
+      .build()
+      .context("failed to initialize library service HTTP client")?;
     let scanner = Scanner::new(repository.clone(), enricher, app_handle.clone(), cover_cache.clone());
     let watcher = FolderWatcher::new(scanner.clone(), repository.clone(), app_handle)?;
     Ok(Self {
@@ -86,6 +92,7 @@ impl LibraryService {
       scanner,
       watcher,
       cover_cache,
+      http,
     })
   }
 
@@ -232,13 +239,8 @@ impl LibraryService {
       });
     };
 
-    let client = HttpClient::builder()
-      .timeout(Duration::from_secs(12))
-      .user_agent("lumina-library-desktop/0.1")
-      .build()
-      .context("failed to initialize http client for API key test")?;
-
-    let response = client
+    let response = self
+      .http
       .get("https://www.googleapis.com/books/v1/volumes")
       .query(&[
         ("q", "isbn:9780140328721"),
@@ -306,7 +308,7 @@ impl LibraryService {
       });
     };
 
-    let response = brave_image_search_request(&resolved_key, "9780140328721 book cover", 1);
+    let response = brave_image_search_request(&self.http, &resolved_key, "9780140328721 book cover", 1);
     let response = match response {
       Ok(value) => value,
       Err(_) => {
@@ -1709,7 +1711,7 @@ impl LibraryService {
       .get_brave_search_api_key()?
       .or_else(env_brave_search_api_key)
       .ok_or_else(|| anyhow!("Brave Search API key is not configured. Add one in Settings > Integrations."))?;
-    let response = brave_image_search_request(&api_key, query, 30)
+    let response = brave_image_search_request(&self.http, &api_key, query, 30)
       .context("Could not reach Brave Search. Check the internet connection and try again.")?;
 
     let status = response.status();
@@ -2701,13 +2703,13 @@ fn normalize_brave_search_api_key(input: &str) -> anyhow::Result<String> {
   Ok(trimmed.to_string())
 }
 
-fn brave_image_search_request(api_key: &str, query: &str, count: u16) -> anyhow::Result<reqwest::blocking::Response> {
+fn brave_image_search_request(
+  client: &HttpClient,
+  api_key: &str,
+  query: &str,
+  count: u16,
+) -> anyhow::Result<reqwest::blocking::Response> {
   let count = count.to_string();
-  let client = HttpClient::builder()
-    .timeout(Duration::from_secs(15))
-    .user_agent("lumina-library-desktop/0.1")
-    .build()
-    .context("failed to initialize Brave Search client")?;
   client
     .get("https://api.search.brave.com/res/v1/images/search")
     .header("Accept", "application/json")
