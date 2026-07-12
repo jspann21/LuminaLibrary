@@ -15,6 +15,7 @@ export function useScanMutations(deps: {
     const [coverRefreshNotice, setCoverRefreshNotice] = useState<CoverRefreshNotice | null>(null)
     const [maintenanceNotice, setMaintenanceNotice] = useState<MaintenanceNotice | null>(null)
     const startupReconcileTriggeredRef = useRef(false)
+    const startupReconcileTimerRef = useRef<number | undefined>(undefined)
 
     const scanMutation = useMutation({
         mutationFn: (folderId?: string) => api.startScan(folderId),
@@ -112,9 +113,17 @@ export function useScanMutations(deps: {
         }
         startupReconcileTriggeredRef.current = true
         const timer = window.setTimeout(() => {
+            startupReconcileTimerRef.current = undefined
             reconcileLocalFiles()
         }, 1200)
-        return () => window.clearTimeout(timer)
+        startupReconcileTimerRef.current = timer
+        return () => {
+            window.clearTimeout(timer)
+            if (startupReconcileTimerRef.current === timer) {
+                startupReconcileTimerRef.current = undefined
+                startupReconcileTriggeredRef.current = false
+            }
+        }
     }, [reconcileLocalFiles])
 
     return {
