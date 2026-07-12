@@ -8,15 +8,18 @@ use std::{
   time::{Duration, SystemTime},
 };
 
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, ensure, Context};
 use chrono::{DateTime, LocalResult, NaiveTime, TimeZone, Utc};
 use chrono_tz::America::Los_Angeles;
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use regex::Regex;
-use reqwest::{blocking::Client, StatusCode};
+use reqwest::{
+  blocking::{Client, Response},
+  StatusCode,
+};
 use roxmltree::Document as XmlDocument;
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Deserialize};
 use std::collections::{HashMap, HashSet};
 use sha2::{Digest, Sha256};
 use strsim::jaro_winkler;
@@ -66,6 +69,9 @@ static TITLE_VOLUME_PATTERN: Lazy<Regex> = Lazy::new(|| {
 const COVER_MATCH_THRESHOLD: f64 = 0.86;
 const ENRICHMENT_TITLE_VARIANT_LIMIT: usize = 6;
 const MAX_CANDIDATES_PER_SOURCE: usize = 5;
+const MAX_METADATA_RESPONSE_BYTES: u64 = 4 * 1024 * 1024;
+const MAX_IMAGE_PROBE_BYTES: u64 = 8 * 1024 * 1024;
+const MAX_ERROR_RESPONSE_BYTES: u64 = 64 * 1024;
 const GOOGLE_BOOKS_PLACEHOLDER_SHA256: [&str; 1] = [
   // Google Books "image not available" placeholder observed from books/content endpoint.
   "12557f8948b8bdc6af436e3a8b3adddd45f7f7d2b67c5832e799cdf4686f72bb",
@@ -376,7 +382,7 @@ impl OpenLibraryEnricher {
         continue;
       }
 
-      let payload: OpenLibrarySearchResponse = match response.json() {
+      let payload: OpenLibrarySearchResponse = match read_json_response_limited(response) {
         Ok(value) => value,
         Err(_) => continue,
       };
@@ -609,8 +615,8 @@ impl OpenLibraryEnricher {
     if !content_type.is_empty() && !content_type.starts_with("image/") {
       return false;
     }
-    match response.bytes() {
-      Ok(bytes) => is_known_google_placeholder_image(bytes.as_ref()),
+    match read_response_bytes_limited(response, MAX_IMAGE_PROBE_BYTES) {
+      Ok(bytes) => is_known_google_placeholder_image(&bytes),
       Err(_) => false,
     }
   }
@@ -657,7 +663,8 @@ impl OpenLibraryEnricher {
         continue;
       }
 
-      let mut payload: HashMap<String, OpenLibraryBookData> = response.json().unwrap_or_default();
+      let mut payload: HashMap<String, OpenLibraryBookData> =
+        read_json_response_limited(response).unwrap_or_default();
       if let Some(book) = payload.remove(&bib_key) {
         matched_input_isbn = Some(isbn);
         matched_book = Some(book);
@@ -813,7 +820,7 @@ impl OpenLibraryEnricher {
     if !response.status().is_success() {
       return (None, None);
     }
-    let detail: OpenLibraryEditionData = match response.json() {
+    let detail: OpenLibraryEditionData = match read_json_response_limited(response) {
       Ok(value) => value,
       Err(_) => return (None, None),
     };
@@ -959,7 +966,7 @@ impl OpenLibraryEnricher {
       if !response.status().is_success() {
         continue;
       }
-      let payload: OpenLibrarySearchResponse = match response.json() {
+      let payload: OpenLibrarySearchResponse = match read_json_response_limited(response) {
         Ok(value) => value,
         Err(_) => continue,
       };
@@ -1104,14 +1111,14 @@ impl OpenLibraryEnricher {
         .context("google books request failed")?;
       let status = response.status();
       if !status.is_success() {
-        let body = response.text().unwrap_or_default();
+        let body = read_response_text_limited(response, MAX_ERROR_RESPONSE_BYTES);
         if self.handle_google_books_error_status(status, &body) {
           return Ok(all_candidates);
         }
         continue;
       }
 
-      let payload: GoogleBooksResponse = match response.json() {
+      let payload: GoogleBooksResponse = match read_json_response_limited(response) {
         Ok(value) => value,
         Err(_) => continue,
       };
@@ -1289,11 +1296,11 @@ impl OpenLibraryEnricher {
       .ok()?;
     let status = response.status();
     if !status.is_success() {
-      let body = response.text().unwrap_or_default();
+      let body = read_response_text_limited(response, MAX_ERROR_RESPONSE_BYTES);
       let _ = self.handle_google_books_error_status(status, &body);
       return None;
     }
-    let payload: GoogleBooksResponse = response.json().ok()?;
+    let payload: GoogleBooksResponse = read_json_response_limited(response).ok()?;
     let item = payload.items.and_then(|items| items.into_iter().next())?;
     let links = item.volume_info.and_then(|info| info.image_links)?;
     let image_url = links
@@ -1323,8 +1330,8 @@ impl OpenLibraryEnricher {
       return None;
     }
     if is_google_books_cover_url(&normalized) {
-      let bytes = response.bytes().ok()?;
-      if is_known_google_placeholder_image(bytes.as_ref()) {
+      let bytes = read_response_bytes_limited(response, MAX_IMAGE_PROBE_BYTES).ok()?;
+      if is_known_google_placeholder_image(&bytes) {
         return None;
       }
     }
@@ -1427,7 +1434,7 @@ impl OpenLibraryEnricher {
         let response = self.client.get("https://openlibrary.org/search.json").query(&query).send().ok();
         let Some(response) = response else { continue };
         if !response.status().is_success() { continue }
-        let payload: OpenLibrarySearchResponse = match response.json() {
+        let payload: OpenLibrarySearchResponse = match read_json_response_limited(response) {
           Ok(value) => value,
           Err(_) => continue,
         };
@@ -1492,7 +1499,7 @@ impl OpenLibraryEnricher {
               }
             }
           } else {
-            let body = response.text().unwrap_or_default();
+            let body = read_response_text_limited(response, MAX_ERROR_RESPONSE_BYTES);
             let _ = self.handle_google_books_error_status(status, &body);
           }
         }
@@ -2625,6 +2632,28 @@ fn first_author_token(author: &str) -> Option<String> {
     }
   }
   sanitize_metadata_value(primary)
+}
+
+fn read_response_bytes_limited(response: Response, max_bytes: u64) -> anyhow::Result<Vec<u8>> {
+  if let Some(content_length) = response.content_length() {
+    ensure!(content_length <= max_bytes, "remote response is too large");
+  }
+  let initial_capacity = response.content_length().unwrap_or(0) as usize;
+  let mut bytes = Vec::with_capacity(initial_capacity);
+  response.take(max_bytes + 1).read_to_end(&mut bytes)?;
+  ensure!(bytes.len() as u64 <= max_bytes, "remote response is too large");
+  Ok(bytes)
+}
+
+fn read_json_response_limited<T: DeserializeOwned>(response: Response) -> anyhow::Result<T> {
+  let bytes = read_response_bytes_limited(response, MAX_METADATA_RESPONSE_BYTES)?;
+  serde_json::from_slice(&bytes).context("remote service returned invalid JSON")
+}
+
+fn read_response_text_limited(response: Response, max_bytes: u64) -> String {
+  read_response_bytes_limited(response, max_bytes)
+    .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+    .unwrap_or_default()
 }
 
 #[cfg(test)]
