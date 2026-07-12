@@ -72,6 +72,8 @@ const MAX_CANDIDATES_PER_SOURCE: usize = 5;
 const MAX_METADATA_RESPONSE_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_IMAGE_PROBE_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_ERROR_RESPONSE_BYTES: u64 = 64 * 1024;
+const MAX_EPUB_CONTAINER_BYTES: u64 = 1024 * 1024;
+const MAX_EPUB_OPF_BYTES: u64 = 4 * 1024 * 1024;
 const GOOGLE_BOOKS_PLACEHOLDER_SHA256: [&str; 1] = [
   // Google Books "image not available" placeholder observed from books/content endpoint.
   "12557f8948b8bdc6af436e3a8b3adddd45f7f7d2b67c5832e799cdf4686f72bb",
@@ -1737,11 +1739,12 @@ pub fn parse_epub_metadata(path: &Path) -> anyhow::Result<ParsedMetadata> {
   let file = File::open(path).with_context(|| format!("failed to open epub {}", path.display()))?;
   let mut zip = ZipArchive::new(file).context("failed to read epub zip")?;
 
-  let mut container_xml = String::new();
-  zip
-    .by_name("META-INF/container.xml")
-    .context("missing epub container.xml")?
-    .read_to_string(&mut container_xml)?;
+  let container_xml = read_epub_entry_limited(
+    &mut zip,
+    "META-INF/container.xml",
+    MAX_EPUB_CONTAINER_BYTES,
+  )
+  .context("missing or invalid epub container.xml")?;
 
   let container_doc = XmlDocument::parse(&container_xml).context("invalid container.xml")?;
   let rootfile_path = container_doc
@@ -1751,11 +1754,8 @@ pub fn parse_epub_metadata(path: &Path) -> anyhow::Result<ParsedMetadata> {
     .ok_or_else(|| anyhow!("epub rootfile path not found"))?
     .to_string();
 
-  let mut opf_xml = String::new();
-  zip
-    .by_name(&rootfile_path)
-    .with_context(|| format!("failed to open opf {rootfile_path}"))?
-    .read_to_string(&mut opf_xml)?;
+  let opf_xml = read_epub_entry_limited(&mut zip, &rootfile_path, MAX_EPUB_OPF_BYTES)
+    .with_context(|| format!("failed to read opf {rootfile_path}"))?;
 
   let opf_doc = XmlDocument::parse(&opf_xml).context("invalid opf document")?;
   let mut metadata = ParsedMetadata::default();
@@ -1794,6 +1794,19 @@ pub fn parse_epub_metadata(path: &Path) -> anyhow::Result<ParsedMetadata> {
   }
 
   Ok(metadata)
+}
+
+fn read_epub_entry_limited(
+  zip: &mut ZipArchive<File>,
+  entry_name: &str,
+  max_bytes: u64,
+) -> anyhow::Result<String> {
+  let entry = zip.by_name(entry_name)?;
+  ensure!(entry.size() <= max_bytes, "epub metadata entry is too large");
+  let mut contents = String::with_capacity(entry.size() as usize);
+  entry.take(max_bytes + 1).read_to_string(&mut contents)?;
+  ensure!(contents.len() as u64 <= max_bytes, "epub metadata entry is too large");
+  Ok(contents)
 }
 
 pub fn infer_metadata_from_filename(path: &Path) -> ParsedMetadata {
