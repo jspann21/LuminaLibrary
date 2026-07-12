@@ -364,6 +364,11 @@ impl LibraryService {
 
   pub fn cache_book_covers(&self, book_ids: Vec<String>) -> anyhow::Result<u32> {
     validate_book_id_batch(&book_ids)?;
+    let mut seen_book_ids = std::collections::HashSet::with_capacity(book_ids.len());
+    let book_ids: Vec<String> = book_ids
+      .into_iter()
+      .filter(|book_id| seen_book_ids.insert(book_id.clone()))
+      .collect();
     if book_ids.is_empty() {
       return Ok(0);
     }
