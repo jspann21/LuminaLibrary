@@ -90,7 +90,7 @@ impl CoverCache {
             .to_rgb8();
 
         let tmp_path = cache_path.with_extension("tmp");
-        {
+        let write_result = (|| -> anyhow::Result<()> {
             let file = File::create(&tmp_path)?;
             let writer = BufWriter::new(file);
             let encoder = JpegEncoder::new_with_quality(writer, 82);
@@ -100,8 +100,16 @@ impl CoverCache {
                 thumb.height(),
                 image::ExtendedColorType::Rgb8,
             )?;
+            Ok(())
+        })();
+        if let Err(err) = write_result {
+            let _ = fs::remove_file(&tmp_path);
+            return Err(err);
         }
-        fs::rename(&tmp_path, &cache_path)?;
+        if let Err(err) = fs::rename(&tmp_path, &cache_path) {
+            let _ = fs::remove_file(&tmp_path);
+            return Err(err.into());
+        }
 
         Ok(Some(cache_path.to_string_lossy().to_string()))
     }
@@ -115,9 +123,9 @@ impl CoverCache {
         for entry in fs::read_dir(&self.cache_dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.extension().and_then(|extension| extension.to_str()) != Some("jpg")
-                || referenced_paths.contains(&path)
-            {
+            let extension = path.extension().and_then(|extension| extension.to_str());
+            let is_managed_file = matches!(extension, Some("jpg" | "tmp"));
+            if !is_managed_file || referenced_paths.contains(&path) {
                 continue;
             }
             fs::remove_file(&path)?;
