@@ -15,6 +15,8 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter};
 use walkdir::WalkDir;
 
+const WATCHER_EVENT_QUEUE_CAPACITY: usize = 256;
+
 use crate::library::cover_cache::CoverCache;
 use crate::library::db::Repository;
 use crate::library::metadata::{
@@ -1743,10 +1745,13 @@ impl FolderWatcher {
     let watched_paths = Arc::new(Mutex::new(HashMap::<String, String>::new()));
     let watched_paths_for_thread = watched_paths.clone();
 
-    let (tx, rx) = mpsc::channel::<notify::Result<Event>>();
+    let (tx, rx) = mpsc::sync_channel::<notify::Result<Event>>(WATCHER_EVENT_QUEUE_CAPACITY);
     let watcher = RecommendedWatcher::new(
       move |event| {
-        let _ = tx.send(event);
+        // A scan reconciles the complete folder, so events that arrive during a
+        // burst are redundant. Keep notify's callback non-blocking and prevent
+        // an unbounded backlog while a scan is in progress.
+        let _ = tx.try_send(event);
       },
       Config::default().with_poll_interval(Duration::from_secs(2)),
     )?;
