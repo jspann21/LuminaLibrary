@@ -834,7 +834,8 @@ impl Scanner {
     let worker_count = ENRICHMENT_WORKERS.min(queue.len()).max(1);
     let work_iter = Arc::new(StdMutex::new(queue.into_iter()));
     let rate_limiter = Arc::new(StdMutex::new(Instant::now()));
-    let (result_tx, result_rx) = mpsc::channel::<(String, anyhow::Result<EnrichmentTaskOutcome>)>();
+    let (result_tx, result_rx) =
+      mpsc::sync_channel::<(String, anyhow::Result<EnrichmentTaskOutcome>)>(SCAN_WORK_QUEUE_CAPACITY);
     let mut handles = Vec::with_capacity(worker_count);
 
     for _ in 0..worker_count {
