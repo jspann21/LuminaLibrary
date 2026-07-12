@@ -1,7 +1,7 @@
 use std::{
     collections::HashSet,
     fs::{self, File},
-    io::{BufWriter, Cursor},
+    io::{BufWriter, Cursor, Read},
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -68,7 +68,11 @@ impl CoverCache {
             );
         }
 
-        let bytes = response.bytes()?;
+        let initial_capacity = response.content_length().unwrap_or(0) as usize;
+        let mut bytes = Vec::with_capacity(initial_capacity);
+        response
+            .take(MAX_COVER_BYTES + 1)
+            .read_to_end(&mut bytes)?;
         ensure!(
             bytes.len() as u64 <= MAX_COVER_BYTES,
             "cover image is too large"
