@@ -1304,6 +1304,16 @@ impl LibraryService {
         } else {
           self.repository.upsert_book(input, &imported_at)?
         };
+        if let Some(publication_display) = row.publication_display.as_deref() {
+          self.repository.repair_legacy_library_thing_publication(
+            &book_id,
+            publication_display,
+            row.publisher.as_deref(),
+            row.publish_date.as_deref(),
+            row.page_count,
+            &imported_at,
+          )?;
+        }
         let metadata_json = serde_json::to_string(&row.raw)?;
         self.repository.upsert_external_source(
           &book_id,
@@ -1937,6 +1947,7 @@ struct LibraryThingExportRow {
   title: Option<String>,
   authors: Vec<String>,
   publisher: Option<String>,
+  publication_display: Option<String>,
   publish_date: Option<String>,
   isbn10: Option<String>,
   isbn13: Option<String>,
@@ -2047,6 +2058,14 @@ fn json_scalar_text(value: &JsonValue) -> Option<String> {
 }
 
 fn library_thing_row_from_map(map: &HashMap<String, String>, raw: JsonValue) -> LibraryThingExportRow {
+  // LibraryThing's tab-delimited export uses `publication` as a display field. It
+  // commonly contains all three values (for example, `Zondervan (2021), 208
+  // pages`) rather than just a publisher name.
+  let publication = export_value(map, &["publication"]);
+  let (publication_publisher, publication_date, publication_page_count) = publication
+    .as_deref()
+    .map(parse_library_thing_publication)
+    .unwrap_or((None, None, None));
   let mut row = LibraryThingExportRow {
     book_id: export_value(map, &["book_id", "books_id", "bookid", "booksid", "book id", "books id", "book"]).and_then(normalized_library_thing_id),
     work_id: export_value(map, &["workcode", "work_code", "work_id", "workid", "work id"]).and_then(normalized_library_thing_id),
@@ -2068,13 +2087,16 @@ fn library_thing_row_from_map(map: &HashMap<String, String>, raw: JsonValue) -> 
     )
     .map(|value| parse_library_thing_author_list(&value))
     .unwrap_or_default(),
-    publisher: export_value(map, &["publisher", "publication"]),
-    publish_date: export_value(map, &["date", "publish_date", "published", "publication_date", "publication date"]),
+    publisher: export_value(map, &["publisher"]).or(publication_publisher),
+    publication_display: publication,
+    publish_date: export_value(map, &["date", "publish_date", "published", "publication_date", "publication date"]).or(publication_date),
     isbn10: export_value(map, &["isbn10", "isbn_10", "isbn 10", "originalisbn"]).and_then(|value| normalize_valid_isbn(&value)).filter(|isbn| isbn.len() == 10),
     isbn13: export_value(map, &["isbn13", "isbn_13", "isbn 13"]).and_then(|value| normalize_valid_isbn(&value)).filter(|isbn| isbn.len() == 13),
     description: export_value(map, &["summary", "description", "review", "comments"]),
     language: export_value(map, &["language", "language_1", "language 1"]),
-    page_count: export_value(map, &["pages", "page_count", "pagecount", "page count"]).and_then(parse_i64_value),
+    page_count: export_value(map, &["pages", "page_count", "pagecount", "page count"])
+      .and_then(parse_i64_value)
+      .or(publication_page_count),
     series: export_value(map, &["series"]),
     cover_url: export_value(map, &["cover_url", "coverurl", "cover", "cover image", "cover_image"]),
     raw,
@@ -2084,6 +2106,40 @@ fn library_thing_row_from_map(map: &HashMap<String, String>, raw: JsonValue) -> 
     assign_library_thing_isbns(&mut row, export_value(map, &["isbns", "isbn", "isbn_list", "isbn list"]));
   }
   row
+}
+
+fn parse_library_thing_publication(value: &str) -> (Option<String>, Option<String>, Option<i64>) {
+  let value = value.trim();
+  if value.is_empty() {
+    return (None, None, None);
+  }
+
+  let (publication, page_count) = value
+    .rsplit_once(',')
+    .and_then(|(publication, suffix)| parse_library_thing_page_count(suffix).map(|pages| (publication.trim(), Some(pages))))
+    .unwrap_or((value, None));
+
+  let (publisher, publish_date) = publication
+    .strip_suffix(')')
+    .and_then(|without_closing| without_closing.rsplit_once(" ("))
+    .and_then(|(publisher, date)| {
+      let publisher = publisher.trim();
+      let date = date.trim();
+      (!publisher.is_empty() && date.chars().any(|character| character.is_ascii_digit()))
+        .then(|| (publisher.to_string(), date.to_string()))
+    })
+    .map(|(publisher, date)| (Some(publisher), Some(date)))
+    .unwrap_or_else(|| (Some(publication.to_string()), None));
+
+  (publisher, publish_date, page_count)
+}
+
+fn parse_library_thing_page_count(value: &str) -> Option<i64> {
+  let value = value.trim();
+  let (count, unit) = value.split_once(char::is_whitespace)?;
+  matches!(unit.trim().to_ascii_lowercase().as_str(), "page" | "pages" | "p" | "p." | "pp" | "pp.")
+    .then(|| parse_i64_value(count.to_string()))
+    .flatten()
 }
 
 fn fill_library_thing_row_from_raw_json(row: &mut LibraryThingExportRow) {
@@ -2853,7 +2909,7 @@ fn open_url_with_system_app(url: &str) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
   use super::{
-    csv_import_progress_percent, library_thing_book_url, parse_brave_image_results, parse_library_thing_export, normalize_book_patch_isbns,
+    csv_import_progress_percent, library_thing_book_url, parse_brave_image_results, parse_library_thing_export, parse_library_thing_publication, normalize_book_patch_isbns,
     validate_book_id_batch, validate_cover_url_value, validate_csv_export_path, validate_csv_import_path,
     validate_library_thing_import_path, validate_metadata_update_batch, validate_search_query, validate_tag_inputs,
     MAX_CSV_IMPORT_BYTES, MAX_LIBRARY_THING_IMPORT_BYTES,
@@ -2917,7 +2973,7 @@ mod tests {
     let file = temp_test_path("librarything.tsv");
     fs::write(
       &file,
-      "book id\ttitle\tauthor (first, last)\tISBNs\tlanguage 1\n301952134\tDune\tFrank Herbert\t9780441172719\ten\n",
+      "book id\ttitle\tauthor (first, last)\tISBNs\tlanguage 1\tPublication\n301952134\tDune\tFrank Herbert\t9780441172719\ten\tZondervan (2021), 208 pages\n",
     )
     .expect("write tsv");
 
@@ -2925,7 +2981,18 @@ mod tests {
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].book_id.as_deref(), Some("301952134"));
     assert_eq!(rows[0].language.as_deref(), Some("en"));
+    assert_eq!(rows[0].publisher.as_deref(), Some("Zondervan"));
+    assert_eq!(rows[0].publish_date.as_deref(), Some("2021"));
+    assert_eq!(rows[0].page_count, Some(208));
     let _ = fs::remove_file(file);
+  }
+
+  #[test]
+  fn library_thing_publication_parser_preserves_unstructured_publishers() {
+    assert_eq!(
+      parse_library_thing_publication("Zondervan"),
+      (Some("Zondervan".to_string()), None, None)
+    );
   }
 
   #[test]

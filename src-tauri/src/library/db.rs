@@ -1600,6 +1600,33 @@ impl Repository {
     self.update_book_by_id_with_override_policy(book_id, input, now, false)
   }
 
+  pub fn repair_legacy_library_thing_publication(
+    &self,
+    book_id: &str,
+    publication_display: &str,
+    publisher: Option<&str>,
+    publish_date: Option<&str>,
+    page_count: Option<i64>,
+    now: &str,
+  ) -> anyhow::Result<()> {
+    let conn = self.conn()?;
+    conn.execute(
+      "UPDATE books
+       SET publisher = COALESCE(?2, publisher),
+           publish_date = COALESCE(publish_date, ?3),
+           page_count = COALESCE(page_count, ?4),
+           updated_at = ?5
+       WHERE id = ?1
+         AND publisher = ?6
+         AND EXISTS (
+           SELECT 1 FROM book_external_sources
+           WHERE book_id = books.id AND source = 'librarything'
+         )",
+      params![book_id, publisher, publish_date, page_count, now, publication_display],
+    )?;
+    Ok(())
+  }
+
   fn update_book_by_id_with_override_policy(
     &self,
     book_id: &str,
@@ -4105,6 +4132,63 @@ mod tests {
     assert_eq!(enabled_filtered.total, 1);
     assert_eq!(enabled_filtered.items[0].id, book_id);
     assert!(enabled_filtered.items[0].formats.contains(&"librarything".to_string()));
+  }
+
+  #[test]
+  fn legacy_library_thing_publication_values_are_repaired_on_reimport() {
+    let db = TestDb::new();
+    let book_id = db
+      .repo
+      .upsert_book(
+        UpsertBookInput {
+          title: "Example Book".to_string(),
+          subtitle: None,
+          authors: vec!["Example Author".to_string()],
+          publisher: Some("Zondervan (2021), 208 pages".to_string()),
+          publish_date: None,
+          isbn10: None,
+          isbn13: None,
+          description: None,
+          language: None,
+          page_count: None,
+          series: None,
+          series_index: None,
+          cover_url: None,
+          metadata_source: "librarything".to_string(),
+          confidence: Some(0.92),
+        },
+        now(),
+      )
+      .expect("upsert book");
+    db
+      .repo
+      .upsert_external_source(
+        &book_id,
+        "librarything",
+        "301952134",
+        None,
+        "https://www.librarything.com/work/book/301952134",
+        "{}",
+        now(),
+      )
+      .expect("upsert source");
+
+    db
+      .repo
+      .repair_legacy_library_thing_publication(
+        &book_id,
+        "Zondervan (2021), 208 pages",
+        Some("Zondervan"),
+        Some("2021"),
+        Some(208),
+        now(),
+      )
+      .expect("repair legacy publication");
+
+    let detail = db.repo.get_book_detail(&book_id).expect("book detail");
+    assert_eq!(detail.publisher.as_deref(), Some("Zondervan"));
+    assert_eq!(detail.publish_date.as_deref(), Some("2021"));
+    assert_eq!(detail.page_count, Some(208));
   }
 
   #[test]
