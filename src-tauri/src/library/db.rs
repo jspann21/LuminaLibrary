@@ -37,12 +37,25 @@ struct BookDedupCandidate {
 
 impl Repository {
   pub fn new(db_path: PathBuf) -> anyhow::Result<Self> {
+    // Journal mode is persistent database state. Configure it once before the
+    // pool starts opening connections so concurrent workers never contend while
+    // trying to change it during connection initialization.
+    let bootstrap = Connection::open(&db_path)?;
+    bootstrap.execute_batch(
+      r#"
+      PRAGMA busy_timeout = 5000;
+      PRAGMA journal_mode = WAL;
+      PRAGMA foreign_keys = ON;
+      PRAGMA wal_autocheckpoint = 1000;
+      "#,
+    )?;
+    drop(bootstrap);
+
     let manager = SqliteConnectionManager::file(db_path).with_init(|conn| {
       conn.execute_batch(
         r#"
-        PRAGMA journal_mode = WAL;
-        PRAGMA foreign_keys = ON;
         PRAGMA busy_timeout = 5000;
+        PRAGMA foreign_keys = ON;
         PRAGMA wal_autocheckpoint = 1000;
         "#,
       )
@@ -1735,22 +1748,21 @@ impl Repository {
   ) -> anyhow::Result<()> {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
-    let status: String = tx.query_row(
-      "SELECT status FROM files WHERE id = ?1",
-      params![file_id],
-      |row| row.get(0),
+    // Make the first operation a write so SQLite obtains the writer lock before
+    // this transaction has a read snapshot. A deferred read followed by a write
+    // can otherwise fail with SQLITE_BUSY_SNAPSHOT under concurrent scan workers
+    // without invoking the configured busy timeout.
+    let updated = tx.execute(
+      "UPDATE files SET status = 'matched', parser_error = NULL, last_seen_at = ?1 WHERE id = ?2 AND status <> 'missing'",
+      params![now, file_id],
     )?;
-    if status == "missing" {
+    if updated == 0 {
       return Err(anyhow!("file no longer available for matching"));
     }
 
     tx.execute(
       "INSERT INTO book_files(id, book_id, file_id, format, is_primary) VALUES(?1, ?2, ?3, ?4, ?5) ON CONFLICT(file_id) DO UPDATE SET book_id = excluded.book_id, format = excluded.format, is_primary = excluded.is_primary",
       params![Uuid::new_v4().to_string(), book_id, file_id, format, is_primary as i64],
-    )?;
-    tx.execute(
-      "UPDATE files SET status = 'matched', parser_error = NULL, last_seen_at = ?1 WHERE id = ?2",
-      params![now, file_id],
     )?;
     tx.execute("DELETE FROM enrichment_jobs WHERE file_id = ?1", params![file_id])?;
     tx.commit()?;
