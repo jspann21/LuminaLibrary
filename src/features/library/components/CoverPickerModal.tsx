@@ -477,15 +477,20 @@ export function CoverPickerModal({
                                 <p className="min-w-0 truncate font-mono text-xs text-slate-400" title={imageSearchQuery || undefined}>
                                     {imageSearchQuery || 'Select a search field'}
                                 </p>
-                                <button
-                                    type="button"
-                                    onClick={() => { void handleImageSearch() }}
-                                    disabled={!imageSearchQuery || isSearchingImages}
-                                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accent-700 disabled:opacity-50"
+                                <span
+                                    className={cx('inline-flex', (!imageSearchQuery || isSearchingImages) && 'cursor-not-allowed')}
+                                    title={!imageSearchQuery ? 'Select at least one field to search' : isSearchingImages ? 'Searching images' : undefined}
                                 >
-                                    {isSearchingImages ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-                                    {isSearchingImages ? 'Searching' : 'Search'}
-                                </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { void handleImageSearch() }}
+                                        disabled={!imageSearchQuery || isSearchingImages}
+                                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-50"
+                                    >
+                                        {isSearchingImages ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                                        {isSearchingImages ? 'Searching' : 'Search'}
+                                    </button>
+                                </span>
                             </div>
                             {imageSearchError ? <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">{imageSearchError}</p> : null}
                         </div>
@@ -514,13 +519,18 @@ export function CoverPickerModal({
                                 )}
                                 autoFocus
                             />
-                            <button
-                                onClick={() => { void handleCustomUrl() }}
-                                disabled={!customUrl.trim() || isCheckingCustomUrl}
-                                className="rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accent-700 disabled:opacity-50"
+                            <span
+                                className={cx('inline-flex', (!customUrl.trim() || isCheckingCustomUrl) && 'cursor-not-allowed')}
+                                title={!customUrl.trim() ? 'Enter an image URL to add' : isCheckingCustomUrl ? 'Checking image link' : undefined}
                             >
-                                {isCheckingCustomUrl ? 'Checking' : 'Add'}
-                            </button>
+                                <button
+                                    onClick={() => { void handleCustomUrl() }}
+                                    disabled={!customUrl.trim() || isCheckingCustomUrl}
+                                    className="rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-50"
+                                >
+                                    {isCheckingCustomUrl ? 'Checking' : 'Add'}
+                                </button>
+                            </span>
                         </div>
                         {customUrlError ? (
                             <p id="cover-url-status" role="alert" className="mt-2 text-sm text-rose-600 dark:text-rose-400">
@@ -608,14 +618,19 @@ export function CoverPickerModal({
                     >
                         Cancel
                     </button>
-                    <button
-                        onClick={handleApply}
-                        disabled={selectedUrl === currentCoverUrl}
-                        className="inline-flex items-center gap-2 rounded-xl bg-accent-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-accent-700 disabled:opacity-50"
+                    <span
+                        className={cx('inline-flex', selectedUrl === currentCoverUrl && 'cursor-not-allowed')}
+                        title={selectedUrl === currentCoverUrl ? 'Select a different cover image to apply' : undefined}
                     >
-                        <Check size={16} />
-                        Apply
-                    </button>
+                        <button
+                            onClick={handleApply}
+                            disabled={selectedUrl === currentCoverUrl}
+                            className="inline-flex items-center gap-2 rounded-xl bg-accent-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-50"
+                        >
+                            <Check size={16} />
+                            Apply
+                        </button>
+                    </span>
                 </div>
             </motion.div>
         </>
