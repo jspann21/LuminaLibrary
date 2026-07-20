@@ -1,0 +1,3 @@
+## 2024-05-18 - Always Add Tooltips to Truncated Text
+**Learning:** Text truncation via CSS (`truncate` or `line-clamp`) effectively saves layout space, but completely hides information from users without an obvious way to reveal it. Adding a native HTML `title` attribute to the truncated element creates a native tooltip that displays the full text on hover. This simple addition has an outsized impact on usability and accessibility.
+**Action:** When applying Tailwind's `truncate` or `line-clamp` utilities to text elements that display dynamic user data (like titles, names, descriptions), always attach a corresponding `title` attribute containing the full text value to ensure users can read the complete content.
