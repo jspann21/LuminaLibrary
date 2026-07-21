@@ -80,8 +80,8 @@ export const LibraryBookCard = memo(function LibraryBookCard({
           />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
-          <p className="truncate text-sm text-slate-500 dark:text-slate-400">{authorLabel}</p>
+          <h3 title={title} className="truncate font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+          <p title={authorLabel} className="truncate text-sm text-slate-500 dark:text-slate-400">{authorLabel}</p>
         </div>
         <div className="flex items-center gap-2">
           {tags.slice(0, 3).map((tag) => (
@@ -141,14 +141,14 @@ export const LibraryBookCard = memo(function LibraryBookCard({
               </span>
             ))}
           </div>
-          <span className="truncate text-xs text-white/95">{authorLabel}</span>
+          <span title={authorLabel} className="truncate text-xs text-white/95">{authorLabel}</span>
         </div>
       </div>
       <div>
-        <h3 className="line-clamp-1 text-sm font-semibold text-slate-900 transition-colors group-hover:text-accent-600 dark:text-slate-100 dark:group-hover:text-accent-300">
+        <h3 title={title} className="line-clamp-1 text-sm font-semibold text-slate-900 transition-colors group-hover:text-accent-600 dark:text-slate-100 dark:group-hover:text-accent-300">
           {title}
         </h3>
-        <p className="mt-1 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">{authorLabel}</p>
+        <p title={authorLabel} className="mt-1 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">{authorLabel}</p>
       </div>
     </button>
   )
