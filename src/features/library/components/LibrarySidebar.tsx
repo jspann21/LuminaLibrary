@@ -78,7 +78,7 @@ export function LibrarySidebar({
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     <Tag size={16} className={cx('shrink-0', active ? 'text-accent-500' : 'text-slate-400')} />
-                    <span className="truncate">{tagItem.tag}</span>
+                    <span className="truncate" title={tagItem.tag}>{tagItem.tag}</span>
                   </span>
                   <span className="text-xs text-slate-400">{tagItem.count}</span>
                 </button>
