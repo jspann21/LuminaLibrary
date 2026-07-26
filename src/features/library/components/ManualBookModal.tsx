@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { BookPlus, Check, Loader2, X } from 'lucide-react'
 import type { BookDetail, BookPatch, DiscoveredFile } from '../../../lib/types'
 import { formatDisplayPath } from '../../../lib/format'
@@ -86,6 +86,18 @@ export function ManualBookModal({
     })
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const titleId = useId()
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return
+            event.preventDefault()
+            onClose()
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [onClose])
 
     const updateField = (field: keyof ManualBookForm, value: string) => {
         setForm((current) => ({ ...current, [field]: value }))
@@ -134,12 +146,12 @@ export function ManualBookModal({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative z-10 mx-4 flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative z-10 mx-4 flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
                 <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700/60">
                     <div className="min-w-0">
                         <div className="flex items-center gap-2">
                             <BookPlus size={18} className="text-accent-500" />
-                            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Add Book Manually</h2>
+                            <h2 id={titleId} className="text-lg font-semibold text-slate-900 dark:text-slate-100">Add Book Manually</h2>
                         </div>
                         <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400" title={formatDisplayPath(file.absPath)}>
                             {file.fileName}
@@ -155,7 +167,7 @@ export function ManualBookModal({
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-6 py-5">
+                <form id="manual-book-form" onSubmit={(e) => { e.preventDefault(); void submit(); }} className="flex-1 overflow-y-auto px-6 py-5">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-title" className={labelClass}>Title <span className="text-rose-500" aria-hidden="true">*</span></label>
@@ -225,7 +237,7 @@ export function ManualBookModal({
                             {error}
                         </div>
                     ) : null}
-                </div>
+                </form>
 
                 <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4 dark:border-slate-700/60">
                     <button
@@ -236,8 +248,8 @@ export function ManualBookModal({
                         Cancel
                     </button>
                     <button
-                        type="button"
-                        onClick={() => void submit()}
+                        type="submit"
+                        form="manual-book-form"
                         disabled={isSaving}
                         className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:opacity-50"
                     >
