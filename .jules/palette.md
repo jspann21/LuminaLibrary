@@ -1,0 +1,3 @@
+## 2026-07-28 - Native tooltips on disabled interactive elements
+**Learning:** In Tailwind CSS, disabled elements often use `pointer-events-none`, which intrinsically breaks `cursor-not-allowed` hover states and prevents native HTML `title` tooltips from displaying.
+**Action:** To safely display a disabled cursor and tooltip, keep `pointer-events-none` on the disabled element and wrap it in a `span` (e.g., `inline-flex`). Apply `cursor-not-allowed` conditionally and the `title` attribute to the wrapper element, allowing the wrapper to catch pointer events while the interactive element remains disabled.
