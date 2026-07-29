@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BookPlus, Check, Loader2, X } from 'lucide-react'
 import type { BookDetail, BookPatch, DiscoveredFile } from '../../../lib/types'
 import { formatDisplayPath } from '../../../lib/format'
@@ -87,6 +87,17 @@ export function ManualBookModal({
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return
+            event.preventDefault()
+            onClose()
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [onClose])
+
     const updateField = (field: keyof ManualBookForm, value: string) => {
         setForm((current) => ({ ...current, [field]: value }))
     }
@@ -134,7 +145,16 @@ export function ManualBookModal({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative z-10 mx-4 flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <form
+                role="dialog"
+                aria-modal="true"
+                aria-label="Add Book Manually"
+                onSubmit={(e) => {
+                    e.preventDefault()
+                    void submit()
+                }}
+                className="relative z-10 mx-4 flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+            >
                 <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700/60">
                     <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -236,8 +256,7 @@ export function ManualBookModal({
                         Cancel
                     </button>
                     <button
-                        type="button"
-                        onClick={() => void submit()}
+                        type="submit"
                         disabled={isSaving}
                         className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:opacity-50"
                     >
@@ -245,7 +264,7 @@ export function ManualBookModal({
                         {isSaving ? 'Adding...' : 'Add to Library'}
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     )
 }
