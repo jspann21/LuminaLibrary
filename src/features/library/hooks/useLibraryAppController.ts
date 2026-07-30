@@ -350,13 +350,17 @@ export function useLibraryAppController() {
     }
   }, [activeView, books, booksQuery.isLoading, queryClient])
 
+  const visibleBookIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const book of books) {
+      ids.add(book.id)
+    }
+    return ids
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  }, [books])
+
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const selectedLibraryBookIdSet = useMemo(() => {
-    const visibleBookIds = new Set<string>()
-    for (const book of books) {
-      visibleBookIds.add(book.id)
-    }
-
     const selectedSet = new Set<string>()
     for (const bookId of selectedLibraryBookIds) {
       if (visibleBookIds.has(bookId)) {
@@ -364,8 +368,7 @@ export function useLibraryAppController() {
       }
     }
     return selectedSet
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  }, [books, selectedLibraryBookIds])
+  }, [visibleBookIds, selectedLibraryBookIds])
 
   // Sync delete mutation with selected book
   useEffect(() => {
