@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import { FolderOpen, Plus } from 'lucide-react'
+import { FolderOpen, Loader2, Plus } from 'lucide-react'
 import type { BookCard } from '../../../lib/types'
 import type { ViewMode } from '../model/types'
 import { CoverThumb } from '../components/CoverThumb'
@@ -54,7 +54,10 @@ export function LibraryView({
   if (isLoading && !hasHiddenBooks) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800">
-        Loading library...
+        <div className="flex items-center justify-center gap-2">
+          <Loader2 aria-hidden="true" className="animate-spin text-slate-400" size={20} />
+          <span>Loading library...</span>
+        </div>
       </div>
     )
   }
@@ -155,7 +158,10 @@ export function LibraryView({
           </span>
         </div>
         {isHiddenLoading ? (
-          <p className="text-xs text-slate-500 dark:text-slate-400">Loading hidden books...</p>
+          <p className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <Loader2 aria-hidden="true" className="animate-spin text-slate-400" size={14} />
+            Loading hidden books...
+          </p>
         ) : hiddenBooks.length === 0 ? (
           <p className="text-xs text-slate-500 dark:text-slate-400">No hidden books.</p>
         ) : (

@@ -3,7 +3,8 @@ packages:
 
 overrides:
   '@babel/core': 7.29.6
-  'brace-expansion@>=5.0.0 <5.0.6': 5.0.6
+  'brace-expansion@>=5.0.0 <5.0.8': 5.0.8
+  postcss: 8.5.18
 
 savePrefix: ''
 minimumReleaseAge: 10080
@@ -11,7 +12,9 @@ minimumReleaseAgeStrict: true
 minimumReleaseAgeIgnoreMissingTime: false
 # Only add exact package@version entries for vulnerability patches, such as
 # versions selected by `pnpm audit --fix`.
-minimumReleaseAgeExclude: []
+minimumReleaseAgeExclude:
+  - brace-expansion@5.0.8
+  - postcss@8.5.18
 trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 10080
 strictDepBuilds: true

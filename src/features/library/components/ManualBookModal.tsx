@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BookPlus, Check, Loader2, X } from 'lucide-react'
 import type { BookDetail, BookPatch, DiscoveredFile } from '../../../lib/types'
 import { formatDisplayPath } from '../../../lib/format'
@@ -87,6 +87,17 @@ export function ManualBookModal({
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return
+            event.preventDefault()
+            onClose()
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [onClose])
+
     const updateField = (field: keyof ManualBookForm, value: string) => {
         setForm((current) => ({ ...current, [field]: value }))
     }
@@ -134,7 +145,16 @@ export function ManualBookModal({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative z-10 mx-4 flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <form
+                role="dialog"
+                aria-modal="true"
+                aria-label="Add Book Manually"
+                onSubmit={(event) => {
+                    event.preventDefault()
+                    void submit()
+                }}
+                className="relative z-10 mx-4 flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+            >
                 <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700/60">
                     <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -163,15 +183,15 @@ export function ManualBookModal({
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-subtitle" className={labelClass}>Subtitle</label>
-                            <input id="manual-book-subtitle" className={inputClass} value={form.subtitle} onChange={(event) => updateField('subtitle', event.target.value)} />
+                            <input id="manual-book-subtitle" className={inputClass} placeholder="e.g., A Novel" value={form.subtitle} onChange={(event) => updateField('subtitle', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-authors" className={labelClass}>Author(s)</label>
-                            <input id="manual-book-authors" className={inputClass} value={form.authors} onChange={(event) => updateField('authors', event.target.value)} />
+                            <input id="manual-book-authors" className={inputClass} placeholder="e.g., J.R.R. Tolkien, Brandon Sanderson" value={form.authors} onChange={(event) => updateField('authors', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-publisher" className={labelClass}>Publisher</label>
-                            <input id="manual-book-publisher" className={inputClass} value={form.publisher} onChange={(event) => updateField('publisher', event.target.value)} />
+                            <input id="manual-book-publisher" className={inputClass} placeholder="e.g., Tor Books" value={form.publisher} onChange={(event) => updateField('publisher', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-publish-date" className={labelClass}>Published</label>
@@ -179,41 +199,42 @@ export function ManualBookModal({
                         </div>
                         <div>
                             <label htmlFor="manual-book-isbn13" className={labelClass}>ISBN-13</label>
-                            <input id="manual-book-isbn13" className={inputClass} value={form.isbn13} onChange={(event) => updateField('isbn13', event.target.value)} />
+                            <input id="manual-book-isbn13" className={inputClass} placeholder="e.g., 9781234567890" value={form.isbn13} onChange={(event) => updateField('isbn13', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-isbn10" className={labelClass}>ISBN-10</label>
-                            <input id="manual-book-isbn10" className={inputClass} value={form.isbn10} onChange={(event) => updateField('isbn10', event.target.value)} />
+                            <input id="manual-book-isbn10" className={inputClass} placeholder="e.g., 123456789X" value={form.isbn10} onChange={(event) => updateField('isbn10', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-language" className={labelClass}>Language</label>
-                            <input id="manual-book-language" className={inputClass} value={form.language} onChange={(event) => updateField('language', event.target.value)} />
+                            <input id="manual-book-language" className={inputClass} placeholder="e.g., en" value={form.language} onChange={(event) => updateField('language', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-page-count" className={labelClass}>Pages</label>
-                            <input id="manual-book-page-count" type="number" className={inputClass} value={form.pageCount} onChange={(event) => updateField('pageCount', event.target.value)} />
+                            <input id="manual-book-page-count" type="number" className={inputClass} placeholder="e.g., 400" value={form.pageCount} onChange={(event) => updateField('pageCount', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-series" className={labelClass}>Series</label>
-                            <input id="manual-book-series" className={inputClass} value={form.series} onChange={(event) => updateField('series', event.target.value)} />
+                            <input id="manual-book-series" className={inputClass} placeholder="e.g., The Lord of the Rings" value={form.series} onChange={(event) => updateField('series', event.target.value)} />
                         </div>
                         <div>
                             <label htmlFor="manual-book-series-index" className={labelClass}>Series #</label>
-                            <input id="manual-book-series-index" type="number" className={inputClass} value={form.seriesIndex} onChange={(event) => updateField('seriesIndex', event.target.value)} />
+                            <input id="manual-book-series-index" type="number" className={inputClass} placeholder="e.g., 1" value={form.seriesIndex} onChange={(event) => updateField('seriesIndex', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-cover-url" className={labelClass}>Cover URL</label>
-                            <input id="manual-book-cover-url" className={inputClass} value={form.coverUrl} onChange={(event) => updateField('coverUrl', event.target.value)} />
+                            <input id="manual-book-cover-url" className={inputClass} placeholder="e.g., https://example.com/cover.jpg" value={form.coverUrl} onChange={(event) => updateField('coverUrl', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-tags" className={labelClass}>Tags</label>
-                            <input id="manual-book-tags" className={inputClass} value={form.tags} onChange={(event) => updateField('tags', event.target.value)} />
+                            <input id="manual-book-tags" className={inputClass} placeholder="e.g., fantasy, magic" value={form.tags} onChange={(event) => updateField('tags', event.target.value)} />
                         </div>
                         <div className="md:col-span-2">
                             <label htmlFor="manual-book-description" className={labelClass}>Description</label>
                             <textarea
                                 id="manual-book-description"
                                 className={`${inputClass} h-32 resize-none`}
+                                placeholder="Brief summary of the book..."
                                 value={form.description}
                                 onChange={(event) => updateField('description', event.target.value)}
                             />
@@ -236,8 +257,7 @@ export function ManualBookModal({
                         Cancel
                     </button>
                     <button
-                        type="button"
-                        onClick={() => void submit()}
+                        type="submit"
                         disabled={isSaving}
                         className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:opacity-50"
                     >
@@ -245,7 +265,7 @@ export function ManualBookModal({
                         {isSaving ? 'Adding...' : 'Add to Library'}
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     )
 }
