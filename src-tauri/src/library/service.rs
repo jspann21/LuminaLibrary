@@ -479,14 +479,16 @@ impl LibraryService {
     if let Some(app) = app_handle.as_ref() {
       emit_bulk_match_progress(
         app,
-        "progress",
-        total_files,
-        processed_files,
-        matched_count,
-        failed_count,
-        skipped_count,
-        error_count,
-        None,
+        BulkMatchProgressPayload {
+          phase: "progress",
+          total_files,
+          processed_files,
+          matched_files: matched_count,
+          failed_files: failed_count,
+          skipped_files: skipped_count,
+          error_files: error_count,
+          current_path: None,
+        },
       );
     }
 
@@ -526,14 +528,16 @@ impl LibraryService {
       if let Some(app) = app_handle.as_ref() {
         emit_bulk_match_progress(
           app,
-          "progress",
-          total_files,
-          processed_files,
-          matched_count,
-          failed_count,
-          skipped_count,
-          error_count,
-          Some(current_path.clone()),
+          BulkMatchProgressPayload {
+            phase: "progress",
+            total_files,
+            processed_files,
+            matched_files: matched_count,
+            failed_files: failed_count,
+            skipped_files: skipped_count,
+            error_files: error_count,
+            current_path: Some(current_path.clone()),
+          },
         );
       }
     }
@@ -544,14 +548,16 @@ impl LibraryService {
     if let Some(app) = app_handle.as_ref() {
       emit_bulk_match_progress(
         app,
-        "completed",
-        total_files,
-        processed_files,
-        matched_count,
-        failed_count,
-        skipped_count,
-        error_count,
-        None,
+        BulkMatchProgressPayload {
+          phase: "completed",
+          total_files,
+          processed_files,
+          matched_files: matched_count,
+          failed_files: failed_count,
+          skipped_files: skipped_count,
+          error_files: error_count,
+          current_path: None,
+        },
       );
     }
 
@@ -1869,9 +1875,8 @@ fn emit_library_thing_import_progress(app_handle: &AppHandle, payload: LibraryTh
   );
 }
 
-fn emit_bulk_match_progress(
-  app_handle: &AppHandle,
-  phase: &str,
+struct BulkMatchProgressPayload {
+  phase: &'static str,
   total_files: usize,
   processed_files: usize,
   matched_files: usize,
@@ -1879,27 +1884,29 @@ fn emit_bulk_match_progress(
   skipped_files: usize,
   error_files: usize,
   current_path: Option<String>,
-) {
-  let unresolved_files = failed_files + error_files;
-  let progress_percent = if phase == "completed" {
+}
+
+fn emit_bulk_match_progress(app_handle: &AppHandle, payload: BulkMatchProgressPayload) {
+  let unresolved_files = payload.failed_files + payload.error_files;
+  let progress_percent = if payload.phase == "completed" {
     100
-  } else if total_files == 0 {
+  } else if payload.total_files == 0 {
     0
   } else {
-    (((processed_files as f64 / total_files as f64) * 100.0).round() as i64).clamp(0, 99) as u8
+    (((payload.processed_files as f64 / payload.total_files as f64) * 100.0).round() as i64).clamp(0, 99) as u8
   };
 
   let _ = app_handle.emit(
     "bulk_match_progress",
     json!({
-      "phase": phase,
-      "totalFiles": total_files,
-      "processedFiles": processed_files,
-      "matchedFiles": matched_files,
+      "phase": payload.phase,
+      "totalFiles": payload.total_files,
+      "processedFiles": payload.processed_files,
+      "matchedFiles": payload.matched_files,
       "unresolvedFiles": unresolved_files,
-      "skippedFiles": skipped_files,
-      "errorFiles": error_files,
-      "currentPath": current_path,
+      "skippedFiles": payload.skipped_files,
+      "errorFiles": payload.error_files,
+      "currentPath": payload.current_path,
       "progressPercent": progress_percent,
     }),
   );
