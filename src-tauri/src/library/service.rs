@@ -986,15 +986,17 @@ impl LibraryService {
     );
     emit_csv_import_progress(
       &self.scanner.app_handle,
-      "started",
-      &path,
-      Some(total_bytes),
-      bytes_read,
-      imported_rows,
-      matched_rows,
-      updated_rows,
-      errors,
-      Some("Import started".to_string()),
+      CsvImportProgressPayload {
+        phase: "started",
+        path: &path,
+        total_bytes: Some(total_bytes),
+        bytes_read,
+        processed_rows: imported_rows,
+        matched_rows,
+        updated_rows,
+        errors,
+        message: Some("Import started".to_string()),
+      },
     );
 
     let result = (|| -> anyhow::Result<ImportResult> {
@@ -1027,15 +1029,17 @@ impl LibraryService {
           if processed_since_emit >= PROGRESS_BATCH_SIZE || last_emit_at.elapsed() >= PROGRESS_EMIT_INTERVAL {
             emit_csv_import_progress(
               &self.scanner.app_handle,
-              "progress",
-              &path,
-              Some(total_bytes),
-              bytes_read,
-              imported_rows,
-              matched_rows,
-              updated_rows,
-              errors,
-              Some(format!("Importing enrichment CSV: {imported_rows} rows processed")),
+              CsvImportProgressPayload {
+                phase: "progress",
+                path: &path,
+                total_bytes: Some(total_bytes),
+                bytes_read,
+                processed_rows: imported_rows,
+                matched_rows,
+                updated_rows,
+                errors,
+                message: Some(format!("Importing enrichment CSV: {imported_rows} rows processed")),
+              },
             );
             processed_since_emit = 0;
             last_emit_at = Instant::now();
@@ -1108,15 +1112,17 @@ impl LibraryService {
         if processed_since_emit >= PROGRESS_BATCH_SIZE || last_emit_at.elapsed() >= PROGRESS_EMIT_INTERVAL {
           emit_csv_import_progress(
             &self.scanner.app_handle,
-            "progress",
-            &path,
-            Some(total_bytes),
-            bytes_read,
-            imported_rows,
-            matched_rows,
-            updated_rows,
-            errors,
-            Some(format!("Importing enrichment CSV: {imported_rows} rows processed")),
+            CsvImportProgressPayload {
+              phase: "progress",
+              path: &path,
+              total_bytes: Some(total_bytes),
+              bytes_read,
+              processed_rows: imported_rows,
+              matched_rows,
+              updated_rows,
+              errors,
+              message: Some(format!("Importing enrichment CSV: {imported_rows} rows processed")),
+            },
           );
           processed_since_emit = 0;
           last_emit_at = Instant::now();
@@ -1138,17 +1144,19 @@ impl LibraryService {
         bytes_read = total_bytes.max(bytes_read);
         emit_csv_import_progress(
           &self.scanner.app_handle,
-          "completed",
-          &path,
-          Some(total_bytes),
-          bytes_read,
-          imported_rows,
-          matched_rows,
-          updated_rows,
-          errors,
-          Some(format!(
-            "CSV import complete: {imported_rows} rows processed, {matched_rows} matched, {updated_rows} updated"
-          )),
+          CsvImportProgressPayload {
+            phase: "completed",
+            path: &path,
+            total_bytes: Some(total_bytes),
+            bytes_read,
+            processed_rows: imported_rows,
+            matched_rows,
+            updated_rows,
+            errors,
+            message: Some(format!(
+              "CSV import complete: {imported_rows} rows processed, {matched_rows} matched, {updated_rows} updated"
+            )),
+          },
         );
         log::info!(
           "csv_import_done path={} elapsed_ms={} processed_rows={} matched_rows={} updated_rows={} unresolved_rows={}",
@@ -1166,15 +1174,17 @@ impl LibraryService {
         let elapsed_ms = import_started_at.elapsed().as_millis() as u64;
         emit_csv_import_progress(
           &self.scanner.app_handle,
-          "error",
-          &path,
-          Some(total_bytes),
-          bytes_read,
-          imported_rows,
-          matched_rows,
-          updated_rows,
-          errors,
-          Some(err.to_string()),
+          CsvImportProgressPayload {
+            phase: "error",
+            path: &path,
+            total_bytes: Some(total_bytes),
+            bytes_read,
+            processed_rows: imported_rows,
+            matched_rows,
+            updated_rows,
+            errors,
+            message: Some(err.to_string()),
+          },
         );
         log::error!(
           "csv_import_error path={} elapsed_ms={} processed_rows={} matched_rows={} updated_rows={} error={}",
@@ -1807,10 +1817,9 @@ pub(crate) fn system_time_to_iso(time: SystemTime) -> String {
   datetime.to_rfc3339()
 }
 
-fn emit_csv_import_progress(
-  app_handle: &AppHandle,
-  phase: &str,
-  path: &str,
+struct CsvImportProgressPayload<'a> {
+  phase: &'static str,
+  path: &'a str,
   total_bytes: Option<u64>,
   bytes_read: u64,
   processed_rows: usize,
@@ -1818,26 +1827,32 @@ fn emit_csv_import_progress(
   updated_rows: usize,
   errors: usize,
   message: Option<String>,
-) {
-  let capped_bytes_read = total_bytes.map(|total| bytes_read.min(total)).unwrap_or(bytes_read);
-  let progress_percent = total_bytes
-    .map(|total| csv_import_progress_percent(capped_bytes_read, total, phase == "completed"))
-    .unwrap_or_else(|| if phase == "completed" { 100 } else { 0 });
-  let unresolved_rows = processed_rows.saturating_sub(matched_rows);
+}
+
+fn emit_csv_import_progress(app_handle: &AppHandle, payload: CsvImportProgressPayload<'_>) {
+  let capped_bytes_read = payload
+    .total_bytes
+    .map(|total| payload.bytes_read.min(total))
+    .unwrap_or(payload.bytes_read);
+  let progress_percent = payload
+    .total_bytes
+    .map(|total| csv_import_progress_percent(capped_bytes_read, total, payload.phase == "completed"))
+    .unwrap_or_else(|| if payload.phase == "completed" { 100 } else { 0 });
+  let unresolved_rows = payload.processed_rows.saturating_sub(payload.matched_rows);
   let _ = app_handle.emit(
     "csv_import_progress",
     json!({
-      "phase": phase,
-      "path": path,
-      "totalBytes": total_bytes,
+      "phase": payload.phase,
+      "path": payload.path,
+      "totalBytes": payload.total_bytes,
       "bytesRead": capped_bytes_read,
-      "processedRows": processed_rows,
-      "matchedRows": matched_rows,
-      "updatedRows": updated_rows,
+      "processedRows": payload.processed_rows,
+      "matchedRows": payload.matched_rows,
+      "updatedRows": payload.updated_rows,
       "unresolvedRows": unresolved_rows,
-      "errors": errors,
+      "errors": payload.errors,
       "progressPercent": progress_percent,
-      "message": message,
+      "message": payload.message,
     }),
   );
 }
