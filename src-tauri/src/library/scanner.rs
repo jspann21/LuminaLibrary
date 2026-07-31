@@ -1529,12 +1529,12 @@ impl Scanner {
       } else {
         enriched.authors
       },
-      publisher: enriched.publisher,
+      publisher: enriched.publisher.or(metadata.publisher.clone()),
       publish_date: enriched.publish_date.or(metadata.publish_date.clone()),
       isbn10: enriched.isbn10.or(metadata.isbn10.clone()),
       isbn13: enriched.isbn13.or(metadata.isbn13.clone()),
-      description: enriched.description,
-      language: enriched.language,
+      description: enriched.description.or(metadata.description.clone()),
+      language: enriched.language.or(metadata.language.clone()),
       page_count: enriched.page_count.or(metadata.page_count),
       series: None,
       series_index: None,
