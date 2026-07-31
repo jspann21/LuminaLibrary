@@ -1984,7 +1984,7 @@ fn is_valid_isbn10(isbn: &str) -> bool {
     };
     total += position * value;
   }
-  total % 11 == 0
+  total.is_multiple_of(11)
 }
 
 fn is_valid_isbn13(isbn: &str) -> bool {
@@ -2345,7 +2345,7 @@ fn parse_pdf_authors(raw: &str) -> Vec<String> {
       .unwrap_or_default();
   }
 
-  if comma_parts.len() >= 4 && comma_parts.len() % 2 == 0 {
+  if comma_parts.len() >= 4 && comma_parts.len().is_multiple_of(2) {
     let mut out = Vec::new();
     for chunk in comma_parts.chunks(2) {
       if let Some(author) = sanitize_metadata_value(&format!("{}, {}", chunk[0], chunk[1])) {
