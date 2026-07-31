@@ -2524,7 +2524,6 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-log",
- "thiserror 2.0.18",
  "url",
  "uuid",
  "walkdir",
