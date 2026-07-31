@@ -412,7 +412,9 @@ impl LibraryService {
       }
     }
     for handle in handles {
-      let _ = handle.join();
+      if handle.join().is_err() && first_error.is_none() {
+        first_error = Some(anyhow!("cover cache worker panicked"));
+      }
     }
     if let Some(err) = first_error {
       return Err(err);

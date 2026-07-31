@@ -741,8 +741,12 @@ impl Scanner {
       }
     }
 
+    let mut worker_panicked = false;
     for handle in handles {
-      let _ = handle.join();
+      worker_panicked |= handle.join().is_err();
+    }
+    if worker_panicked {
+      return Err(anyhow!("local scan worker panicked"));
     }
 
     let _ = self.app_handle.emit(
@@ -912,8 +916,12 @@ impl Scanner {
       }
     }
 
+    let mut worker_panicked = false;
     for handle in handles {
-      let _ = handle.join();
+      worker_panicked |= handle.join().is_err();
+    }
+    if worker_panicked {
+      return Err(anyhow!("metadata enrichment worker panicked"));
     }
 
     let _ = self.app_handle.emit(
