@@ -859,11 +859,22 @@ impl LibraryService {
   pub fn reconcile_local_files(&self) -> anyhow::Result<LibraryMaintenanceResult> {
     let files = self.repository.list_all_files()?;
     let checked_files = files.len() as u64;
-    let missing_file_ids: Vec<String> = files
-      .iter()
-      .filter(|file| !Path::new(&file.abs_path).exists())
-      .map(|file| file.id.clone())
-      .collect();
+    let mut missing_file_ids = Vec::new();
+    for file in &files {
+      match fs::metadata(&file.abs_path) {
+        Ok(metadata) if metadata.is_file() => {}
+        Ok(_) => missing_file_ids.push(file.id.clone()),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+          missing_file_ids.push(file.id.clone());
+        }
+        Err(err) => {
+          log::warn!(
+            "local_file_reconcile_access_failed path={} error={err}; retaining indexed record",
+            file.abs_path
+          );
+        }
+      }
+    }
 
     let now = now_iso();
     let (removed_files, removed_orphan_books) = self
