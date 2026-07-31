@@ -1851,9 +1851,10 @@ impl Repository {
     query: JsonValue,
     now: &str,
   ) -> anyhow::Result<()> {
-    let conn = self.conn()?;
-    conn.execute("DELETE FROM book_files WHERE file_id = ?1", params![file_id])?;
-    conn.execute(
+    let mut conn = self.conn()?;
+    let tx = conn.transaction()?;
+    tx.execute("DELETE FROM book_files WHERE file_id = ?1", params![file_id])?;
+    tx.execute(
       "UPDATE files SET status = ?1, guessed_title = ?2, guessed_author = ?3, guessed_isbn = ?4, parser_error = ?5, last_seen_at = ?6 WHERE id = ?7",
       params![
         if parser_error.is_some() { "error" } else { "discovered" },
@@ -1865,10 +1866,11 @@ impl Repository {
         file_id,
       ],
     )?;
-    conn.execute(
+    tx.execute(
       "INSERT INTO enrichment_jobs(id, file_id, query_json, status, attempt_count, last_attempt_at, error) VALUES(?1, ?2, ?3, 'pending', 0, ?4, ?5) ON CONFLICT(file_id) DO UPDATE SET query_json = excluded.query_json, status = 'pending', last_attempt_at = excluded.last_attempt_at, error = excluded.error",
       params![Uuid::new_v4().to_string(), file_id, query.to_string(), now, reason],
     )?;
+    tx.commit()?;
     Ok(())
   }
 
