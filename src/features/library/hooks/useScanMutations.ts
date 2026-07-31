@@ -23,6 +23,9 @@ export function useScanMutations(deps: {
             setScanProgress(INITIAL_SCAN_PROGRESS)
             setScanStatus(folderId ? 'Indexing selected folder (1/2)...' : 'Indexing all folders (1/2)...')
         },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to scan library folders')
+        },
     })
     const rescanMissingMetadataMutation = useMutation({
         mutationFn: () => api.rescanMissingMetadata(),
@@ -33,6 +36,9 @@ export function useScanMutations(deps: {
         onSuccess: (summary) => {
             setScanStatus(`Metadata refresh completed - matched ${summary.matchedFiles}, unresolved ${summary.discoveredFiles}`)
             invalidateLibraryData()
+        },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to refresh missing metadata')
         },
     })
     const refreshMissingCoversMutation = useMutation({

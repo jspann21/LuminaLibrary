@@ -53,6 +53,9 @@ export function useTagMutations(deps: {
             )
             invalidateLibraryData()
         },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to merge tags')
+        },
     })
     const deleteTagsMutation = useMutation({
         mutationFn: (tags: string[]) => api.deleteTags(tags),
@@ -63,6 +66,9 @@ export function useTagMutations(deps: {
             }
             setScanStatus(`Deleted ${result.deletedTagCount} tags from ${result.affectedBooks} books`)
             invalidateLibraryData()
+        },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to delete tags')
         },
     })
 

@@ -43,6 +43,9 @@ export function useSettingsMutations(deps: {
             )
             invalidateLibraryData()
         },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to remove library source')
+        },
     })
     const setGoogleBooksApiKeyMutation = useMutation({
         mutationFn: (apiKey: string) => api.setGoogleBooksApiKey(apiKey),

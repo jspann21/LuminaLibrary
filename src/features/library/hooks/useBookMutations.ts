@@ -126,6 +126,9 @@ export function useBookMutations(deps: {
             void queryClient.invalidateQueries({ queryKey: ['books'] })
             void queryClient.invalidateQueries({ queryKey: ['tags'] })
         },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to update book metadata')
+        },
     })
     const previewRescanMetadataMutation = useMutation({
         mutationFn: (input: { fileId?: string | null; bookId: string }) => api.previewRescanMetadata(input.bookId, input.fileId),
@@ -167,6 +170,9 @@ export function useBookMutations(deps: {
             deps.onBooksHidden?.(bookIds)
             invalidateLibraryData()
         },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to hide books')
+        },
     })
     const restoreBooksMutation = useMutation({
         mutationFn: (bookIds: string[]) => api.restoreBooks(bookIds),
@@ -174,12 +180,18 @@ export function useBookMutations(deps: {
             setScanStatus(`Restored ${updatedCount} hidden book${updatedCount === 1 ? '' : 's'}`)
             invalidateLibraryData()
         },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to restore books')
+        },
     })
     const restoreAllHiddenBooksMutation = useMutation({
         mutationFn: () => api.restoreAllHiddenBooks(),
         onSuccess: (updatedCount) => {
             setScanStatus(`Restored ${updatedCount} hidden book${updatedCount === 1 ? '' : 's'}`)
             invalidateLibraryData()
+        },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to restore hidden books')
         },
     })
 
