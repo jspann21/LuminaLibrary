@@ -404,6 +404,23 @@ pub struct ParsedMetadata {
   pub page_count: Option<i64>,
 }
 
+impl From<&BookDetail> for ParsedMetadata {
+  fn from(detail: &BookDetail) -> Self {
+    Self {
+      title: Some(detail.title.clone()),
+      subtitle: detail.subtitle.clone(),
+      authors: detail.authors.clone(),
+      publisher: detail.publisher.clone(),
+      publish_date: detail.publish_date.clone(),
+      isbn10: detail.isbn10.clone(),
+      isbn13: detail.isbn13.clone(),
+      description: detail.description.clone(),
+      language: detail.language.clone(),
+      page_count: detail.page_count,
+    }
+  }
+}
+
 #[derive(Debug, Clone)]
 pub struct EnrichedBook {
   pub title: String,

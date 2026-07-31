@@ -1571,17 +1571,7 @@ impl LibraryService {
 
   fn resolve_and_cache_book_cover_if_needed(&self, book_id: &str) -> anyhow::Result<bool> {
     let detail = self.repository.get_book_detail(book_id)?;
-    let mut metadata = ParsedMetadata::default();
-    metadata.title = Some(detail.title.clone());
-    metadata.subtitle = detail.subtitle.clone();
-    metadata.authors = detail.authors.clone();
-    metadata.publisher = detail.publisher.clone();
-    metadata.publish_date = detail.publish_date.clone();
-    metadata.isbn10 = detail.isbn10.clone();
-    metadata.isbn13 = detail.isbn13.clone();
-    metadata.description = detail.description.clone();
-    metadata.language = detail.language.clone();
-    metadata.page_count = detail.page_count;
+    let metadata = ParsedMetadata::from(&detail);
 
     let existing_cover_url = detail.cover_url.clone();
     let resolved_cover_url = self.scanner.enricher.resolve_cover_only(&metadata, existing_cover_url.clone());
