@@ -1006,6 +1006,20 @@ impl Repository {
           params![&primary_book_id, now, &duplicate.id],
         )?;
         tx.execute(
+          "DELETE FROM manual_overrides
+           WHERE book_id = ?1
+             AND field_name IN (SELECT field_name FROM manual_overrides WHERE book_id = ?2)",
+          params![&duplicate.id, &primary_book_id],
+        )?;
+        tx.execute(
+          "UPDATE manual_overrides SET book_id = ?1 WHERE book_id = ?2",
+          params![&primary_book_id, &duplicate.id],
+        )?;
+        tx.execute(
+          "UPDATE book_external_sources SET book_id = ?1, updated_at = ?2 WHERE book_id = ?3",
+          params![&primary_book_id, now, &duplicate.id],
+        )?;
+        tx.execute(
           "UPDATE book_files SET book_id = ?1 WHERE book_id = ?2",
           params![&primary_book_id, &duplicate.id],
         )?;
