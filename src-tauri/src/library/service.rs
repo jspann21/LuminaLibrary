@@ -966,7 +966,7 @@ impl LibraryService {
 
     let metadata = validate_csv_import_path(&path)?;
     let import_started_at = Instant::now();
-    let total_bytes = Some(metadata.len());
+    let total_bytes = metadata.len();
     let mut bytes_read = 0u64;
     let mut imported_rows = 0usize;
     let mut matched_rows = 0usize;
@@ -976,13 +976,13 @@ impl LibraryService {
     log::info!(
       "csv_import_start path={} total_bytes={}",
       path,
-      total_bytes.unwrap_or(0)
+      total_bytes
     );
     emit_csv_import_progress(
       &self.scanner.app_handle,
       "started",
       &path,
-      total_bytes,
+      Some(total_bytes),
       bytes_read,
       imported_rows,
       matched_rows,
@@ -1023,7 +1023,7 @@ impl LibraryService {
               &self.scanner.app_handle,
               "progress",
               &path,
-              total_bytes,
+              Some(total_bytes),
               bytes_read,
               imported_rows,
               matched_rows,
@@ -1102,7 +1102,7 @@ impl LibraryService {
             &self.scanner.app_handle,
             "progress",
             &path,
-            total_bytes,
+            Some(total_bytes),
             bytes_read,
             imported_rows,
             matched_rows,
@@ -1127,12 +1127,12 @@ impl LibraryService {
     match result {
       Ok(summary) => {
         let elapsed_ms = import_started_at.elapsed().as_millis() as u64;
-        bytes_read = total_bytes.unwrap_or(bytes_read).max(bytes_read);
+        bytes_read = total_bytes.max(bytes_read);
         emit_csv_import_progress(
           &self.scanner.app_handle,
           "completed",
           &path,
-          total_bytes,
+          Some(total_bytes),
           bytes_read,
           imported_rows,
           matched_rows,
@@ -1160,7 +1160,7 @@ impl LibraryService {
           &self.scanner.app_handle,
           "error",
           &path,
-          total_bytes,
+          Some(total_bytes),
           bytes_read,
           imported_rows,
           matched_rows,
