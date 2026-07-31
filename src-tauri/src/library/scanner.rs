@@ -1868,10 +1868,8 @@ fn parse_metadata_with_timing(
   size_bytes: i64,
   profile: ScanComputeProfile,
 ) -> (ParsedMetadata, Option<String>, u64) {
-  if ext.eq_ignore_ascii_case("pdf") {
-    if matches!(profile, ScanComputeProfile::BulkSafe) {
-      return (ParsedMetadata::default(), None, 0);
-    }
+  if ext.eq_ignore_ascii_case("pdf") && matches!(profile, ScanComputeProfile::BulkSafe) {
+    return (ParsedMetadata::default(), None, 0);
   }
   if ext.eq_ignore_ascii_case("pdf") && size_bytes > PDF_PARSE_SKIP_SIZE_BYTES {
     return (ParsedMetadata::default(), None, 0);
