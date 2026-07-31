@@ -112,12 +112,10 @@ export const api = {
     invokeOrThrow<BulkMatchResult>('batch_attempt_match', { items }),
   previewMatch: (args: { fileId: string; isbn?: string; title?: string; author?: string }) =>
     invokeOrThrow<MatchPreview>('preview_match', args),
-  applyManualBookEdit: (bookId: string, patch: BookPatch) =>
-    invokeOrThrow<BookDetail>('apply_manual_book_edit', { bookId, patch }),
+  applyManualBookEdit: (bookId: string, patch: BookPatch, tags: string[]) =>
+    invokeOrThrow<BookDetail>('apply_manual_book_edit', { bookId, patch, tags }),
   createManualBook: (fileId: string, patch: BookPatch, tags: string[]) =>
     invokeOrThrow<BookDetail>('create_manual_book', { fileId, patch, tags }),
-  setBookTags: (bookId: string, tags: string[]) =>
-    invokeOrThrow<BookDetail>('set_book_tags', { bookId, tags }),
   hideBooks: (bookIds: string[]) => invokeOrThrow<number>('hide_books', { bookIds }),
   restoreBooks: (bookIds: string[]) => invokeOrThrow<number>('restore_books', { bookIds }),
   restoreAllHiddenBooks: () => invokeOrThrow<number>('restore_all_hidden_books'),

@@ -626,6 +626,17 @@ impl Repository {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
 
+    Self::set_book_tags_tx(&tx, book_id, tags, now)?;
+    tx.commit()?;
+    Ok(())
+  }
+
+  fn set_book_tags_tx(
+    tx: &rusqlite::Transaction<'_>,
+    book_id: &str,
+    tags: Vec<String>,
+    now: &str,
+  ) -> anyhow::Result<()> {
     let exists = tx
       .query_row(
         "SELECT id FROM books WHERE id = ?1",
@@ -669,7 +680,6 @@ impl Repository {
     }
 
     tx.execute("DELETE FROM tags WHERE id NOT IN (SELECT DISTINCT tag_id FROM book_tags)", [])?;
-    tx.commit()?;
     Ok(())
   }
 
@@ -2511,6 +2521,34 @@ impl Repository {
   }
 
   pub fn apply_manual_book_edit(&self, book_id: &str, patch: BookPatch, now: &str) -> anyhow::Result<()> {
+    let mut conn = self.conn()?;
+    let tx = conn.transaction()?;
+    Self::apply_manual_book_edit_tx(&tx, book_id, patch, now)?;
+    tx.commit()?;
+    Ok(())
+  }
+
+  pub fn apply_manual_book_edit_with_tags(
+    &self,
+    book_id: &str,
+    patch: BookPatch,
+    tags: Vec<String>,
+    now: &str,
+  ) -> anyhow::Result<()> {
+    let mut conn = self.conn()?;
+    let tx = conn.transaction()?;
+    Self::apply_manual_book_edit_tx(&tx, book_id, patch, now)?;
+    Self::set_book_tags_tx(&tx, book_id, tags, now)?;
+    tx.commit()?;
+    Ok(())
+  }
+
+  fn apply_manual_book_edit_tx(
+    tx: &rusqlite::Transaction<'_>,
+    book_id: &str,
+    patch: BookPatch,
+    now: &str,
+  ) -> anyhow::Result<()> {
     let mut updates: Vec<String> = Vec::new();
     let mut values: Vec<Value> = Vec::new();
     let mut overrides: Vec<(String, Option<String>)> = Vec::new();
@@ -2561,8 +2599,6 @@ impl Repository {
     }
 
     if !updates.is_empty() {
-      let mut conn = self.conn()?;
-      let tx = conn.transaction()?;
       updates.push("metadata_source = 'manual'".to_string());
       updates.push("updated_at = ?".to_string());
       values.push(Value::from(now.to_string()));
@@ -2576,7 +2612,6 @@ impl Repository {
           params![Uuid::new_v4().to_string(), book_id, field_name, field_value, now],
         )?;
       }
-      tx.commit()?;
     }
     Ok(())
   }

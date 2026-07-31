@@ -744,15 +744,23 @@ impl LibraryService {
     })
   }
 
-  pub fn apply_manual_book_edit(&self, book_id: String, mut patch: BookPatch) -> anyhow::Result<BookDetail> {
+  pub fn apply_manual_book_edit(
+    &self,
+    book_id: String,
+    mut patch: BookPatch,
+    tags: Vec<String>,
+  ) -> anyhow::Result<BookDetail> {
     normalize_book_patch_isbns(&mut patch);
     validate_book_patch_cover_url(&mut patch)?;
+    validate_tag_inputs(&tags)?;
     let should_resolve_cover = patch
       .cover_url
       .as_deref()
       .map(|value| !value.trim().is_empty())
       .unwrap_or(false);
-    self.repository.apply_manual_book_edit(&book_id, patch, &now_iso())?;
+    self
+      .repository
+      .apply_manual_book_edit_with_tags(&book_id, patch, tags, &now_iso())?;
     if should_resolve_cover {
       let _ = self.resolve_and_cache_book_cover_if_needed(&book_id)?;
     } else {
@@ -826,12 +834,6 @@ impl LibraryService {
       let _ = self.cache_book_cover_if_needed(&book_id)?;
     }
     self.get_detail_after_duplicate_consolidation(&book_id)
-  }
-
-  pub fn set_book_tags(&self, book_id: String, tags: Vec<String>) -> anyhow::Result<BookDetail> {
-    validate_tag_inputs(&tags)?;
-    self.repository.set_book_tags(&book_id, tags, &now_iso())?;
-    self.repository.get_book_detail(&book_id)
   }
 
   pub fn hide_books(&self, book_ids: Vec<String>) -> anyhow::Result<u64> {

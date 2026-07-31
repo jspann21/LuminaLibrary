@@ -215,8 +215,9 @@ pub fn apply_manual_book_edit(
   state: State<'_, AppState>,
   book_id: String,
   patch: BookPatch,
+  tags: Vec<String>,
 ) -> Result<BookDetail, String> {
-  to_result(state.service.apply_manual_book_edit(book_id, patch))
+  to_result(state.service.apply_manual_book_edit(book_id, patch, tags))
 }
 
 #[tauri::command]
@@ -356,15 +357,6 @@ pub async fn search_brave_cover_images(
 #[tauri::command]
 pub fn get_library_tags(state: State<'_, AppState>) -> Result<Vec<TagCount>, String> {
   to_result(state.service.get_library_tags())
-}
-
-#[tauri::command]
-pub fn set_book_tags(
-  state: State<'_, AppState>,
-  book_id: String,
-  tags: Vec<String>,
-) -> Result<BookDetail, String> {
-  to_result(state.service.set_book_tags(book_id, tags))
 }
 
 #[tauri::command]

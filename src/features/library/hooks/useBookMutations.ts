@@ -118,10 +118,8 @@ export function useBookMutations(deps: {
     })
 
     const saveDetailMutation = useMutation({
-        mutationFn: async (input: { bookId: string; patch: BookPatch; tags: string[] }) => {
-            const detail = await api.applyManualBookEdit(input.bookId, input.patch)
-            return api.setBookTags(detail.id, input.tags)
-        },
+        mutationFn: (input: { bookId: string; patch: BookPatch; tags: string[] }) =>
+            api.applyManualBookEdit(input.bookId, input.patch, input.tags),
         onSuccess: (detail) => {
             setScanStatus('Book metadata updated')
             queryClient.setQueryData(libraryQueryKeys.bookDetail(detail.id), detail)
