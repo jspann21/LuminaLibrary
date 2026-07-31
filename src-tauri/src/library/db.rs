@@ -2449,7 +2449,7 @@ impl Repository {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
 
-    let existing_locks = self.get_manual_override_fields(book_id)?;
+    let existing_locks = Self::get_manual_override_fields_conn(&tx, book_id)?;
     let unlocked_fields: HashSet<String> = lock_updates
       .iter()
       .filter_map(|update| {
