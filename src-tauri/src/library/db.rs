@@ -7,7 +7,7 @@ use std::{
 use anyhow::{anyhow, Context};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::{params, params_from_iter, types::Value, Connection, OptionalExtension};
+use rusqlite::{params, params_from_iter, types::Value, Connection, OptionalExtension, TransactionBehavior};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
@@ -1084,6 +1084,14 @@ impl Repository {
 
   pub fn find_book_by_isbn(&self, isbn10: Option<&str>, isbn13: Option<&str>) -> anyhow::Result<Option<String>> {
     let conn = self.conn()?;
+    Self::find_book_by_isbn_conn(&conn, isbn10, isbn13)
+  }
+
+  fn find_book_by_isbn_conn(
+    conn: &Connection,
+    isbn10: Option<&str>,
+    isbn13: Option<&str>,
+  ) -> anyhow::Result<Option<String>> {
     if let Some(isbn13_value) = isbn13 {
       if let Some(book_id) = conn
         .query_row(
@@ -1272,10 +1280,18 @@ impl Repository {
   }
 
   pub fn find_book_by_title_author(&self, title: &str, authors: &[String]) -> anyhow::Result<Option<String>> {
+    let conn = self.conn()?;
+    Self::find_book_by_title_author_conn(&conn, title, authors)
+  }
+
+  fn find_book_by_title_author_conn(
+    conn: &Connection,
+    title: &str,
+    authors: &[String],
+  ) -> anyhow::Result<Option<String>> {
     if title.trim().is_empty() {
       return Ok(None);
     }
-    let conn = self.conn()?;
     let normalized_title = normalize_text(title);
     if normalized_title.is_empty() {
       return Ok(None);
@@ -1515,79 +1531,79 @@ impl Repository {
       confidence,
     } = input;
 
-    let conn = self.conn()?;
-    let mut existing = self.find_book_by_isbn(isbn10.as_deref(), isbn13.as_deref())?;
+    let mut conn = self.conn()?;
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let mut existing = Self::find_book_by_isbn_conn(&tx, isbn10.as_deref(), isbn13.as_deref())?;
     if existing.is_none() && !title.trim().is_empty() && !authors.is_empty() {
-      existing = self.find_book_by_title_author(&title, &authors)?;
+      existing = Self::find_book_by_title_author_conn(&tx, &title, &authors)?;
     }
     let incoming_authors_json = serde_json::to_string(&authors)?;
 
-    if let Some(book_id) = existing {
-      let overrides = self.get_manual_override_fields(&book_id)?;
+    let book_id = if let Some(book_id) = existing {
+      let overrides = Self::get_manual_override_fields_conn(&tx, &book_id)?;
       let title = if overrides.contains("title") {
-        self.get_book_field(&book_id, "title")?.unwrap_or(title)
+        Self::get_book_field_conn(&tx, &book_id, "title")?.unwrap_or(title)
       } else {
         title
       };
       let subtitle = if overrides.contains("subtitle") {
-        self.get_book_field(&book_id, "subtitle")?
+        Self::get_book_field_conn(&tx, &book_id, "subtitle")?
       } else {
-        preserve_existing_text(subtitle, self.get_book_field(&book_id, "subtitle")?)
+        preserve_existing_text(subtitle, Self::get_book_field_conn(&tx, &book_id, "subtitle")?)
       };
       let authors_json = if overrides.contains("authors_json") || authors.is_empty() {
-        self
-          .get_book_field(&book_id, "authors_json")?
+        Self::get_book_field_conn(&tx, &book_id, "authors_json")?
           .unwrap_or(incoming_authors_json.clone())
       } else {
         incoming_authors_json.clone()
       };
       let publisher = if overrides.contains("publisher") {
-        self.get_book_field(&book_id, "publisher")?
+        Self::get_book_field_conn(&tx, &book_id, "publisher")?
       } else {
-        preserve_existing_text(publisher, self.get_book_field(&book_id, "publisher")?)
+        preserve_existing_text(publisher, Self::get_book_field_conn(&tx, &book_id, "publisher")?)
       };
       let publish_date = if overrides.contains("publish_date") {
-        self.get_book_field(&book_id, "publish_date")?
+        Self::get_book_field_conn(&tx, &book_id, "publish_date")?
       } else {
-        preserve_existing_text(publish_date, self.get_book_field(&book_id, "publish_date")?)
+        preserve_existing_text(publish_date, Self::get_book_field_conn(&tx, &book_id, "publish_date")?)
       };
       let isbn10 = if overrides.contains("isbn10") {
-        self.get_book_field(&book_id, "isbn10")?
+        Self::get_book_field_conn(&tx, &book_id, "isbn10")?
       } else {
-        preserve_existing_text(isbn10, self.get_book_field(&book_id, "isbn10")?)
+        preserve_existing_text(isbn10, Self::get_book_field_conn(&tx, &book_id, "isbn10")?)
       };
       let isbn13 = if overrides.contains("isbn13") {
-        self.get_book_field(&book_id, "isbn13")?
+        Self::get_book_field_conn(&tx, &book_id, "isbn13")?
       } else {
-        preserve_existing_text(isbn13, self.get_book_field(&book_id, "isbn13")?)
+        preserve_existing_text(isbn13, Self::get_book_field_conn(&tx, &book_id, "isbn13")?)
       };
       let description = if overrides.contains("description") {
-        self.get_book_field(&book_id, "description")?
+        Self::get_book_field_conn(&tx, &book_id, "description")?
       } else {
-        preserve_existing_text(description, self.get_book_field(&book_id, "description")?)
+        preserve_existing_text(description, Self::get_book_field_conn(&tx, &book_id, "description")?)
       };
       let language = if overrides.contains("language") {
-        self.get_book_field(&book_id, "language")?
+        Self::get_book_field_conn(&tx, &book_id, "language")?
       } else {
-        preserve_existing_text(language, self.get_book_field(&book_id, "language")?)
+        preserve_existing_text(language, Self::get_book_field_conn(&tx, &book_id, "language")?)
       };
       let page_count = if overrides.contains("page_count") {
-        self.get_book_i64_field(&book_id, "page_count")?
+        Self::get_book_i64_field_conn(&tx, &book_id, "page_count")?
       } else {
-        preserve_existing_i64(page_count, self.get_book_i64_field(&book_id, "page_count")?)
+        preserve_existing_i64(page_count, Self::get_book_i64_field_conn(&tx, &book_id, "page_count")?)
       };
       let series = if overrides.contains("series") {
-        self.get_book_field(&book_id, "series")?
+        Self::get_book_field_conn(&tx, &book_id, "series")?
       } else {
-        preserve_existing_text(series, self.get_book_field(&book_id, "series")?)
+        preserve_existing_text(series, Self::get_book_field_conn(&tx, &book_id, "series")?)
       };
       let series_index = if overrides.contains("series_index") {
-        self.get_book_i64_field(&book_id, "series_index")?
+        Self::get_book_i64_field_conn(&tx, &book_id, "series_index")?
       } else {
-        preserve_existing_i64(series_index, self.get_book_i64_field(&book_id, "series_index")?)
+        preserve_existing_i64(series_index, Self::get_book_i64_field_conn(&tx, &book_id, "series_index")?)
       };
-      let existing_cover_url = self.get_book_field(&book_id, "cover_url")?;
-      let existing_cover_local_path = self.get_book_field(&book_id, "cover_local_path")?;
+      let existing_cover_url = Self::get_book_field_conn(&tx, &book_id, "cover_url")?;
+      let existing_cover_local_path = Self::get_book_field_conn(&tx, &book_id, "cover_local_path")?;
       let cover_url = if overrides.contains("cover_url") {
         existing_cover_url.clone()
       } else {
@@ -1599,7 +1615,7 @@ impl Repository {
         None
       };
 
-      conn.execute(
+      tx.execute(
         "UPDATE books SET title = ?1, subtitle = ?2, authors_json = ?3, publisher = ?4, publish_date = ?5, isbn10 = ?6, isbn13 = ?7, description = ?8, language = ?9, page_count = ?10, series = ?11, series_index = ?12, cover_url = ?13, cover_local_path = ?14, metadata_source = ?15, confidence = ?16, updated_at = ?17 WHERE id = ?18",
         params![
           title,
@@ -1622,10 +1638,10 @@ impl Repository {
           book_id,
         ],
       )?;
-      Ok(book_id)
+      book_id
     } else {
       let id = Uuid::new_v4().to_string();
-      conn.execute(
+      tx.execute(
         "INSERT INTO books(id, title, subtitle, authors_json, publisher, publish_date, isbn10, isbn13, description, language, page_count, series, series_index, cover_url, cover_local_path, metadata_source, confidence, created_at, updated_at) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, NULL, ?15, ?16, ?17, ?17)",
         params![
           id,
@@ -1647,8 +1663,10 @@ impl Repository {
           now,
         ],
       )?;
-      Ok(id)
-    }
+      id
+    };
+    tx.commit()?;
+    Ok(book_id)
   }
 
   pub fn update_book_by_id_ignoring_manual_overrides(
@@ -2618,6 +2636,10 @@ impl Repository {
 
   pub fn get_manual_override_fields(&self, book_id: &str) -> anyhow::Result<HashSet<String>> {
     let conn = self.conn()?;
+    Self::get_manual_override_fields_conn(&conn, book_id)
+  }
+
+  fn get_manual_override_fields_conn(conn: &Connection, book_id: &str) -> anyhow::Result<HashSet<String>> {
     let mut stmt = conn.prepare("SELECT field_name FROM manual_overrides WHERE book_id = ?1")?;
     let mut out = HashSet::new();
     for row in stmt.query_map(params![book_id], |row| row.get::<_, String>(0))? {
@@ -2627,8 +2649,16 @@ impl Repository {
   }
 
   fn get_book_field(&self, book_id: &str, field_name: &str) -> anyhow::Result<Option<String>> {
-    anyhow::ensure!(is_book_column_allowed(field_name), "invalid book column name");
     let conn = self.conn()?;
+    Self::get_book_field_conn(&conn, book_id, field_name)
+  }
+
+  fn get_book_field_conn(
+    conn: &Connection,
+    book_id: &str,
+    field_name: &str,
+  ) -> anyhow::Result<Option<String>> {
+    anyhow::ensure!(is_book_column_allowed(field_name), "invalid book column name");
     let query = format!("SELECT {field_name} FROM books WHERE id = ?1");
     Ok(
       conn
@@ -2639,8 +2669,16 @@ impl Repository {
   }
 
   fn get_book_i64_field(&self, book_id: &str, field_name: &str) -> anyhow::Result<Option<i64>> {
-    anyhow::ensure!(is_book_column_allowed(field_name), "invalid book column name");
     let conn = self.conn()?;
+    Self::get_book_i64_field_conn(&conn, book_id, field_name)
+  }
+
+  fn get_book_i64_field_conn(
+    conn: &Connection,
+    book_id: &str,
+    field_name: &str,
+  ) -> anyhow::Result<Option<i64>> {
+    anyhow::ensure!(is_book_column_allowed(field_name), "invalid book column name");
     let query = format!("SELECT {field_name} FROM books WHERE id = ?1");
     Ok(
       conn
