@@ -2312,8 +2312,7 @@ fn assign_isbn(metadata: &mut ParsedMetadata, isbn: Option<String>) {
 
 fn parse_pdf_authors(raw: &str) -> Vec<String> {
   let normalized = raw
-    .replace('\n', " ")
-    .replace('\r', " ")
+    .replace(['\n', '\r'], " ")
     .split_whitespace()
     .collect::<Vec<_>>()
     .join(" ");
