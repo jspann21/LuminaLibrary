@@ -1037,12 +1037,19 @@ impl LibraryService {
           continue;
         };
 
-        let mut metadata = ParsedMetadata::default();
-        metadata.title = csv_value(&row, &["title"]).or_else(|| csv_value(&row, &["guessed_title"]));
-        metadata.subtitle = csv_value(&row, &["subtitle"]);
-        metadata.authors = csv_value(&row, &["authors", "author"])
-          .map(|value| parse_csv_list(&value))
-          .unwrap_or_default();
+        let mut metadata = ParsedMetadata {
+          title: csv_value(&row, &["title"]).or_else(|| csv_value(&row, &["guessed_title"])),
+          subtitle: csv_value(&row, &["subtitle"]),
+          authors: csv_value(&row, &["authors", "author"])
+            .map(|value| parse_csv_list(&value))
+            .unwrap_or_default(),
+          publisher: csv_value(&row, &["publisher"]),
+          publish_date: csv_value(&row, &["publish_date", "publishdate", "published"]),
+          description: csv_value(&row, &["description"]),
+          language: csv_value(&row, &["language"]),
+          page_count: csv_value(&row, &["page_count", "pagecount", "pages"]).and_then(parse_i64_value),
+          ..ParsedMetadata::default()
+        };
         if metadata.authors.is_empty() {
           if let Some(guessed_author) = csv_value(&row, &["guessed_author"]) {
             metadata.authors.push(guessed_author);
@@ -1050,11 +1057,6 @@ impl LibraryService {
             metadata.authors.push(guessed_author);
           }
         }
-        metadata.publisher = csv_value(&row, &["publisher"]);
-        metadata.publish_date = csv_value(&row, &["publish_date", "publishdate", "published"]);
-        metadata.description = csv_value(&row, &["description"]);
-        metadata.language = csv_value(&row, &["language"]);
-        metadata.page_count = csv_value(&row, &["page_count", "pagecount", "pages"]).and_then(parse_i64_value);
         assign_isbn_columns(
           &mut metadata,
           csv_value(&row, &["isbn10"]),
@@ -2488,20 +2490,22 @@ fn assign_isbn_columns(
 }
 
 fn build_csv_book_patch(row: &HashMap<String, String>) -> (BookPatch, Vec<String>) {
-  let mut patch = BookPatch::default();
-  patch.title = csv_value(row, &["title"]);
-  patch.subtitle = csv_value(row, &["subtitle"]);
-  patch.authors = csv_value(row, &["authors", "author"])
-    .map(|value| parse_csv_list(&value))
-    .filter(|items| !items.is_empty());
-  patch.publisher = csv_value(row, &["publisher"]);
-  patch.publish_date = csv_value(row, &["publish_date", "publishdate", "published"]);
-  patch.description = csv_value(row, &["description"]);
-  patch.language = csv_value(row, &["language"]);
-  patch.page_count = csv_value(row, &["page_count", "pagecount", "pages"]).and_then(parse_i64_value);
-  patch.series = csv_value(row, &["series"]);
-  patch.series_index = csv_value(row, &["series_index", "seriesindex"]).and_then(parse_i64_value);
-  patch.cover_url = csv_value(row, &["cover_url", "coverurl"]);
+  let mut patch = BookPatch {
+    title: csv_value(row, &["title"]),
+    subtitle: csv_value(row, &["subtitle"]),
+    authors: csv_value(row, &["authors", "author"])
+      .map(|value| parse_csv_list(&value))
+      .filter(|items| !items.is_empty()),
+    publisher: csv_value(row, &["publisher"]),
+    publish_date: csv_value(row, &["publish_date", "publishdate", "published"]),
+    description: csv_value(row, &["description"]),
+    language: csv_value(row, &["language"]),
+    page_count: csv_value(row, &["page_count", "pagecount", "pages"]).and_then(parse_i64_value),
+    series: csv_value(row, &["series"]),
+    series_index: csv_value(row, &["series_index", "seriesindex"]).and_then(parse_i64_value),
+    cover_url: csv_value(row, &["cover_url", "coverurl"]),
+    ..BookPatch::default()
+  };
 
   // Reassign normalized ISBN values directly on the patch.
   if let Some(value) = csv_value(row, &["isbn10"]) {

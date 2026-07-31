@@ -1758,20 +1758,21 @@ pub fn parse_epub_metadata(path: &Path) -> anyhow::Result<ParsedMetadata> {
     .with_context(|| format!("failed to read opf {rootfile_path}"))?;
 
   let opf_doc = XmlDocument::parse(&opf_xml).context("invalid opf document")?;
-  let mut metadata = ParsedMetadata::default();
-
-  metadata.title = first_text_by_suffix(&opf_doc, "title");
-  metadata.publisher = first_text_by_suffix(&opf_doc, "publisher");
-  metadata.publish_date = first_text_by_suffix(&opf_doc, "date");
-  metadata.description = first_text_by_suffix(&opf_doc, "description");
-  metadata.language = first_text_by_suffix(&opf_doc, "language");
-  metadata.authors = opf_doc
-    .descendants()
-    .filter(|node| tag_name_ends_with(node, "creator"))
-    .filter_map(|node| node.text())
-    .map(str::trim)
-    .filter_map(sanitize_metadata_value)
-    .collect();
+  let mut metadata = ParsedMetadata {
+    title: first_text_by_suffix(&opf_doc, "title"),
+    publisher: first_text_by_suffix(&opf_doc, "publisher"),
+    publish_date: first_text_by_suffix(&opf_doc, "date"),
+    description: first_text_by_suffix(&opf_doc, "description"),
+    language: first_text_by_suffix(&opf_doc, "language"),
+    authors: opf_doc
+      .descendants()
+      .filter(|node| tag_name_ends_with(node, "creator"))
+      .filter_map(|node| node.text())
+      .map(str::trim)
+      .filter_map(sanitize_metadata_value)
+      .collect(),
+    ..ParsedMetadata::default()
+  };
 
   for candidate in opf_doc
     .descendants()

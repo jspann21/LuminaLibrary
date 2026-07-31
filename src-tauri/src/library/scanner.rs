@@ -1812,8 +1812,10 @@ impl FolderWatcher {
 }
 
 fn scan_summary_for_single_file_outcome(outcome: &FileProcessingOutcome) -> ScanSummary {
-  let mut summary = ScanSummary::default();
-  summary.scanned_files = 1;
+  let mut summary = ScanSummary {
+    scanned_files: 1,
+    ..ScanSummary::default()
+  };
   match outcome.reason.as_str() {
     "unchanged" => summary.unchanged_files = 1,
     "new" => summary.new_files = 1,
