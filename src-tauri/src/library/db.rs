@@ -1406,8 +1406,9 @@ impl Repository {
     metadata_json: &str,
     now: &str,
   ) -> anyhow::Result<bool> {
-    let conn = self.conn()?;
-    let existed = conn
+    let mut conn = self.conn()?;
+    let tx = conn.transaction()?;
+    let existed = tx
       .query_row(
         "SELECT 1 FROM book_external_sources WHERE source = ?1 AND external_id = ?2 LIMIT 1",
         params![source, external_id],
@@ -1415,7 +1416,7 @@ impl Repository {
       )
       .optional()?
       .is_some();
-    conn.execute(
+    tx.execute(
       "INSERT INTO book_external_sources(id, book_id, source, external_id, external_work_id, external_url, metadata_json, imported_at, updated_at)
        VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)
        ON CONFLICT(source, external_id) DO UPDATE SET
@@ -1435,6 +1436,7 @@ impl Repository {
         now,
       ],
     )?;
+    tx.commit()?;
     Ok(!existed)
   }
 
