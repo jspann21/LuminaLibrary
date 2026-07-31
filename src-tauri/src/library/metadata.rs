@@ -2502,7 +2502,7 @@ fn is_known_google_placeholder_image(bytes: &[u8]) -> bool {
 }
 
 fn is_known_google_placeholder_hash(hash_hex: &str) -> bool {
-  GOOGLE_BOOKS_PLACEHOLDER_SHA256.iter().any(|known| *known == hash_hex)
+  GOOGLE_BOOKS_PLACEHOLDER_SHA256.contains(&hash_hex)
 }
 
 fn build_cover_search_attempts(title: &str, author: Option<&str>) -> Vec<(String, Option<String>)> {
