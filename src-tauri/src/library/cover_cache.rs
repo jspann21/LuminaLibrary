@@ -1,7 +1,7 @@
 use std::{
     collections::HashSet,
-    fs::{self, File},
-    io::{BufWriter, Cursor, Read},
+    fs::{self, OpenOptions},
+    io::{BufWriter, Cursor, Read, Write},
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -10,11 +10,13 @@ use anyhow::{ensure, Context};
 use image::{codecs::jpeg::JpegEncoder, ImageEncoder, ImageReader, Limits};
 use reqwest::{blocking::Client as HttpClient, Url};
 use sha2::{Digest, Sha256};
+use uuid::Uuid;
 
 const MAX_COVER_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_COVER_DECODE_BYTES: u64 = 64 * 1024 * 1024;
 const COVER_THUMB_MAX_WIDTH: u32 = 384;
 const COVER_THUMB_MAX_HEIGHT: u32 = 576;
+const STALE_TEMP_FILE_AGE: Duration = Duration::from_secs(60 * 60);
 
 #[derive(Clone)]
 pub struct CoverCache {
@@ -89,17 +91,24 @@ impl CoverCache {
             .thumbnail(COVER_THUMB_MAX_WIDTH, COVER_THUMB_MAX_HEIGHT)
             .to_rgb8();
 
-        let tmp_path = cache_path.with_extension("tmp");
+        let tmp_path = cache_path.with_extension(format!("{}.tmp", Uuid::new_v4()));
         let write_result = (|| -> anyhow::Result<()> {
-            let file = File::create(&tmp_path)?;
-            let writer = BufWriter::new(file);
-            let encoder = JpegEncoder::new_with_quality(writer, 82);
-            encoder.write_image(
-                thumb.as_raw(),
-                thumb.width(),
-                thumb.height(),
-                image::ExtendedColorType::Rgb8,
-            )?;
+            let file = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&tmp_path)?;
+            let mut writer = BufWriter::new(file);
+            {
+                let encoder = JpegEncoder::new_with_quality(&mut writer, 82);
+                encoder.write_image(
+                    thumb.as_raw(),
+                    thumb.width(),
+                    thumb.height(),
+                    image::ExtendedColorType::Rgb8,
+                )?;
+            }
+            writer.flush()?;
+            writer.get_ref().sync_all()?;
             Ok(())
         })();
         if let Err(err) = write_result {
@@ -108,6 +117,9 @@ impl CoverCache {
         }
         if let Err(err) = fs::rename(&tmp_path, &cache_path) {
             let _ = fs::remove_file(&tmp_path);
+            if is_existing_file(&cache_path) {
+                return Ok(Some(cache_path.to_string_lossy().to_string()));
+            }
             return Err(err.into());
         }
 
@@ -124,8 +136,12 @@ impl CoverCache {
             let entry = entry?;
             let path = entry.path();
             let extension = path.extension().and_then(|extension| extension.to_str());
-            let is_managed_file = matches!(extension, Some("jpg" | "tmp"));
-            if !is_managed_file || referenced_paths.contains(&path) {
+            let should_remove = match extension {
+                Some("jpg") => !referenced_paths.contains(&path),
+                Some("tmp") => is_stale_temp_file(&path),
+                _ => false,
+            };
+            if !should_remove {
                 continue;
             }
             fs::remove_file(&path)?;
@@ -155,6 +171,14 @@ fn is_existing_file(path: &Path) -> bool {
     fs::metadata(path)
         .map(|metadata| metadata.is_file())
         .unwrap_or(false)
+}
+
+fn is_stale_temp_file(path: &Path) -> bool {
+    fs::metadata(path)
+        .and_then(|metadata| metadata.modified())
+        .ok()
+        .and_then(|modified| modified.elapsed().ok())
+        .is_some_and(|age| age >= STALE_TEMP_FILE_AGE)
 }
 
 fn sanitize_file_stem(value: &str) -> String {
