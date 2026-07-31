@@ -1,7 +1,7 @@
 {
   "name": "lumina-library",
   "private": true,
-  "version": "0.1.3",
+  "version": "0.1.4",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@11.2.2",
