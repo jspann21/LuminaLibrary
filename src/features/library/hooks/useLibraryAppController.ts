@@ -343,6 +343,11 @@ export function useLibraryAppController() {
       if (!cancelled && updated > 0) {
         void queryClient.invalidateQueries({ queryKey: ['books'] })
       }
+    }).catch((error: unknown) => {
+      if (!cancelled) {
+        lastCoverCacheBatchKeyRef.current = ''
+        console.warn('Failed to cache book covers', error)
+      }
     })
     return () => {
       cancelled = true
@@ -596,7 +601,7 @@ export function useLibraryAppController() {
           message: 'This removes the book from your library index, but does not delete files on disk.',
           confirmLabel: 'Remove Book',
           tone: 'danger',
-          onConfirm: () => void bookMutations.deleteBookMutation.mutateAsync(bookId),
+          onConfirm: () => bookMutations.deleteBookMutation.mutate(bookId),
         }),
       isSaving: bookMutations.saveDetailMutation.isPending,
       isHiding: bookMutations.hideBooksMutation.isPending,

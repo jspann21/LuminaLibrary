@@ -27,7 +27,12 @@ export function useSettingsMutations(deps: {
         onSuccess: (folder) => {
             setFolderPath('')
             void queryClient.invalidateQueries({ queryKey: libraryQueryKeys.folders() })
-            void api.startScan(folder.id)
+            void api.startScan(folder.id).catch((error: unknown) => {
+                setScanStatus(error instanceof Error ? error.message : 'Failed to scan the added source')
+            })
+        },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to add library source')
         },
     })
     const removeFolderMutation = useMutation({

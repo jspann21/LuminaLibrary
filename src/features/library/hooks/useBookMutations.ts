@@ -158,6 +158,9 @@ export function useBookMutations(deps: {
             setScanStatus('Book removed from library')
             invalidateLibraryData()
         },
+        onError: (error: unknown) => {
+            setScanStatus(error instanceof Error ? error.message : 'Failed to remove book')
+        },
     })
     const hideBooksMutation = useMutation({
         mutationFn: (bookIds: string[]) => api.hideBooks(bookIds),
