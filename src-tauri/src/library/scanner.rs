@@ -529,7 +529,7 @@ impl Scanner {
     let mut candidates: Vec<ScanCandidate> = Vec::new();
     self.for_each_scan_candidate(folder, &existing_by_path, |candidate| {
       candidates.push(candidate);
-    });
+    })?;
     let total_found = candidates.len() as u64;
     let prepare_error_known = candidates
       .iter()
@@ -981,7 +981,8 @@ impl Scanner {
     folder: &LibraryFolder,
     existing_by_path: &HashMap<String, FileRecord>,
     mut on_candidate: F,
-  ) where
+  ) -> anyhow::Result<()>
+  where
     F: FnMut(ScanCandidate),
   {
     let walker = if folder.recursive {
@@ -990,7 +991,11 @@ impl Scanner {
       WalkDir::new(&folder.path).max_depth(1)
     };
 
-    for entry in walker.into_iter().filter_map(Result::ok).filter(|entry| entry.file_type().is_file()) {
+    for entry in walker {
+      let entry = entry.with_context(|| format!("failed to traverse library folder {}", folder.path))?;
+      if !entry.file_type().is_file() {
+        continue;
+      }
       let path = entry.path();
       let Some(ext) = path.extension().and_then(OsStr::to_str).map(|item| item.to_lowercase()) else {
         continue;
@@ -1000,6 +1005,7 @@ impl Scanner {
       }
       on_candidate(self.build_scan_candidate(path, ext, existing_by_path));
     }
+    Ok(())
   }
 
   fn build_scan_candidate(
