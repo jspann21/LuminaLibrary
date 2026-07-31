@@ -114,10 +114,9 @@ impl LibraryService {
   }
 
   pub fn add_library_folder(&self, path: String, recursive: bool) -> anyhow::Result<LibraryFolder> {
-    let canonical = fs::canonicalize(&path)
-      .with_context(|| format!("failed to canonicalize {path}"))?
-      .to_string_lossy()
-      .to_string();
+    let canonical_path = fs::canonicalize(&path).with_context(|| format!("failed to canonicalize {path}"))?;
+    ensure!(canonical_path.is_dir(), "library source must be a directory");
+    let canonical = canonical_path.to_string_lossy().to_string();
     let folder = self.repository.add_folder(&canonical, recursive, &now_iso())?;
     self.watcher.watch_folder(&folder)?;
     Ok(folder)
