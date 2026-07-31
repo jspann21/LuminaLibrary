@@ -2284,7 +2284,7 @@ fn library_thing_book_url(book_id: &str) -> anyhow::Result<String> {
 
 fn parse_csv_list(value: &str) -> Vec<String> {
   value
-    .split(|ch| ch == ',' || ch == ';' || ch == '|')
+    .split([',', ';', '|'])
     .map(str::trim)
     .filter(|item| !item.is_empty())
     .map(ToString::to_string)
