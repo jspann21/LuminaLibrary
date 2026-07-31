@@ -61,15 +61,15 @@ function getCustomCoverUrlFormatError(value: string) {
 
     try {
         const parsed = new URL(url)
-        if (parsed.protocol === 'data:') {
-            return url.toLowerCase().startsWith('data:image/') ? null : 'Paste a direct image URL. Data URLs must start with data:image/.'
-        }
-        if (parsed.protocol === 'http:' || parsed.protocol === 'https:' || parsed.protocol === 'blob:') return null
+        const isLocalTauriAsset =
+            parsed.protocol === 'asset:' ||
+            (parsed.protocol === 'http:' && parsed.hostname.toLowerCase() === 'asset.localhost')
+        if (parsed.protocol === 'https:' || isLocalTauriAsset) return null
     } catch {
         return 'Paste a valid image URL.'
     }
 
-    return 'Paste a direct image URL that starts with http://, https://, blob:, or data:image/.'
+    return 'Paste a direct image URL that uses HTTPS.'
 }
 
 function getInputValueAfterPaste(event: ClipboardEvent<HTMLInputElement>) {
