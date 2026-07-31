@@ -1703,10 +1703,7 @@ impl FolderWatcher {
     let app_for_thread = app_handle.clone();
 
     thread::spawn(move || {
-      loop {
-        let Ok(event) = rx.recv() else {
-          break;
-        };
+      while let Ok(event) = rx.recv() {
         let Ok(event) = event else {
           continue;
         };
