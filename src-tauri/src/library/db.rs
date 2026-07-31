@@ -1522,11 +1522,7 @@ impl Repository {
       } else {
         preserve_existing_text(subtitle, self.get_book_field(&book_id, "subtitle")?)
       };
-      let authors_json = if overrides.contains("authors_json") {
-        self
-          .get_book_field(&book_id, "authors_json")?
-          .unwrap_or(incoming_authors_json.clone())
-      } else if authors.is_empty() {
+      let authors_json = if overrides.contains("authors_json") || authors.is_empty() {
         self
           .get_book_field(&book_id, "authors_json")?
           .unwrap_or(incoming_authors_json.clone())
@@ -1722,11 +1718,7 @@ impl Repository {
     } else {
       preserve_existing_text(subtitle, self.get_book_field(book_id, "subtitle")?)
     };
-    let authors_json = if overrides.contains("authors_json") {
-      self
-        .get_book_field(book_id, "authors_json")?
-        .unwrap_or(incoming_authors_json.clone())
-    } else if authors.is_empty() {
+    let authors_json = if overrides.contains("authors_json") || authors.is_empty() {
       self
         .get_book_field(book_id, "authors_json")?
         .unwrap_or(incoming_authors_json.clone())
