@@ -1789,7 +1789,12 @@ impl FolderWatcher {
     if !path.exists() {
       return Ok(());
     }
-    self.watcher.lock().watch(path, RecursiveMode::Recursive)?;
+    let recursive_mode = if folder.recursive {
+      RecursiveMode::Recursive
+    } else {
+      RecursiveMode::NonRecursive
+    };
+    self.watcher.lock().watch(path, recursive_mode)?;
     let replaced_folder_id = self
       .watched_paths
       .lock()
