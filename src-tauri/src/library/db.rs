@@ -1005,6 +1005,44 @@ impl Repository {
            SELECT ?1, tag_id, ?2 FROM book_tags WHERE book_id = ?3",
           params![&primary_book_id, now, &duplicate.id],
         )?;
+        let transferable_overrides = {
+          let mut stmt = tx.prepare(
+            "SELECT duplicate.field_name, duplicate.field_value
+             FROM manual_overrides duplicate
+             WHERE duplicate.book_id = ?1
+               AND NOT EXISTS (
+                 SELECT 1 FROM manual_overrides primary_override
+                 WHERE primary_override.book_id = ?2
+                   AND primary_override.field_name = duplicate.field_name
+               )",
+          )?;
+          let rows = stmt
+            .query_map(params![&duplicate.id, &primary_book_id], |row| {
+              Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+          rows
+        };
+        for (field_name, field_value) in transferable_overrides {
+          if !is_book_column_allowed(&field_name) || field_name == "cover_local_path" {
+            continue;
+          }
+          let update_sql = if field_name == "cover_url" {
+            "UPDATE books SET cover_url = ?1, cover_local_path = NULL, updated_at = ?2 WHERE id = ?3".to_string()
+          } else {
+            format!("UPDATE books SET {field_name} = ?1, updated_at = ?2 WHERE id = ?3")
+          };
+          if matches!(field_name.as_str(), "page_count" | "series_index") {
+            let numeric_value = field_value
+              .as_deref()
+              .map(str::parse::<i64>)
+              .transpose()
+              .with_context(|| format!("invalid numeric manual override for {field_name}"))?;
+            tx.execute(&update_sql, params![numeric_value, now, &primary_book_id])?;
+          } else {
+            tx.execute(&update_sql, params![field_value, now, &primary_book_id])?;
+          }
+        }
         tx.execute(
           "DELETE FROM manual_overrides
            WHERE book_id = ?1
