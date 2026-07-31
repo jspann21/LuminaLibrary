@@ -84,11 +84,15 @@ pub fn clear_google_books_api_key(state: State<'_, AppState>) -> Result<AppSetti
 }
 
 #[tauri::command]
-pub fn test_google_books_api_key(
+pub async fn test_google_books_api_key(
   state: State<'_, AppState>,
   api_key: Option<String>,
 ) -> Result<ApiKeyTestResult, String> {
-  to_result(state.service.test_google_books_api_key(api_key))
+  let service = state.service.clone();
+  tauri::async_runtime::spawn_blocking(move || service.test_google_books_api_key(api_key))
+    .await
+    .map_err(|err| format!("Google Books API key test task join error: {err}"))?
+    .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
@@ -172,14 +176,18 @@ pub fn get_discovered_files(
 }
 
 #[tauri::command]
-pub fn attempt_match(
+pub async fn attempt_match(
   state: State<'_, AppState>,
   file_id: String,
   isbn: Option<String>,
   title: Option<String>,
   author: Option<String>,
 ) -> Result<MatchResult, String> {
-  to_result(state.service.attempt_match(file_id, isbn, title, author))
+  let service = state.service.clone();
+  tauri::async_runtime::spawn_blocking(move || service.attempt_match(file_id, isbn, title, author))
+    .await
+    .map_err(|err| format!("match task join error: {err}"))?
+    .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
@@ -211,23 +219,31 @@ pub async fn preview_match(
 }
 
 #[tauri::command]
-pub fn apply_manual_book_edit(
+pub async fn apply_manual_book_edit(
   state: State<'_, AppState>,
   book_id: String,
   patch: BookPatch,
   tags: Vec<String>,
 ) -> Result<BookDetail, String> {
-  to_result(state.service.apply_manual_book_edit(book_id, patch, tags))
+  let service = state.service.clone();
+  tauri::async_runtime::spawn_blocking(move || service.apply_manual_book_edit(book_id, patch, tags))
+    .await
+    .map_err(|err| format!("manual edit task join error: {err}"))?
+    .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
-pub fn create_manual_book(
+pub async fn create_manual_book(
   state: State<'_, AppState>,
   file_id: String,
   patch: BookPatch,
   tags: Vec<String>,
 ) -> Result<BookDetail, String> {
-  to_result(state.service.create_manual_book(file_id, patch, tags))
+  let service = state.service.clone();
+  tauri::async_runtime::spawn_blocking(move || service.create_manual_book(file_id, patch, tags))
+    .await
+    .map_err(|err| format!("manual book creation task join error: {err}"))?
+    .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
@@ -249,8 +265,12 @@ pub async fn reconcile_local_files(state: State<'_, AppState>) -> Result<Library
 }
 
 #[tauri::command]
-pub fn export_unresolved_csv(state: State<'_, AppState>, path: String) -> Result<ExportResult, String> {
-  to_result(state.service.export_unresolved_csv(path))
+pub async fn export_unresolved_csv(state: State<'_, AppState>, path: String) -> Result<ExportResult, String> {
+  let service = state.service.clone();
+  tauri::async_runtime::spawn_blocking(move || service.export_unresolved_csv(path))
+    .await
+    .map_err(|err| format!("csv export task join error: {err}"))?
+    .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
@@ -275,8 +295,12 @@ pub async fn import_library_thing_export(
 }
 
 #[tauri::command]
-pub fn rescan_file(state: State<'_, AppState>, file_id: String) -> Result<FileRecord, String> {
-  to_result(state.service.rescan_file(file_id))
+pub async fn rescan_file(state: State<'_, AppState>, file_id: String) -> Result<FileRecord, String> {
+  let service = state.service.clone();
+  tauri::async_runtime::spawn_blocking(move || service.rescan_file(file_id))
+    .await
+    .map_err(|err| format!("file rescan task join error: {err}"))?
+    .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
@@ -293,17 +317,17 @@ pub async fn preview_rescan_metadata(
 }
 
 #[tauri::command]
-pub fn apply_curated_metadata(
+pub async fn apply_curated_metadata(
   state: State<'_, AppState>,
   book_id: String,
   selection: Vec<MetadataFieldSelection>,
   lock_updates: Vec<MetadataLockUpdate>,
 ) -> Result<BookDetail, String> {
-  to_result(
-    state
-      .service
-      .apply_curated_metadata(book_id, selection, lock_updates),
-  )
+  let service = state.service.clone();
+  tauri::async_runtime::spawn_blocking(move || service.apply_curated_metadata(book_id, selection, lock_updates))
+    .await
+    .map_err(|err| format!("curated metadata task join error: {err}"))?
+    .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
@@ -335,11 +359,15 @@ pub fn clear_brave_search_api_key(state: State<'_, AppState>) -> Result<AppSetti
 }
 
 #[tauri::command]
-pub fn test_brave_search_api_key(
+pub async fn test_brave_search_api_key(
   state: State<'_, AppState>,
   api_key: Option<String>,
 ) -> Result<ApiKeyTestResult, String> {
-  to_result(state.service.test_brave_search_api_key(api_key))
+  let service = state.service.clone();
+  tauri::async_runtime::spawn_blocking(move || service.test_brave_search_api_key(api_key))
+    .await
+    .map_err(|err| format!("Brave Search API key test task join error: {err}"))?
+    .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
