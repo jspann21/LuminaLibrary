@@ -8,6 +8,7 @@ import { VirtualizedLibraryBooks } from '../components/VirtualizedLibraryBooks'
 type LibraryViewProps = {
   books: BookCard[]
   hiddenBooks: BookCard[]
+  hiddenBookCount: number
   isLoading: boolean
   isHiddenLoading: boolean
   isFetching: boolean
@@ -30,6 +31,7 @@ type LibraryViewProps = {
 export function LibraryView({
   books,
   hiddenBooks,
+  hiddenBookCount,
   isLoading,
   isHiddenLoading,
   isFetching,
@@ -145,12 +147,12 @@ export function LibraryView({
       <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            Hidden from Library ({hiddenBooks.length})
+            Hidden from Library ({hiddenBookCount})
           </h3>
-          <span className={hiddenBooks.length === 0 || isRestorePending ? 'flex cursor-not-allowed' : 'flex'} title={hiddenBooks.length === 0 ? 'No hidden books to restore' : isRestorePending ? 'Restoring hidden books' : undefined}>
+          <span className={hiddenBookCount === 0 || isRestorePending ? 'flex cursor-not-allowed' : 'flex'} title={hiddenBookCount === 0 ? 'No hidden books to restore' : isRestorePending ? 'Restoring hidden books' : undefined}>
             <button
               onClick={onRestoreAllHiddenBooks}
-              disabled={hiddenBooks.length === 0 || isRestorePending}
+              disabled={hiddenBookCount === 0 || isRestorePending}
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               {isRestorePending ? 'Restoring...' : 'Restore All'}

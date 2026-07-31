@@ -120,6 +120,7 @@ export const api = {
     invokeOrThrow<BookDetail>('set_book_tags', { bookId, tags }),
   hideBooks: (bookIds: string[]) => invokeOrThrow<number>('hide_books', { bookIds }),
   restoreBooks: (bookIds: string[]) => invokeOrThrow<number>('restore_books', { bookIds }),
+  restoreAllHiddenBooks: () => invokeOrThrow<number>('restore_all_hidden_books'),
   mergeTags: (sourceTags: string[], targetTag: string) =>
     invokeOrThrow<TagMergeResult>('merge_tags', { sourceTags, targetTag }),
   deleteTags: (tags: string[]) => invokeOrThrow<TagDeleteResult>('delete_tags', { tags }),

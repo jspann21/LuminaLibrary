@@ -836,6 +836,10 @@ impl LibraryService {
     self.repository.set_books_hidden(book_ids, false, &now_iso())
   }
 
+  pub fn restore_all_hidden_books(&self) -> anyhow::Result<u64> {
+    self.repository.restore_all_hidden_books(&now_iso())
+  }
+
   pub fn merge_tags(&self, source_tags: Vec<String>, target_tag: String) -> anyhow::Result<TagMergeResult> {
     validate_tag_inputs(&source_tags)?;
     validate_tag_value(&target_tag)?;

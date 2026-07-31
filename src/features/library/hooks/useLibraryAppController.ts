@@ -253,15 +253,14 @@ export function useLibraryAppController() {
     bookMutations.restoreBooksMutation.mutate([bookId])
   }
   const restoreAllHiddenBooks = () => {
-    const hiddenBooks = hiddenBooksQuery.data?.items ?? []
-    if (hiddenBooks.length === 0) return
-    const targetBookIds = hiddenBooks.map((book) => book.id)
+    const hiddenBookCount = hiddenBooksQuery.data?.total ?? 0
+    if (hiddenBookCount === 0) return
     openConfirmDialog({
       title: 'Restore all hidden books?',
-      message: `Restore ${targetBookIds.length} hidden book(s) back into the main library view?`,
+      message: `Restore ${hiddenBookCount} hidden book(s) back into the main library view?`,
       confirmLabel: 'Restore All',
       tone: 'warning',
-      onConfirm: () => bookMutations.restoreBooksMutation.mutate(targetBookIds),
+      onConfirm: () => bookMutations.restoreAllHiddenBooksMutation.mutate(),
     })
   }
 
@@ -415,6 +414,7 @@ export function useLibraryAppController() {
     libraryView: {
       books,
       hiddenBooks,
+      hiddenBookCount: hiddenBooksQuery.data?.total ?? 0,
       isLoading: booksQuery.isLoading,
       isHiddenLoading: hiddenBooksQuery.isLoading,
       isFetching: booksQuery.isFetching,
@@ -423,7 +423,8 @@ export function useLibraryAppController() {
       scrollContainerRef: libraryScrollContainerRef,
       selectedBookIds: selectedLibraryBookIdSet,
       isHidePending: bookMutations.hideBooksMutation.isPending,
-      isRestorePending: bookMutations.restoreBooksMutation.isPending,
+      isRestorePending:
+        bookMutations.restoreBooksMutation.isPending || bookMutations.restoreAllHiddenBooksMutation.isPending,
       onToggleBookSelection: toggleLibraryBookSelection,
       onSelectAllBooks: selectAllLibraryBooks,
       onClearSelection: clearLibraryBookSelection,

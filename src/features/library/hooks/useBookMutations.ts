@@ -174,6 +174,13 @@ export function useBookMutations(deps: {
             invalidateLibraryData()
         },
     })
+    const restoreAllHiddenBooksMutation = useMutation({
+        mutationFn: () => api.restoreAllHiddenBooks(),
+        onSuccess: (updatedCount) => {
+            setScanStatus(`Restored ${updatedCount} hidden book${updatedCount === 1 ? '' : 's'}`)
+            invalidateLibraryData()
+        },
+    })
 
     const requestHideBook = (bookId: string) => {
         openConfirmDialog({
@@ -265,6 +272,7 @@ export function useBookMutations(deps: {
         deleteBookMutation,
         hideBooksMutation,
         restoreBooksMutation,
+        restoreAllHiddenBooksMutation,
         requestHideBook,
         setMatchDraft,
         attemptMatchAll,

@@ -378,6 +378,11 @@ pub fn restore_books(state: State<'_, AppState>, book_ids: Vec<String>) -> Resul
 }
 
 #[tauri::command]
+pub fn restore_all_hidden_books(state: State<'_, AppState>) -> Result<u64, String> {
+  to_result(state.service.restore_all_hidden_books())
+}
+
+#[tauri::command]
 pub fn merge_tags(
   state: State<'_, AppState>,
   source_tags: Vec<String>,

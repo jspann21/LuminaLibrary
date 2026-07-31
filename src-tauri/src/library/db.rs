@@ -2233,6 +2233,14 @@ impl Repository {
     Ok(updated as u64)
   }
 
+  pub fn restore_all_hidden_books(&self, now: &str) -> anyhow::Result<u64> {
+    let updated = self.conn()?.execute(
+      "UPDATE books SET hidden = 0, updated_at = ?1 WHERE hidden = 1",
+      params![now],
+    )?;
+    Ok(updated as u64)
+  }
+
   pub fn get_hidden_books(
     &self,
     query: Option<String>,
