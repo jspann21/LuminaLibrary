@@ -165,14 +165,24 @@ export function UnresolvedFilesSection({
                             </button>
                         ) : null}
                     </div>
-                    <button
-                        className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:opacity-50"
-                        disabled={isAttemptMatchPending || isAttemptMatchAllPending || discoveredItems.length === 0}
-                        onClick={onAttemptMatchAll}
+                    <span
+                        className={cx('flex', (isAttemptMatchPending || isAttemptMatchAllPending || discoveredItems.length === 0) && 'cursor-not-allowed')}
+                        title={
+                            isAttemptMatchAllPending ? 'Matching all files...' :
+                            isAttemptMatchPending ? 'Matching in progress...' :
+                            discoveredItems.length === 0 ? 'No unresolved files to match' :
+                            'Attempt to match all files'
+                        }
                     >
-                        <RefreshCw size={14} className={cx(isAttemptMatchAllPending && 'animate-spin')} />
-                        {isAttemptMatchAllPending ? 'Matching All...' : 'Match All'}
-                    </button>
+                        <button
+                            className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
+                            disabled={isAttemptMatchPending || isAttemptMatchAllPending || discoveredItems.length === 0}
+                            onClick={onAttemptMatchAll}
+                        >
+                            <RefreshCw size={14} className={cx(isAttemptMatchAllPending && 'animate-spin')} />
+                            {isAttemptMatchAllPending ? 'Matching All...' : 'Match All'}
+                        </button>
+                    </span>
                 </div>
             </div>
 
