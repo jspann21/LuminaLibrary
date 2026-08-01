@@ -1339,10 +1339,15 @@ impl Repository {
        LEFT JOIN book_files bf ON bf.book_id = lb.id
        GROUP BY lb.id, lb.title, lb.authors_json"
     } else {
-      "SELECT b.id, b.title, b.authors_json, COUNT(DISTINCT bf.file_id) AS file_count
-       FROM books b
-       LEFT JOIN book_files bf ON bf.book_id = b.id
-       GROUP BY b.id, b.title, b.authors_json"
+      "WITH limited_books AS (
+         SELECT id, title, authors_json
+         FROM books
+         LIMIT 200
+       )
+       SELECT lb.id, lb.title, lb.authors_json, COUNT(DISTINCT bf.file_id) AS file_count
+       FROM limited_books lb
+       LEFT JOIN book_files bf ON bf.book_id = lb.id
+       GROUP BY lb.id, lb.title, lb.authors_json"
     };
     let mut stmt = conn.prepare(query)?;
 
