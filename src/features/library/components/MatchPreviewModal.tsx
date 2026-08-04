@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, Loader2, X } from 'lucide-react'
 import { cx } from '../lib/cx'
 import type { MatchPreview, MatchResult, MetadataCandidate } from '../../../lib/types'
@@ -83,6 +83,17 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
     const selected = candidates[selectedIdx] ?? null
     const noCandidates = candidates.length === 0
 
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return
+            event.preventDefault()
+            onClose()
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [onClose])
+
     async function handleApprove() {
         if (!selected) return
         setIsApplying(true)
@@ -117,7 +128,12 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
             {/* Modal */}
-            <div className="relative z-10 mx-4 flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Match Preview"
+                className="relative z-10 mx-4 flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+            >
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700/60">
                     <div>
