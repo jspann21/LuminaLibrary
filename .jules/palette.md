@@ -1,0 +1,3 @@
+## 2025-02-05 - Disabled Tooltip Best Practices
+**Learning:** Native disabled buttons swallow mouse events, preventing tooltips (like the `title` attribute) from displaying. Wrapping the disabled element in a span and setting `disabled:pointer-events-none` on the element along with `cursor-not-allowed` on the parent span restores both hover tooltips and correct cursor behavior without breaking accessibility or layout.
+**Action:** Use this span-wrapper pattern combined with Tailwind's `disabled:pointer-events-none` and `cursor-not-allowed` for all disabled buttons that require explanatory tooltips.
