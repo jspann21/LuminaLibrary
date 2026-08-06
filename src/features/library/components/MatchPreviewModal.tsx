@@ -246,24 +246,29 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
                         Cancel
                     </button>
                     {!noCandidates && (
-                        <button
-                            type="button"
-                            onClick={handleApprove}
-                            disabled={isApplying || !selected}
-                            className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:opacity-50"
+                            <span
+                                className={cx('flex', (isApplying || !selected) && 'cursor-not-allowed')}
+                                title={!selected ? 'Select a candidate to approve' : isApplying ? 'Applying match...' : 'Approve Match'}
                         >
-                            {isApplying ? (
-                                <>
-                                    <Loader2 size={14} className="animate-spin" />
-                                    Applying...
-                                </>
-                            ) : (
-                                <>
-                                    <Check size={14} />
-                                    Approve Match
-                                </>
-                            )}
-                        </button>
+                                <button
+                                    type="button"
+                                    onClick={handleApprove}
+                                    disabled={isApplying || !selected}
+                                    className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-50"
+                                >
+                                    {isApplying ? (
+                                        <>
+                                            <Loader2 size={14} className="animate-spin" />
+                                            Applying...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Check size={14} />
+                                            Approve Match
+                                        </>
+                                    )}
+                                </button>
+                            </span>
                     )}
                 </div>
             </div>

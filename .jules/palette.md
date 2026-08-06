@@ -1,0 +1,3 @@
+## 2024-05-24 - Safely Display Tooltips on Disabled Buttons
+**Learning:** Native HTML `title` tooltips and `cursor-not-allowed` styles are suppressed on `button` elements that have the native `disabled` attribute because disabled elements do not emit pointer events in most browsers.
+**Action:** When adding tooltips to disabled elements, wrap the element in a layout-preserving container (like `<span className="flex">` or `inline-flex`), apply the `title` and `cursor-not-allowed` logic to the wrapper, and use `disabled:pointer-events-none` on the inner button itself so pointer events pass through to the wrapper.
