@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Check, Loader2, X } from 'lucide-react'
 import { cx } from '../lib/cx'
 import type { MatchPreview, MatchResult, MetadataCandidate } from '../../../lib/types'
@@ -75,6 +75,7 @@ function confidenceBadge(confidence?: number) {
 /* ------------------------------------------------------------------ */
 
 export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: MatchPreviewModalProps) {
+    const titleId = useId()
     const [selectedIdx, setSelectedIdx] = useState(0)
     const [isApplying, setIsApplying] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -82,6 +83,17 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
     const candidates = preview.candidates
     const selected = candidates[selectedIdx] ?? null
     const noCandidates = candidates.length === 0
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return
+            event.preventDefault()
+            onClose()
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [onClose])
 
     async function handleApprove() {
         if (!selected) return
@@ -117,11 +129,16 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
             {/* Modal */}
-            <div className="relative z-10 mx-4 flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                className="relative z-10 mx-4 flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+            >
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700/60">
                     <div>
-                        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        <h2 id={titleId} className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                             Match Preview
                         </h2>
                         <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
@@ -175,7 +192,7 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
                                                 <span className={cx('rounded-full px-2 py-0.5 text-[11px] font-medium', sourceColor)}>
                                                     {SOURCE_LABELS[c.source] ?? c.source}
                                                 </span>
-                                                <span className="max-w-[200px] truncate">{c.title ?? 'Untitled'}</span>
+                                                <span className="max-w-[200px] truncate" title={c.title ?? 'Untitled'}>{c.title ?? 'Untitled'}</span>
                                                 {confidenceBadge(c.confidence)}
                                                 {isActive && <Check size={14} className="text-accent-500" />}
                                             </button>
