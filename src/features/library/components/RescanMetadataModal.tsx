@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { ArrowLeft, Check, ChevronRight, Loader2, Lock, Search, X } from 'lucide-react'
 import { cx } from '../lib/cx'
@@ -219,6 +219,7 @@ export function RescanMetadataModal({
   onApplied,
   primaryFileId,
 }: RescanMetadataModalProps) {
+  const titleId = useId()
   const [step, setStep] = useState<WizardStep>('lock')
   const [lockState, setLockState] = useState<Partial<Record<MetadataField, boolean>>>(() => {
     const state: Partial<Record<MetadataField, boolean>> = {}
@@ -242,6 +243,17 @@ export function RescanMetadataModal({
       mountedRef.current = false
     }
   }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      onClose()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   /* ---------- search ---------- */
 
@@ -389,6 +401,9 @@ export function RescanMetadataModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className={cx(
           'fixed inset-4 z-[61] mx-auto my-auto flex max-h-[min(90vh,800px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900',
           step === 'fine-tune' ? 'max-w-[1400px]' : 'max-w-[900px]',
@@ -411,7 +426,7 @@ export function RescanMetadataModal({
               </button>
             )}
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Rescan Metadata</h2>
+              <h2 id={titleId} className="text-lg font-semibold text-slate-900 dark:text-white">Rescan Metadata</h2>
               <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">
                 {book.title} — {book.authors.join(', ') || 'Unknown Author'}
               </p>
