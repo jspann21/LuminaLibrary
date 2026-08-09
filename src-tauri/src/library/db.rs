@@ -2395,14 +2395,19 @@ impl Repository {
     list_values.push(Value::from(page_size as i64));
     list_values.push(Value::from(offset as i64));
     let list_sql = format!(
-      "SELECT f.id, f.abs_path, lf.path, f.guessed_title, f.guessed_author, f.guessed_isbn, f.status, f.parser_error, COALESCE(ej.error, 'Needs metadata match'), f.last_seen_at
-       FROM files f
-       JOIN library_folders lf ON lf.id = f.folder_id
-       LEFT JOIN book_files bf ON bf.file_id = f.id
-       LEFT JOIN enrichment_jobs ej ON ej.file_id = f.id
-       WHERE {where_sql}
-       ORDER BY f.last_seen_at DESC
-       LIMIT ? OFFSET ?"
+      "WITH limited_files AS (
+         SELECT f.id, f.abs_path, f.folder_id, f.guessed_title, f.guessed_author, f.guessed_isbn, f.status, f.parser_error, f.last_seen_at
+         FROM files f
+         LEFT JOIN book_files bf ON bf.file_id = f.id
+         WHERE {where_sql}
+         ORDER BY f.last_seen_at DESC
+         LIMIT ? OFFSET ?
+       )
+       SELECT lf.id, lf.abs_path, folder.path, lf.guessed_title, lf.guessed_author, lf.guessed_isbn, lf.status, lf.parser_error, COALESCE(ej.error, 'Needs metadata match'), lf.last_seen_at
+       FROM limited_files lf
+       JOIN library_folders folder ON folder.id = lf.folder_id
+       LEFT JOIN enrichment_jobs ej ON ej.file_id = lf.id
+       ORDER BY lf.last_seen_at DESC"
     );
     let mut stmt = conn.prepare(&list_sql)?;
     let mut items = Vec::new();
