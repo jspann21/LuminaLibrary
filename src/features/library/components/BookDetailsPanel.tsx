@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { BookOpen, Check, ExternalLink, EyeOff, FolderOpen, ImagePlus, Loader2, RefreshCw, Trash2, X } from 'lucide-react'
 import { formatBytes, formatDate, formatDisplayPath } from '../../../lib/format'
@@ -93,6 +93,23 @@ export function BookDetailsPanel({
   const cancelEdit = () => {
     setDraft(null)
   }
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        if (isEditing) {
+          cancelEdit()
+        } else {
+          onClose()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isEditing, onClose])
 
   const updateForm = (update: (current: DetailFormState) => DetailFormState) => {
     setDraft((current) => (current ? { ...current, form: update(current.form) } : current))
