@@ -88,6 +88,7 @@ export function LibraryHeader({
             ref={searchInputRef}
             type="text"
             aria-label="Search your library"
+            title="Search your library (Ctrl+F)"
             placeholder="Search your library..."
             className={cx(
               'w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100',
