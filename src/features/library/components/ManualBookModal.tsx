@@ -89,6 +89,7 @@ export function ManualBookModal({
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.defaultPrevented) return
             if (event.key !== 'Escape') return
             event.preventDefault()
             onClose()
