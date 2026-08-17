@@ -230,7 +230,7 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
                                                         </td>
                                                         <td className="py-2 text-sm text-slate-700 dark:text-slate-200">
                                                             {key === 'description' ? (
-                                                                <span className="line-clamp-3">{value}</span>
+                                                                <span className="line-clamp-3" title={value}>{value}</span>
                                                             ) : (
                                                                 value
                                                             )}
