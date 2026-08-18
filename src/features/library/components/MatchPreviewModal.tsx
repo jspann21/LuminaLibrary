@@ -183,7 +183,7 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
                                                 type="button"
                                                 onClick={() => setSelectedIdx(i)}
                                                 className={cx(
-                                                    'flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                                                    'flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
                                                     isActive
                                                         ? 'border-accent-400 bg-accent-50 text-accent-700 dark:border-accent-500 dark:bg-accent-900/20 dark:text-accent-300'
                                                         : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600',
@@ -258,7 +258,7 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-800"
                     >
                         Cancel
                     </button>
@@ -267,7 +267,7 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
                             type="button"
                             onClick={handleApprove}
                             disabled={isApplying || !selected}
-                            className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:opacity-50"
+                            className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 dark:focus-visible:ring-offset-slate-800"
                         >
                             {isApplying ? (
                                 <>
