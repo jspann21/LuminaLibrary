@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { BookOpen, Check, ExternalLink, EyeOff, FolderOpen, ImagePlus, Loader2, RefreshCw, Trash2, X } from 'lucide-react'
 import { formatBytes, formatDate, formatDisplayPath } from '../../../lib/format'
@@ -64,6 +64,19 @@ export function BookDetailsPanel({
   const [isUndoing, setIsUndoing] = useState(false)
   const [showCoverPicker, setShowCoverPicker] = useState(false)
   const [showRescanModal, setShowRescanModal] = useState(false)
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      onClose()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
   const resolvedPrimaryFile = book.files.find((file) => file.status !== 'missing') ?? book.files.at(0) ?? null
   const [savedPrimaryFile, setSavedPrimaryFile] = useState<typeof resolvedPrimaryFile>(null)
   const primaryFile = resolvedPrimaryFile ?? savedPrimaryFile
