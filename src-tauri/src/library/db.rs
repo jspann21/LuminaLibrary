@@ -942,6 +942,10 @@ impl Repository {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
 
+    // ⚡ Bolt Optimization: Replace LEFT JOIN + GROUP BY with scalar subquery
+    // Using a correlated subquery with an index bypasses the memory and sorting
+    // overhead of joining the massive `books` table against `book_files` and
+    // aggregating every column.
     let mut stmt = tx.prepare(
       "SELECT
          b.id,
@@ -951,10 +955,8 @@ impl Repository {
          b.isbn13,
          b.updated_at,
          EXISTS(SELECT 1 FROM manual_overrides mo WHERE mo.book_id = b.id) AS has_manual_overrides,
-         COUNT(DISTINCT bf.file_id) AS file_count
-       FROM books b
-       LEFT JOIN book_files bf ON bf.book_id = b.id
-       GROUP BY b.id, b.title, b.authors_json, b.isbn10, b.isbn13, b.updated_at",
+         (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id) AS file_count
+       FROM books b",
     )?;
 
     let mut candidates = Vec::new();
@@ -1334,15 +1336,11 @@ impl Repository {
            id
          LIMIT 200
        )
-       SELECT lb.id, lb.title, lb.authors_json, COUNT(DISTINCT bf.file_id) AS file_count
-       FROM limited_books lb
-       LEFT JOIN book_files bf ON bf.book_id = lb.id
-       GROUP BY lb.id, lb.title, lb.authors_json"
+       SELECT lb.id, lb.title, lb.authors_json, (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = lb.id) AS file_count
+       FROM limited_books lb"
     } else {
-      "SELECT b.id, b.title, b.authors_json, COUNT(DISTINCT bf.file_id) AS file_count
-       FROM books b
-       LEFT JOIN book_files bf ON bf.book_id = b.id
-       GROUP BY b.id, b.title, b.authors_json"
+      "SELECT b.id, b.title, b.authors_json, (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id) AS file_count
+       FROM books b"
     };
     let mut stmt = conn.prepare(query)?;
 

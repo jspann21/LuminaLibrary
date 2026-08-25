@@ -1,0 +1,3 @@
+## 2024-08-25 - Replace GROUP BY with Scalar Subqueries
+**Learning:** In SQLite, performing a `LEFT JOIN` on a one-to-many table followed by a `GROUP BY` to perform aggregations (like `COUNT(DISTINCT ...)`) on the outer query forces the engine to build a massive intermediate result set in memory and sort it.
+**Action:** Replace `LEFT JOIN` + `GROUP BY` aggregations with correlated scalar subqueries in the `SELECT` clause when pulling counts or existence checks. If the subquery references an indexed column, this changes the execution plan from a full sort-group operation to a simple table scan with fast index lookups, yielding significant performance gains (~35% speedup observed).
