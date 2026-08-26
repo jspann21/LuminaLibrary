@@ -1,0 +1,3 @@
+## 2024-05-24 - SQLite Pagination & Aggregation N+1 Avoidance
+**Learning:** In SQLite, `LEFT JOIN` combined with aggregations like `COUNT(DISTINCT)` causes an N+1 performance bottleneck when paginating or sorting, as they compute the potentially expensive aggregations on rows that are subsequently discarded by pagination.
+**Action:** Replace `LEFT JOIN` and `GROUP BY` aggregations in paginated queries with correlated scalar subqueries. Evaluate the aggregations on the already-filtered/limited rows using Common Table Expressions or subqueries to leverage index lookups and prevent expensive full-scan memory sorts.

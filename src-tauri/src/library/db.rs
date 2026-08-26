@@ -951,10 +951,8 @@ impl Repository {
          b.isbn13,
          b.updated_at,
          EXISTS(SELECT 1 FROM manual_overrides mo WHERE mo.book_id = b.id) AS has_manual_overrides,
-         COUNT(DISTINCT bf.file_id) AS file_count
-       FROM books b
-       LEFT JOIN book_files bf ON bf.book_id = b.id
-       GROUP BY b.id, b.title, b.authors_json, b.isbn10, b.isbn13, b.updated_at",
+         (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = b.id) AS file_count
+       FROM books b",
     )?;
 
     let mut candidates = Vec::new();
