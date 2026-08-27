@@ -4,7 +4,7 @@ packages:
 overrides:
   '@babel/core': 7.29.6
   brace-expansion: 5.0.9
-  nanoid: 3.3.17
+  nanoid: 3.3.18
   postcss: 8.5.23
 
 savePrefix: ''
@@ -16,7 +16,7 @@ minimumReleaseAgeIgnoreMissingTime: false
 minimumReleaseAgeExclude:
   - postcss@8.5.23
   - brace-expansion@5.0.9
-  - nanoid@3.3.17
+  - nanoid@3.3.18
 trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 10080
 strictDepBuilds: true
