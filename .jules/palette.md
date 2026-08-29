@@ -1,0 +1,3 @@
+## 2024-08-29 - Improve tooltip wrapping
+**Learning:** In Tailwind CSS, applying `pointer-events-none` prevents an element from receiving mouse events, which intrinsically breaks `cursor-not-allowed` hover states. However, removing it can break wrapper elements (like tooltips) that need to catch mouse events. To safely display a disabled cursor with a tooltip, keep `pointer-events-none` on the disabled element and apply `cursor-not-allowed` conditionally (along with the `title` attribute) to its wrapper element.
+**Action:** When wrapping a disabled element in a span to show a tooltip, make sure the span handles the tooltip (`title`) and `cursor-not-allowed`, while the inner disabled element uses `pointer-events-none` so mouse events hit the wrapper.
