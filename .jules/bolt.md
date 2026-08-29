@@ -1,0 +1,3 @@
+## 2024-08-29 - SQLite Correlated Scalar Subqueries
+**Learning:** In SQLite, when querying without pagination or within a limited CTE, using LEFT JOIN + GROUP BY aggregations (like COUNT(DISTINCT)) forces the engine to build and sort a massive intermediate result set in memory, even if the base table is small or pre-filtered.
+**Action:** Replace LEFT JOIN + GROUP BY aggregations with correlated scalar subqueries in the SELECT clause (e.g., `(SELECT COUNT(DISTINCT ...) FROM ... WHERE ...)`). This avoids the heavy intermediate join and utilizes fast index lookups instead, significantly improving query execution time and reducing memory consumption.
