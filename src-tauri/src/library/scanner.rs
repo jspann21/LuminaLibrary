@@ -71,6 +71,7 @@ struct PendingEnrichment {
   file_id: String,
   abs_path: String,
   metadata: ParsedMetadata,
+  preferred_book_id: Option<String>,
 }
 
 struct ScanPreparedOutcome {
@@ -293,7 +294,15 @@ impl Scanner {
         prepare_error: None,
       };
 
-      match self.scan_prepared_candidate(&folder, &candidate, Some(&file), ScanComputeProfile::BulkSafe, true) {
+      let preferred_book_id = self.repository.find_book_id_for_file(&file.id)?;
+      match self.scan_prepared_candidate(
+        &folder,
+        &candidate,
+        Some(&file),
+        ScanComputeProfile::BulkSafe,
+        true,
+        preferred_book_id.as_deref(),
+      ) {
         Ok(prepared) => {
           if prepared.outcome.reason == "new" {
             summary.new_files += 1;
@@ -651,7 +660,14 @@ impl Scanner {
           };
           let path = candidate.abs_path.clone();
           let existing = existing_by_path.get(&candidate.abs_path);
-          let result = scanner.scan_prepared_candidate(&folder, &candidate, existing, ScanComputeProfile::BulkSafe, false);
+          let result = scanner.scan_prepared_candidate(
+            &folder,
+            &candidate,
+            existing,
+            ScanComputeProfile::BulkSafe,
+            false,
+            None,
+          );
           if prepared_tx.send((path, result)).is_err() {
             return;
           }
@@ -958,14 +974,24 @@ impl Scanner {
       .repository
       .get_file_by_id(&task.file_id)?
       .ok_or_else(|| anyhow!("file missing for enrichment {}", task.file_id))?;
-    let mut outcome = self.match_and_link_file(&file, task.metadata.clone(), true, None)?;
+    let mut outcome = self.match_and_link_file(
+      &file,
+      task.metadata.clone(),
+      true,
+      task.preferred_book_id.as_deref(),
+    )?;
     if should_retry_pdf_enrichment_with_full_parse(&outcome, &file) {
       let path = Path::new(&file.abs_path);
       let (parsed_metadata, parser_error, _) =
         parse_metadata_with_timing(path, &file.ext, file.size_bytes, ScanComputeProfile::Full);
       if parser_error.is_none() && parsed_metadata_improves_lookup(&task.metadata, &parsed_metadata) {
         let (retry_metadata, _, _, _) = merge_with_filename_guess(path, parsed_metadata);
-        outcome = self.match_and_link_file(&file, retry_metadata, true, None)?;
+        outcome = self.match_and_link_file(
+          &file,
+          retry_metadata,
+          true,
+          task.preferred_book_id.as_deref(),
+        )?;
       }
     }
     Ok(EnrichmentTaskOutcome {
@@ -1062,6 +1088,7 @@ impl Scanner {
     existing_file: Option<&FileRecord>,
     profile: ScanComputeProfile,
     force_queue_enrichment: bool,
+    preferred_book_id: Option<&str>,
   ) -> anyhow::Result<ScanPreparedOutcome> {
     let size_bytes = candidate
       .size_bytes
@@ -1087,7 +1114,11 @@ impl Scanner {
         size_bytes,
         mtime_utc,
         hash_sha256,
-        status: "discovered".to_string(),
+        status: if preferred_book_id.is_some() {
+          "matched".to_string()
+        } else {
+          "discovered".to_string()
+        },
         parser_error: parser_error.clone(),
         guessed_title: guessed_title.clone(),
         guessed_author: guessed_author.clone(),
@@ -1098,23 +1129,25 @@ impl Scanner {
     )?;
 
     if parser_error.is_some() {
-      self.repository.mark_discovered(
-        &file_record.id,
-        "parser_error",
-        guessed_title,
-        guessed_author,
-        guessed_isbn,
-        parser_error,
-        json!({}),
-        &now,
-      )?;
+      if preferred_book_id.is_none() {
+        self.repository.mark_discovered(
+          &file_record.id,
+          "parser_error",
+          guessed_title,
+          guessed_author,
+          guessed_isbn,
+          parser_error,
+          json!({}),
+          &now,
+        )?;
+      }
       return Ok(ScanPreparedOutcome {
         outcome: FileProcessingOutcome {
           file: self
             .repository
             .get_file_by_id(&file_record.id)?
             .ok_or_else(|| anyhow!("file disappeared after parse error"))?,
-          book_id: None,
+          book_id: preferred_book_id.map(ToString::to_string),
           confidence: None,
           reason: if is_new { "new".to_string() } else { "updated".to_string() },
         },
@@ -1125,7 +1158,12 @@ impl Scanner {
       });
     }
 
-    let matched = self.match_and_link_file(&file_record, lookup_metadata.clone(), false, None)?;
+    let matched = self.match_and_link_file(
+      &file_record,
+      lookup_metadata.clone(),
+      false,
+      preferred_book_id,
+    )?;
     let skip_reason = match matched.reason.as_str() {
       "weak_lookup_keys" | "missing_lookup_keys" => Some(matched.reason.clone()),
       _ => None,
@@ -1135,6 +1173,7 @@ impl Scanner {
         file_id: file_record.id.clone(),
         abs_path: file_record.abs_path.clone(),
         metadata: compact_lookup_metadata(&lookup_metadata),
+        preferred_book_id: preferred_book_id.map(ToString::to_string),
       })
     } else {
       None
