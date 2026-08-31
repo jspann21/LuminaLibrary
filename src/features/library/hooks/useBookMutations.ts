@@ -209,8 +209,7 @@ export function useBookMutations(deps: {
         setMatchDrafts((state) => ({ ...state, [fileId]: patch }))
     }
 
-    const attemptMatchAll = async () => {
-        const items = getDiscoveredItems()
+    const attemptMatchItems = async (items: Array<{ fileId: string; fileName: string }>) => {
         if (items.length === 0) return
         setIsMatchAllPending(true)
 
@@ -288,6 +287,6 @@ export function useBookMutations(deps: {
         restoreAllHiddenBooksMutation,
         requestHideBook,
         setMatchDraft,
-        attemptMatchAll,
+        attemptMatchItems,
     }
 }

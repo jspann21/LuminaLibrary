@@ -26,7 +26,8 @@ use crate::library::metadata::{
 use crate::library::scanner::{Scanner, FolderWatcher};
 use crate::library::secrets::SecretStore;
 use crate::library::types::{
-  ApiKeyTestResult, AppSettings, BookDetail, BookFilters, BookPatch, CoverCandidate, ExportResult,
+  ApiKeyTestResult, AppSettings, BookDetail, BookFilters, BookPatch, CoverCandidate, DiscoveredFileFilters,
+  DiscoveredFileSort, ExportResult,
   FileRecord, FolderRemovalPreview, ImportResult, LibraryFolder, LibraryMaintenanceResult, LibraryThingImportResult, MatchPreview, MatchResult, Paged,
   MetadataCandidate, MetadataField, MetadataFieldSelection, MetadataLockUpdate, MetadataRescanPreview, MetadataSourceStatus,
   ParsedMetadata, ScanSummary, SortSpec,
@@ -444,11 +445,17 @@ impl LibraryService {
   pub fn get_discovered_files(
     &self,
     query: Option<String>,
+    filters: Option<DiscoveredFileFilters>,
+    sort: Option<DiscoveredFileSort>,
     page: Option<u32>,
     page_size: Option<u32>,
   ) -> anyhow::Result<Paged<crate::library::types::DiscoveredFile>> {
     validate_search_query(&query)?;
-    self.repository.get_discovered_files(query, page, page_size)
+    validate_discovered_file_filters(&filters)?;
+    validate_discovered_file_sort(&sort)?;
+    self
+      .repository
+      .get_discovered_files(query, filters, sort, page, page_size)
   }
 
   pub fn attempt_match(
@@ -2768,6 +2775,48 @@ fn validate_search_query(query: &Option<String>) -> anyhow::Result<()> {
       "Search query must be 256 characters or fewer"
     );
   }
+  Ok(())
+}
+
+fn validate_discovered_file_filters(filters: &Option<DiscoveredFileFilters>) -> anyhow::Result<()> {
+  let Some(filters) = filters else {
+    return Ok(());
+  };
+
+  if let Some(format) = filters.format.as_deref() {
+    ensure!(matches!(format, "pdf" | "epub"), "Unknown unresolved file format filter");
+  }
+  if let Some(reason) = filters.reason.as_deref() {
+    ensure!(
+      matches!(
+        reason,
+        "noMatch" | "lowConfidence" | "apiError" | "missingInfo" | "fileError" | "other"
+      ),
+      "Unknown unresolved file reason filter"
+    );
+  }
+  if let Some(metadata) = filters.metadata.as_deref() {
+    ensure!(
+      matches!(metadata, "hasIsbn" | "hasTitle" | "needsInput"),
+      "Unknown unresolved file metadata filter"
+    );
+  }
+  Ok(())
+}
+
+fn validate_discovered_file_sort(sort: &Option<DiscoveredFileSort>) -> anyhow::Result<()> {
+  let Some(sort) = sort else {
+    return Ok(());
+  };
+
+  ensure!(
+    matches!(
+      sort.field.as_str(),
+      "lastSeenAt" | "fileName" | "type" | "reason" | "title" | "author" | "isbn"
+    ),
+    "Unknown unresolved file sort field"
+  );
+  ensure!(matches!(sort.direction.as_str(), "asc" | "desc"), "Unknown unresolved file sort direction");
   Ok(())
 }
 

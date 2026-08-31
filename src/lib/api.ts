@@ -14,6 +14,8 @@ import type {
   CoverCandidate,
   CsvImportProgressEvent,
   DiscoveredFile,
+  DiscoveredFileFilters,
+  DiscoveredFileSort,
   ExportResult,
   FileRecord,
   FolderRemovalPreview,
@@ -100,9 +102,17 @@ export const api = {
     }),
   getBookDetail: (bookId: string) => invokeOrThrow<BookDetail>('get_book_detail', { bookId }),
   getLibraryTags: () => invokeOrThrow<TagCount[]>('get_library_tags'),
-  getDiscoveredFiles: (args: { query?: string; page?: number; pageSize?: number }) =>
+  getDiscoveredFiles: (args: {
+    query?: string
+    filters?: DiscoveredFileFilters
+    sort?: DiscoveredFileSort
+    page?: number
+    pageSize?: number
+  }) =>
     invokeOrThrow<Paged<DiscoveredFile>>('get_discovered_files', {
       query: args.query,
+      filters: args.filters,
+      sort: args.sort,
       page: args.page,
       pageSize: args.pageSize,
     }),

@@ -335,13 +335,13 @@ export function useEventListeners(state: EventListenerState) {
                 const unresolvedFiles = event.unresolvedFiles ?? 0
                 const skippedFiles = event.skippedFiles ?? 0
                 setScanStatus(
-                    `Match All complete: ${matchedFiles} matched, ${unresolvedFiles} unresolved${skippedFiles > 0 ? `, ${skippedFiles} skipped` : ''}`,
+                    `Auto-match complete: ${matchedFiles} matched, ${unresolvedFiles} unresolved${skippedFiles > 0 ? `, ${skippedFiles} skipped` : ''}`,
                 )
                 return
             }
 
             if (typeof event.processedFiles === 'number' && typeof event.totalFiles === 'number') {
-                setScanStatus(`Matching All ${event.processedFiles}/${event.totalFiles}...`)
+                setScanStatus(`Auto-matching ${event.processedFiles}/${event.totalFiles}...`)
             }
         }))
 

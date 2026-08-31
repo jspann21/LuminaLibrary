@@ -7,7 +7,7 @@ import type {
   MetadataRescanPreview,
 } from '../../../lib/types'
 
-export type ActiveView = 'library' | 'tags' | 'settings'
+export type ActiveView = 'library' | 'unresolved' | 'tags' | 'settings'
 export type ViewMode = 'grid' | 'list'
 export type SortOption = 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc' | 'author-asc' | 'author-desc'
 export type FilterType = 'all' | 'pdf' | 'epub' | 'librarything'

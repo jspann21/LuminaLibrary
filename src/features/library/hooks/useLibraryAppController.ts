@@ -3,7 +3,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTheme } from '../../../context/ThemeContext'
 import { api } from '../../../lib/api'
 import { sanitizeDisplayText } from '../../../lib/format'
-import type { BookCard, BookPatch, MetadataFieldSelection, MetadataLockUpdate } from '../../../lib/types'
+import type {
+  BookCard,
+  BookPatch,
+  DiscoveredFileFilters,
+  DiscoveredFileSort,
+  MetadataFieldSelection,
+  MetadataLockUpdate,
+} from '../../../lib/types'
 import { useLibraryUi } from '../../../store/useLibraryUi'
 import {
   ACCENT_COLORS,
@@ -65,6 +72,8 @@ export function useLibraryAppController() {
     filters,
     selectedBookId,
     discoveredQuery,
+    discoveredFilters,
+    discoveredSort,
     discoveredPage,
     discoveredPageSize,
     setActiveView,
@@ -75,10 +84,17 @@ export function useLibraryAppController() {
     setSelectedBookId,
     setFormatFilter,
     setDiscoveredQuery,
+    setDiscoveredFilters,
+    setDiscoveredSort,
     setDiscoveredPage,
+    setDiscoveredPageSize,
   } = useLibraryUi()
   const debouncedQuery = useDebounce(query, 300)
   const debouncedDiscoveredQuery = useDebounce(discoveredQuery, 300)
+
+  useEffect(() => {
+    libraryScrollContainerRef.current?.scrollTo({ top: 0 })
+  }, [activeView])
 
   const invalidateLibraryData = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['books'] })
@@ -132,15 +148,35 @@ export function useLibraryAppController() {
   })
   const tagsQuery = useQuery({ queryKey: libraryQueryKeys.tags(), queryFn: () => api.getLibraryTags() })
   const discoveredQueryResult = useQuery({
-    queryKey: libraryQueryKeys.discovered(debouncedDiscoveredQuery, discoveredPage, discoveredPageSize),
+    queryKey: libraryQueryKeys.discovered(
+      debouncedDiscoveredQuery,
+      discoveredFilters,
+      discoveredSort,
+      discoveredPage,
+      discoveredPageSize,
+    ),
     queryFn: () =>
       api.getDiscoveredFiles({
         query: debouncedDiscoveredQuery,
+        filters: discoveredFilters,
+        sort: discoveredSort,
         page: discoveredPage,
         pageSize: discoveredPageSize,
       }),
+    enabled: activeView === 'unresolved',
     placeholderData: (previousData) => previousData,
     gcTime: DYNAMIC_QUERY_GC_TIME_MS,
+  })
+  const discoveredTotalQuery = useQuery({
+    queryKey: libraryQueryKeys.discoveredTotal(),
+    queryFn: () =>
+      api.getDiscoveredFiles({
+        filters: {},
+        sort: { field: 'lastSeenAt', direction: 'desc' },
+        page: 1,
+        pageSize: 1,
+      }),
+    placeholderData: (previousData) => previousData,
   })
   const foldersQuery = useQuery({ queryKey: libraryQueryKeys.folders(), queryFn: () => api.getLibraryFolders() })
   const appSettingsQuery = useQuery({ queryKey: libraryQueryKeys.appSettings(), queryFn: () => api.getAppSettings() })
@@ -276,6 +312,11 @@ export function useLibraryAppController() {
   const sortOption = useMemo(() => sortToOption(sort), [sort])
   const filterType = useMemo(() => formatsToFilterType(filters.formats), [filters.formats])
   const discoveredPages = Math.max(1, Math.ceil((discoveredQueryResult.data?.total ?? 0) / discoveredPageSize))
+
+  useEffect(() => {
+    if (!discoveredQueryResult.data || discoveredPage <= discoveredPages) return
+    setDiscoveredPage(discoveredPages)
+  }, [discoveredPage, discoveredPages, discoveredQueryResult.data, setDiscoveredPage])
   const totalBooks =
     activeView === 'library'
       ? booksQuery.data?.total ?? totalBooksQuery.data?.total ?? 0
@@ -392,6 +433,7 @@ export function useLibraryAppController() {
       selectedTag,
       tags: tagsQuery.data ?? [],
       totalBooks,
+      unresolvedTotal: discoveredTotalQuery.data?.total ?? discoveredQueryResult.data?.total ?? 0,
       isScanning,
       onSetActiveView: setActiveView,
       onSetSelectedTag: setSelectedTag,
@@ -456,6 +498,55 @@ export function useLibraryAppController() {
       onDeleteSelectedTags: tagMutations.deleteSelectedTags,
       onClearSelection: () => tagMutations.setTagManagerSelection([]),
       onToggleTagSelection: tagMutations.toggleTagManagerSelection,
+    },
+    unresolvedView: {
+      discoveredQuery,
+      onSetDiscoveredQuery: setDiscoveredQuery,
+      discoveredFilters,
+      onSetDiscoveredFilters: (value: DiscoveredFileFilters) => setDiscoveredFilters(value),
+      discoveredSort,
+      onSetDiscoveredSort: (value: DiscoveredFileSort) => setDiscoveredSort(value),
+      matchNotice,
+      discoveredItems: discoveredQueryResult.data?.items ?? [],
+      discoveredTotal: discoveredQueryResult.data?.total ?? 0,
+      isDiscoveredLoading: discoveredQueryResult.isLoading,
+      isDiscoveredFetching: discoveredQueryResult.isFetching,
+      discoveredError: discoveredQueryResult.error instanceof Error ? discoveredQueryResult.error.message : null,
+      onRetryDiscovered: () => void discoveredQueryResult.refetch(),
+      matchDrafts: bookMutations.matchDrafts,
+      onSetMatchDraft: bookMutations.setMatchDraft,
+      onPreviewMatch: (input: { fileId: string; title?: string; author?: string; isbn?: string }) =>
+        bookMutations.previewMatchMutation.mutateAsync({
+          fileId: input.fileId,
+          title: sanitizeDisplayText(input.title) || undefined,
+          author: sanitizeDisplayText(input.author) || undefined,
+          isbn: sanitizeDisplayText(input.isbn) || undefined,
+        }),
+      onConfirmMatch: (input: { fileId: string; title?: string; author?: string; isbn?: string }) =>
+        bookMutations.attemptMatchMutation.mutateAsync({
+          fileId: input.fileId,
+          title: sanitizeDisplayText(input.title) || undefined,
+          author: sanitizeDisplayText(input.author) || undefined,
+          isbn: sanitizeDisplayText(input.isbn) || undefined,
+        }),
+      onCreateManualBook: (input: { fileId: string; patch: BookPatch; tags: string[] }) =>
+        bookMutations.createManualBookMutation.mutateAsync(input),
+      onAttemptMatchItems: (fileIds: string[]) =>
+        bookMutations.attemptMatchItems(
+          discoveredMatchItems.filter((item) => fileIds.includes(item.fileId)),
+        ),
+      isPreviewMatchPending: bookMutations.previewMatchMutation.isPending,
+      isAttemptMatchPending:
+        bookMutations.attemptMatchMutation.isPending ||
+        bookMutations.createManualBookMutation.isPending ||
+        bookMutations.isMatchAllPending,
+      isAttemptMatchAllPending: bookMutations.isMatchAllPending,
+      matchingFileId: bookMutations.matchingFileId,
+      discoveredPage,
+      discoveredPageSize,
+      discoveredPages,
+      onSetDiscoveredPage: setDiscoveredPage,
+      onSetDiscoveredPageSize: setDiscoveredPageSize,
     },
     settingsView: {
       theme,
@@ -534,40 +625,6 @@ export function useLibraryAppController() {
       isImportPending: csvTransfer.importMutation.isPending,
       csvTransferNotice: csvTransfer.csvTransferNotice,
       csvImportProgress,
-      discoveredQuery,
-      onSetDiscoveredQuery: setDiscoveredQuery,
-      matchNotice,
-      discoveredItems: discoveredQueryResult.data?.items ?? [],
-      matchDrafts: bookMutations.matchDrafts,
-      onSetMatchDraft: bookMutations.setMatchDraft,
-      onPreviewMatch: (input: { fileId: string; title?: string; author?: string; isbn?: string }) =>
-        bookMutations.previewMatchMutation.mutateAsync({
-          fileId: input.fileId,
-          title: sanitizeDisplayText(input.title) || undefined,
-          author: sanitizeDisplayText(input.author) || undefined,
-          isbn: sanitizeDisplayText(input.isbn) || undefined,
-        }),
-      onConfirmMatch: (input: { fileId: string; title?: string; author?: string; isbn?: string }) =>
-        bookMutations.attemptMatchMutation.mutateAsync({
-          fileId: input.fileId,
-          title: sanitizeDisplayText(input.title) || undefined,
-          author: sanitizeDisplayText(input.author) || undefined,
-          isbn: sanitizeDisplayText(input.isbn) || undefined,
-        }),
-      onCreateManualBook: (input: { fileId: string; patch: BookPatch; tags: string[] }) =>
-        bookMutations.createManualBookMutation.mutateAsync(input),
-      onAttemptMatchAll: () => void bookMutations.attemptMatchAll(),
-      isPreviewMatchPending: bookMutations.previewMatchMutation.isPending,
-      isAttemptMatchPending:
-        bookMutations.attemptMatchMutation.isPending ||
-        bookMutations.createManualBookMutation.isPending ||
-        bookMutations.isMatchAllPending,
-      isAttemptMatchAllPending: bookMutations.isMatchAllPending,
-      matchingFileId: bookMutations.matchingFileId,
-      discoveredPage,
-      discoveredPages,
-      onPreviousDiscoveredPage: () => setDiscoveredPage(Math.max(1, discoveredPage - 1)),
-      onNextDiscoveredPage: () => setDiscoveredPage(Math.min(discoveredPages, discoveredPage + 1)),
     },
     detailsPanel: {
       isOpen: Boolean(selectedBookId && bookDetailQuery.data),

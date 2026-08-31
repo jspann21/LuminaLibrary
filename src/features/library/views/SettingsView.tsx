@@ -1,19 +1,16 @@
 import type { AccentColor } from '../../../context/ThemeContext'
-import type { AppSettings, BookDetail, BookPatch, DiscoveredFile, LibraryFolder, MatchPreview, MatchResult } from '../../../lib/types'
+import type { AppSettings, LibraryFolder } from '../../../lib/types'
 import type {
   CsvImportProgressState,
   CsvTransferNotice,
   KeyTestNotice,
   LibraryThingNotice,
   MaintenanceNotice,
-  MatchDraft,
-  MatchNotice,
 } from '../model/types'
 import { LibrarySourcesSection } from '../components/settings/LibrarySourcesSection'
 import { MaintenanceSection } from '../components/settings/MaintenanceSection'
 import { IntegrationsSection } from '../components/settings/IntegrationsSection'
 import { AppearanceSection } from '../components/settings/AppearanceSection'
-import { UnresolvedFilesSection } from '../components/UnresolvedFilesSection'
 
 type SettingsViewProps = {
   theme: 'light' | 'dark' | 'system'
@@ -81,24 +78,6 @@ type SettingsViewProps = {
   isImportPending: boolean
   csvTransferNotice: CsvTransferNotice | null
   csvImportProgress: CsvImportProgressState
-  discoveredQuery: string
-  onSetDiscoveredQuery: (value: string) => void
-  matchNotice: MatchNotice | null
-  discoveredItems: DiscoveredFile[]
-  matchDrafts: Record<string, MatchDraft>
-  onSetMatchDraft: (fileId: string, patch: MatchDraft) => void
-  onPreviewMatch: (input: { fileId: string; title?: string; author?: string; isbn?: string }) => Promise<MatchPreview>
-  onConfirmMatch: (input: { fileId: string; title?: string; author?: string; isbn?: string }) => Promise<MatchResult>
-  onCreateManualBook: (input: { fileId: string; patch: BookPatch; tags: string[] }) => Promise<BookDetail>
-  onAttemptMatchAll: () => void
-  isPreviewMatchPending: boolean
-  isAttemptMatchPending: boolean
-  isAttemptMatchAllPending: boolean
-  matchingFileId: string | null
-  discoveredPage: number
-  discoveredPages: number
-  onPreviousDiscoveredPage: () => void
-  onNextDiscoveredPage: () => void
 }
 
 export function SettingsView(props: SettingsViewProps) {
@@ -181,29 +160,6 @@ export function SettingsView(props: SettingsViewProps) {
           onToggleAccentOpen={props.onToggleAccentOpen}
           onSetAccentColor={props.onSetAccentColor}
           onCloseAccentOpen={props.onCloseAccentOpen}
-        />
-      </div>
-
-      <div className="mx-auto w-full max-w-7xl">
-        <UnresolvedFilesSection
-          discoveredQuery={props.discoveredQuery}
-          onSetDiscoveredQuery={props.onSetDiscoveredQuery}
-          matchNotice={props.matchNotice}
-          discoveredItems={props.discoveredItems}
-          matchDrafts={props.matchDrafts}
-          onSetMatchDraft={props.onSetMatchDraft}
-          onPreviewMatch={props.onPreviewMatch}
-          onConfirmMatch={props.onConfirmMatch}
-          onCreateManualBook={props.onCreateManualBook}
-          onAttemptMatchAll={props.onAttemptMatchAll}
-          isPreviewMatchPending={props.isPreviewMatchPending}
-          isAttemptMatchPending={props.isAttemptMatchPending}
-          isAttemptMatchAllPending={props.isAttemptMatchAllPending}
-          matchingFileId={props.matchingFileId}
-          discoveredPage={props.discoveredPage}
-          discoveredPages={props.discoveredPages}
-          onPreviousDiscoveredPage={props.onPreviousDiscoveredPage}
-          onNextDiscoveredPage={props.onNextDiscoveredPage}
         />
       </div>
     </div>

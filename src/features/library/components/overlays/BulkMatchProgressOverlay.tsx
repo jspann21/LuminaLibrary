@@ -17,14 +17,14 @@ export function BulkMatchProgressOverlay({
 }: BulkMatchProgressOverlayProps) {
   const title =
     progress.phase === 'completed'
-      ? `Match All complete: ${progress.matchedFiles} matched, ${progress.unresolvedFiles} unresolved`
-      : `Matching All ${progress.processedFiles}/${progress.totalFiles}...`
+      ? `Auto-match complete: ${progress.matchedFiles} matched, ${progress.unresolvedFiles} unresolved`
+      : `Auto-matching ${progress.processedFiles}/${progress.totalFiles}...`
   const skippedText = progress.skippedFiles > 0 ? `${progress.skippedFiles} skipped` : `${progress.unresolvedFiles} unresolved`
 
   return (
     <ProgressOverlayShell
       bottomClassName={bottomClassName}
-      dismissLabel="Dismiss match all progress"
+      dismissLabel="Dismiss auto-match progress"
       onDismiss={onDismiss}
     >
       <div className="mb-2 grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-2 text-sm">

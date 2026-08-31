@@ -13,9 +13,9 @@ use uuid::Uuid;
 
 use crate::library::metadata::{normalize_isbn, normalize_text};
 use crate::library::types::{
-  BookCard, BookDetail, BookFile, BookFilters, BookPatch, DiscoveredFile, FileRecord, LibraryFolder, MetadataField,
-  MetadataFieldSelection, MetadataLockUpdate, Paged, SortSpec, TagCount, TagDeleteResult, TagMergeResult,
-  UpsertBookInput, UpsertFilePayload,
+  BookCard, BookDetail, BookFile, BookFilters, BookPatch, DiscoveredFile, DiscoveredFileFilters,
+  DiscoveredFileSort, FileRecord, LibraryFolder, MetadataField, MetadataFieldSelection, MetadataLockUpdate, Paged,
+  SortSpec, TagCount, TagDeleteResult, TagMergeResult, UpsertBookInput, UpsertFilePayload,
 };
 
 #[derive(Clone)]
@@ -2364,6 +2364,8 @@ impl Repository {
   pub fn get_discovered_files(
     &self,
     query: Option<String>,
+    filters: Option<DiscoveredFileFilters>,
+    sort: Option<DiscoveredFileSort>,
     page: Option<u32>,
     page_size: Option<u32>,
   ) -> anyhow::Result<Paged<DiscoveredFile>> {
@@ -2372,43 +2374,122 @@ impl Repository {
     let page_size = page_size.unwrap_or(25).clamp(1, 200);
     let offset = pagination_offset(page, page_size);
 
-    let mut where_clauses = vec!["bf.book_id IS NULL".to_string(), "f.status IN ('discovered','error')".to_string()];
+    let mut where_clauses = Vec::new();
     let mut values: Vec<Value> = Vec::new();
-    if let Some(text) = query.filter(|value| !value.trim().is_empty()) {
-      where_clauses.push("(lower(f.abs_path) LIKE lower(?) OR lower(COALESCE(f.guessed_title,'')) LIKE lower(?) OR lower(COALESCE(f.guessed_author,'')) LIKE lower(?))".to_string());
-      let like = format!("%{}%", text);
-      values.push(Value::from(like.clone()));
-      values.push(Value::from(like.clone()));
-      values.push(Value::from(like));
+    if let Some(text) = query.map(|value| value.trim().to_string()).filter(|value| !value.is_empty()) {
+      where_clauses.push(
+        "(instr(lower(abs_path), lower(?)) > 0
+          OR instr(lower(folder_path), lower(?)) > 0
+          OR instr(lower(COALESCE(guessed_title, '')), lower(?)) > 0
+          OR instr(lower(COALESCE(guessed_author, '')), lower(?)) > 0
+          OR instr(lower(COALESCE(guessed_isbn, '')), lower(?)) > 0
+          OR instr(lower(status), lower(?)) > 0
+          OR instr(lower(COALESCE(parser_error, '')), lower(?)) > 0
+          OR instr(lower(reason), lower(?)) > 0)"
+          .to_string(),
+      );
+      for _ in 0..8 {
+        values.push(Value::from(text.clone()));
+      }
     }
 
-    let where_sql = where_clauses.join(" AND ");
-    let total_sql =
-      format!("SELECT COUNT(*) FROM files f LEFT JOIN book_files bf ON bf.file_id=f.id WHERE {where_sql}");
+    if let Some(filters) = filters {
+      match filters.format.as_deref() {
+        Some("pdf") => where_clauses.push("lower(substr(abs_path, -4)) = '.pdf'".to_string()),
+        Some("epub") => where_clauses.push("lower(substr(abs_path, -5)) = '.epub'".to_string()),
+        _ => {}
+      }
+
+      match filters.reason.as_deref() {
+        Some("noMatch") => where_clauses.push("lower(reason) = 'no_api_match'".to_string()),
+        Some("lowConfidence") => where_clauses.push("lower(reason) = 'low_confidence'".to_string()),
+        Some("apiError") => where_clauses.push(
+          "(instr(lower(reason), 'api_error') = 1 OR instr(lower(reason), 'api error') = 1)".to_string(),
+        ),
+        Some("missingInfo") => where_clauses.push(
+          "lower(reason) IN ('weak_lookup_keys', 'missing_lookup_keys')".to_string(),
+        ),
+        Some("fileError") => where_clauses.push(
+          "(status = 'error' OR trim(COALESCE(parser_error, '')) <> '')".to_string(),
+        ),
+        Some("other") => where_clauses.push(
+          "lower(reason) NOT IN ('no_api_match', 'low_confidence', 'weak_lookup_keys', 'missing_lookup_keys')
+           AND instr(lower(reason), 'api_error') <> 1
+           AND instr(lower(reason), 'api error') <> 1
+           AND status <> 'error'
+           AND trim(COALESCE(parser_error, '')) = ''"
+            .to_string(),
+        ),
+        _ => {}
+      }
+
+      match filters.metadata.as_deref() {
+        Some("hasIsbn") => where_clauses.push("trim(COALESCE(guessed_isbn, '')) <> ''".to_string()),
+        Some("hasTitle") => where_clauses.push("trim(COALESCE(guessed_title, '')) <> ''".to_string()),
+        Some("needsInput") => where_clauses.push(
+          "trim(COALESCE(guessed_isbn, '')) = '' AND trim(COALESCE(guessed_title, '')) = ''".to_string(),
+        ),
+        _ => {}
+      }
+    }
+
+    let where_sql = if where_clauses.is_empty() {
+      "1 = 1".to_string()
+    } else {
+      where_clauses.join(" AND ")
+    };
+    let unresolved_cte =
+      "WITH unresolved_files AS (
+         SELECT f.id, f.abs_path, lf.path AS folder_path, f.guessed_title, f.guessed_author,
+                f.guessed_isbn, f.status, f.parser_error,
+                COALESCE(ej.error, 'Needs metadata match') AS reason, f.last_seen_at
+         FROM files f
+         JOIN library_folders lf ON lf.id = f.folder_id
+         LEFT JOIN book_files bf ON bf.file_id = f.id
+         LEFT JOIN enrichment_jobs ej ON ej.file_id = f.id
+         WHERE bf.book_id IS NULL AND f.status IN ('discovered', 'error')
+       )";
+    let total_sql = format!("{unresolved_cte} SELECT COUNT(*) FROM unresolved_files WHERE {where_sql}");
     let total: i64 = conn.query_row(&total_sql, params_from_iter(values.iter()), |row| row.get(0))?;
+
+    let sort = sort.unwrap_or_default();
+    let sort_direction = if sort.direction == "asc" { "ASC" } else { "DESC" };
+    let sort_sql = match sort.field.as_str() {
+      "fileName" => format!("lower(abs_path) {sort_direction}"),
+      "type" => format!(
+        "CASE
+           WHEN lower(substr(abs_path, -5)) = '.epub' THEN 'epub'
+           WHEN lower(substr(abs_path, -4)) = '.pdf' THEN 'pdf'
+           ELSE ''
+         END {sort_direction}"
+      ),
+      "reason" => format!("lower(reason) {sort_direction}"),
+      "title" => format!(
+        "CASE WHEN trim(COALESCE(guessed_title, '')) = '' THEN 1 ELSE 0 END ASC,
+         lower(COALESCE(guessed_title, '')) {sort_direction}"
+      ),
+      "author" => format!(
+        "CASE WHEN trim(COALESCE(guessed_author, '')) = '' THEN 1 ELSE 0 END ASC,
+         lower(COALESCE(guessed_author, '')) {sort_direction}"
+      ),
+      "isbn" => format!(
+        "CASE WHEN trim(COALESCE(guessed_isbn, '')) = '' THEN 1 ELSE 0 END ASC,
+         lower(COALESCE(guessed_isbn, '')) {sort_direction}"
+      ),
+      _ => format!("last_seen_at {sort_direction}"),
+    };
 
     let mut list_values = values;
     list_values.push(Value::from(page_size as i64));
     list_values.push(Value::from(offset as i64));
-    // ⚡ Bolt Optimization: Deferred Join Pagination
-    // By applying the LIMIT and OFFSET clauses in a CTE on the base tables first,
-    // we prevent SQLite from computing the potentially expensive LEFT JOIN against
-    // enrichment_jobs for thousands of discarded rows. This significantly reduces
-    // query execution time, especially for pages with large offsets.
     let list_sql = format!(
-      "WITH limited_files AS (
-         SELECT f.id, f.abs_path, f.folder_id, f.guessed_title, f.guessed_author, f.guessed_isbn, f.status, f.parser_error, f.last_seen_at
-         FROM files f
-         LEFT JOIN book_files bf ON bf.file_id = f.id
-         WHERE {where_sql}
-         ORDER BY f.last_seen_at DESC
-         LIMIT ? OFFSET ?
-       )
-       SELECT lf_cte.id, lf_cte.abs_path, lf.path, lf_cte.guessed_title, lf_cte.guessed_author, lf_cte.guessed_isbn, lf_cte.status, lf_cte.parser_error, COALESCE(ej.error, 'Needs metadata match'), lf_cte.last_seen_at
-       FROM limited_files lf_cte
-       JOIN library_folders lf ON lf.id = lf_cte.folder_id
-       LEFT JOIN enrichment_jobs ej ON ej.file_id = lf_cte.id
-       ORDER BY lf_cte.last_seen_at DESC"
+      "{unresolved_cte}
+       SELECT id, abs_path, folder_path, guessed_title, guessed_author, guessed_isbn, status, parser_error,
+              reason, last_seen_at
+       FROM unresolved_files
+       WHERE {where_sql}
+       ORDER BY {sort_sql}, lower(abs_path) ASC, id ASC
+       LIMIT ? OFFSET ?"
     );
     let mut stmt = conn.prepare(&list_sql)?;
     let mut items = Vec::new();
@@ -4127,7 +4208,7 @@ mod tests {
 
     let discovered = db
       .repo
-      .get_discovered_files(None, Some(1), Some(20))
+      .get_discovered_files(None, None, None, Some(1), Some(20))
       .expect("discovered list");
     assert!(discovered.items.iter().any(|item| item.file_id == file_id));
 
@@ -4643,7 +4724,7 @@ mod tests {
 
     let discovered = db
       .repo
-      .get_discovered_files(None, Some(1), Some(20))
+      .get_discovered_files(None, None, None, Some(1), Some(20))
       .expect("discovered");
     assert!(discovered.items.iter().any(|item| item.file_id == file_id));
   }

@@ -44,10 +44,13 @@ const SettingsView = lazy(() =>
 const TagManagerView = lazy(() =>
   import('./features/library/views/TagManagerView').then((module) => ({ default: module.TagManagerView })),
 )
+const UnresolvedFilesView = lazy(() =>
+  import('./features/library/views/UnresolvedFilesView').then((module) => ({ default: module.UnresolvedFilesView })),
+)
 
 function App() {
   const controller = useLibraryAppController()
-  const { layout, sidebar, header, libraryView, tagView, settingsView, detailsPanel, overlays, confirmDialog } = controller
+  const { layout, sidebar, header, libraryView, tagView, unresolvedView, settingsView, detailsPanel, overlays, confirmDialog } = controller
   const activeView = layout.activeView
   const scrollContainerRef = layout.scrollContainerRef
   const bottomOverlayKeys = [
@@ -72,11 +75,15 @@ function App() {
       <LibrarySidebar {...sidebar} />
 
       <main className="relative flex min-w-0 flex-1 flex-col">
-        <LibraryHeader {...header} />
+        {activeView === 'library' ? <LibraryHeader {...header} /> : null}
 
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6">
           {activeView === 'library' ? (
             <LibraryView {...libraryView} />
+          ) : activeView === 'unresolved' ? (
+            <Suspense fallback={<ViewFallback />}>
+              <UnresolvedFilesView {...unresolvedView} />
+            </Suspense>
           ) : activeView === 'tags' ? (
             <Suspense fallback={<ViewFallback />}>
               <TagManagerView {...tagView} />

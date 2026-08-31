@@ -147,6 +147,17 @@ export type DiscoveredFile = {
   lastSeenAt: string
 }
 
+export type DiscoveredFileFilters = {
+  format?: 'pdf' | 'epub'
+  reason?: 'noMatch' | 'lowConfidence' | 'apiError' | 'missingInfo' | 'fileError' | 'other'
+  metadata?: 'hasIsbn' | 'hasTitle' | 'needsInput'
+}
+
+export type DiscoveredFileSort = {
+  field: 'lastSeenAt' | 'fileName' | 'type' | 'reason' | 'title' | 'author' | 'isbn'
+  direction: 'asc' | 'desc'
+}
+
 export type MatchResult = {
   fileId: string
   matched: boolean

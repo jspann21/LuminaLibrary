@@ -1,4 +1,4 @@
-import { Library, Settings, Tag } from 'lucide-react'
+import { FileQuestion, Library, Settings, Tag } from 'lucide-react'
 import type { TagCount } from '../../../lib/types'
 import { cx } from '../lib/cx'
 import type { ActiveView } from '../model/types'
@@ -9,6 +9,7 @@ type LibrarySidebarProps = {
   selectedTag?: string
   tags: TagCount[]
   totalBooks: number
+  unresolvedTotal: number
   isScanning: boolean
   onSetActiveView: (value: ActiveView) => void
   onSetSelectedTag: (value?: string) => void
@@ -19,6 +20,7 @@ export function LibrarySidebar({
   selectedTag,
   tags,
   totalBooks,
+  unresolvedTotal,
   isScanning,
   onSetActiveView,
   onSetSelectedTag,
@@ -37,6 +39,13 @@ export function LibrarySidebar({
           active={activeView === 'library'}
           count={totalBooks}
           onClick={() => onSetActiveView('library')}
+        />
+        <SidebarItem
+          icon={<FileQuestion size={20} />}
+          label="Needs Review"
+          active={activeView === 'unresolved'}
+          count={unresolvedTotal}
+          onClick={() => onSetActiveView('unresolved')}
         />
         <SidebarItem
           icon={<Tag size={20} />}

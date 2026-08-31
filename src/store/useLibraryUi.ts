@@ -1,7 +1,7 @@
 import { create } from 'zustand'
-import type { BookFilters, SortSpec } from '../lib/types'
+import type { BookFilters, DiscoveredFileFilters, DiscoveredFileSort, SortSpec } from '../lib/types'
 
-type ActiveView = 'library' | 'tags' | 'settings'
+type ActiveView = 'library' | 'unresolved' | 'tags' | 'settings'
 type ViewMode = 'grid' | 'list'
 
 type LibraryUiState = {
@@ -15,6 +15,8 @@ type LibraryUiState = {
   filters: BookFilters
   selectedBookId?: string
   discoveredQuery: string
+  discoveredFilters: DiscoveredFileFilters
+  discoveredSort: DiscoveredFileSort
   discoveredPage: number
   discoveredPageSize: number
   setActiveView: (value: ActiveView) => void
@@ -29,7 +31,10 @@ type LibraryUiState = {
   setFormatFilter: (value: string[]) => void
   setTagFilter: (value: string[]) => void
   setDiscoveredQuery: (value: string) => void
+  setDiscoveredFilters: (value: DiscoveredFileFilters) => void
+  setDiscoveredSort: (value: DiscoveredFileSort) => void
   setDiscoveredPage: (value: number) => void
+  setDiscoveredPageSize: (value: number) => void
 }
 
 export const useLibraryUi = create<LibraryUiState>((set) => ({
@@ -48,6 +53,8 @@ export const useLibraryUi = create<LibraryUiState>((set) => ({
   },
   selectedBookId: undefined,
   discoveredQuery: '',
+  discoveredFilters: {},
+  discoveredSort: { field: 'lastSeenAt', direction: 'desc' },
   discoveredPage: 1,
   discoveredPageSize: 25,
   setActiveView: (activeView) => set({ activeView }),
@@ -83,5 +90,8 @@ export const useLibraryUi = create<LibraryUiState>((set) => ({
       page: 1,
     })),
   setDiscoveredQuery: (discoveredQuery) => set({ discoveredQuery, discoveredPage: 1 }),
+  setDiscoveredFilters: (discoveredFilters) => set({ discoveredFilters, discoveredPage: 1 }),
+  setDiscoveredSort: (discoveredSort) => set({ discoveredSort, discoveredPage: 1 }),
   setDiscoveredPage: (discoveredPage) => set({ discoveredPage }),
+  setDiscoveredPageSize: (discoveredPageSize) => set({ discoveredPageSize, discoveredPage: 1 }),
 }))

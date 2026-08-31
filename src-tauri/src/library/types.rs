@@ -182,6 +182,30 @@ pub struct DiscoveredFile {
   pub last_seen_at: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveredFileFilters {
+  pub format: Option<String>,
+  pub reason: Option<String>,
+  pub metadata: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveredFileSort {
+  pub field: String,
+  pub direction: String,
+}
+
+impl Default for DiscoveredFileSort {
+  fn default() -> Self {
+    Self {
+      field: "lastSeenAt".to_string(),
+      direction: "desc".to_string(),
+    }
+  }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct MatchResult {

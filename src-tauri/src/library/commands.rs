@@ -2,7 +2,7 @@ use tauri::{AppHandle, State};
 
 use crate::library::types::{
   ApiKeyTestResult, AppSettings, AppState, BookCard, BookDetail, BookFilters, BookPatch, BulkMatchInput,
-  BulkMatchResult, CoverCandidate, DiscoveredFile, ExportResult, FileRecord, FolderRemovalPreview, ImportResult,
+  BulkMatchResult, CoverCandidate, DiscoveredFile, DiscoveredFileFilters, DiscoveredFileSort, ExportResult, FileRecord, FolderRemovalPreview, ImportResult,
   LibraryFolder, LibraryMaintenanceResult, LibraryThingImportResult, MatchPreview, MatchResult, MetadataFieldSelection, MetadataLockUpdate,
   MetadataRescanPreview, Paged, ScanSummary, SortSpec, TagCount, TagDeleteResult, TagMergeResult,
 };
@@ -169,10 +169,16 @@ pub fn get_book_detail(state: State<'_, AppState>, book_id: String) -> Result<Bo
 pub fn get_discovered_files(
   state: State<'_, AppState>,
   query: Option<String>,
+  filters: Option<DiscoveredFileFilters>,
+  sort: Option<DiscoveredFileSort>,
   page: Option<u32>,
   page_size: Option<u32>,
 ) -> Result<Paged<DiscoveredFile>, String> {
-  to_result(state.service.get_discovered_files(query, page, page_size))
+  to_result(
+    state
+      .service
+      .get_discovered_files(query, filters, sort, page, page_size),
+  )
 }
 
 #[tauri::command]
