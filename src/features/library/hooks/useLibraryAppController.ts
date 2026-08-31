@@ -8,6 +8,7 @@ import type {
   BookPatch,
   DiscoveredFileFilters,
   DiscoveredFileSort,
+  MetadataCandidate,
   MetadataFieldSelection,
   MetadataLockUpdate,
 } from '../../../lib/types'
@@ -522,13 +523,8 @@ export function useLibraryAppController() {
           author: sanitizeDisplayText(input.author) || undefined,
           isbn: sanitizeDisplayText(input.isbn) || undefined,
         }),
-      onConfirmMatch: (input: { fileId: string; title?: string; author?: string; isbn?: string }) =>
-        bookMutations.attemptMatchMutation.mutateAsync({
-          fileId: input.fileId,
-          title: sanitizeDisplayText(input.title) || undefined,
-          author: sanitizeDisplayText(input.author) || undefined,
-          isbn: sanitizeDisplayText(input.isbn) || undefined,
-        }),
+      onConfirmMatch: (input: { fileId: string; candidate: MetadataCandidate }) =>
+        bookMutations.confirmMatchCandidateMutation.mutateAsync(input),
       onCreateManualBook: (input: { fileId: string; patch: BookPatch; tags: string[] }) =>
         bookMutations.createManualBookMutation.mutateAsync(input),
       onAttemptMatchItems: (fileIds: string[]) =>
@@ -537,7 +533,7 @@ export function useLibraryAppController() {
         ),
       isPreviewMatchPending: bookMutations.previewMatchMutation.isPending,
       isAttemptMatchPending:
-        bookMutations.attemptMatchMutation.isPending ||
+        bookMutations.confirmMatchCandidateMutation.isPending ||
         bookMutations.createManualBookMutation.isPending ||
         bookMutations.isMatchAllPending,
       isAttemptMatchAllPending: bookMutations.isMatchAllPending,

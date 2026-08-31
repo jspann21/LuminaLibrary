@@ -73,6 +73,8 @@ export function describeMatchReason(reason: string) {
       return 'Matched by exact title'
     case 'matched_by_api':
       return 'Matched by metadata lookup'
+    case 'user_confirmed_candidate':
+      return 'Matched using the selected candidate'
     case 'low_confidence':
       return 'Possible match found, but confidence was too low'
     case 'missing_lookup_keys':

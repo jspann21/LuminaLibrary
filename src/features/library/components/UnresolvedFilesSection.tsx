@@ -20,6 +20,7 @@ import type {
   DiscoveredFileSort,
   MatchPreview,
   MatchResult,
+  MetadataCandidate,
 } from '../../../lib/types'
 import { formatDisplayPath, sanitizeDisplayText } from '../../../lib/format'
 import { api } from '../../../lib/api'
@@ -45,7 +46,7 @@ export type UnresolvedFilesSectionProps = {
   matchDrafts: Record<string, MatchDraft>
   onSetMatchDraft: (fileId: string, patch: MatchDraft) => void
   onPreviewMatch: (input: { fileId: string; title?: string; author?: string; isbn?: string }) => Promise<MatchPreview>
-  onConfirmMatch: (input: { fileId: string; title?: string; author?: string; isbn?: string }) => Promise<MatchResult>
+  onConfirmMatch: (input: { fileId: string; candidate: MetadataCandidate }) => Promise<MatchResult>
   onCreateManualBook: (input: { fileId: string; patch: BookPatch; tags: string[] }) => Promise<BookDetail>
   onAttemptMatchItems: (fileIds: string[]) => Promise<void>
   isPreviewMatchPending: boolean

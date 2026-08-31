@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import { sanitizeDisplayText } from '../../../lib/format'
-import type { BookPatch, BulkMatchInput, MatchResult, MetadataFieldSelection, MetadataLockUpdate } from '../../../lib/types'
+import type { BookPatch, BulkMatchInput, MetadataCandidate, MetadataFieldSelection, MetadataLockUpdate } from '../../../lib/types'
 import { libraryQueryKeys } from '../model/queryKeys'
 import { describeMatchReason } from '../model/selectors'
 import type { BulkMatchProgressState, ConfirmDialogState, MatchDraft, MatchNotice } from '../model/types'
@@ -23,44 +23,6 @@ export function useBookMutations(deps: {
     const [matchDrafts, setMatchDrafts] = useState<Record<string, MatchDraft>>({})
     const [isMatchAllPending, setIsMatchAllPending] = useState(false)
 
-    const attemptMatchMutation = useMutation({
-        mutationFn: (input: { fileId: string; title?: string; author?: string; isbn?: string }) => api.attemptMatch(input),
-        onMutate: (input) => {
-            setMatchingFileId(input.fileId)
-            setMatchNotice(null)
-        },
-        onSuccess: (result: MatchResult, input) => {
-            const fileName =
-                getDiscoveredItems().find((item) => item.fileId === input.fileId)?.fileName ?? input.fileId
-            const reasonText = describeMatchReason(result.reason)
-            if (result.matched) {
-                setMatchNotice({
-                    tone: 'success',
-                    message: `Matched "${fileName}". ${reasonText}.`,
-                })
-            } else {
-                setMatchNotice({
-                    tone: 'warning',
-                    message: `No match for "${fileName}". ${reasonText}.`,
-                })
-            }
-            setScanStatus(result.matched ? `Matched ${fileName}` : `No match for ${fileName}: ${reasonText}`)
-            invalidateLibraryData()
-        },
-        onError: (error: unknown, input) => {
-            const fileName =
-                getDiscoveredItems().find((item) => item.fileId === input.fileId)?.fileName ?? input.fileId
-            const message = error instanceof Error ? error.message : 'Match attempt failed'
-            setMatchNotice({
-                tone: 'error',
-                message: `Match failed for "${fileName}". ${message}`,
-            })
-            setScanStatus(message)
-        },
-        onSettled: () => {
-            setMatchingFileId(null)
-        },
-    })
     const previewMatchMutation = useMutation({
         mutationFn: (input: { fileId: string; title?: string; author?: string; isbn?: string }) => api.previewMatch(input),
         onMutate: (input) => {
@@ -75,6 +37,42 @@ export function useBookMutations(deps: {
                 tone: 'error',
                 message: `Preview failed for "${fileName}". ${message}`,
             })
+        },
+        onSettled: () => {
+            setMatchingFileId(null)
+        },
+    })
+    const confirmMatchCandidateMutation = useMutation({
+        mutationFn: (input: { fileId: string; candidate: MetadataCandidate }) =>
+            api.confirmMatchCandidate(input.fileId, input.candidate),
+        onMutate: (input) => {
+            setMatchingFileId(input.fileId)
+            setMatchNotice(null)
+        },
+        onSuccess: (result, input) => {
+            const fileName =
+                getDiscoveredItems().find((item) => item.fileId === input.fileId)?.fileName ?? input.fileId
+            setMatchDrafts((state) => {
+                const next = { ...state }
+                delete next[input.fileId]
+                return next
+            })
+            setMatchNotice({
+                tone: 'success',
+                message: `Matched "${fileName}" using the selected candidate.`,
+            })
+            setScanStatus(`Matched ${fileName}: ${describeMatchReason(result.reason)}`)
+            invalidateLibraryData()
+        },
+        onError: (error: unknown, input) => {
+            const fileName =
+                getDiscoveredItems().find((item) => item.fileId === input.fileId)?.fileName ?? input.fileId
+            const message = error instanceof Error ? error.message : 'Failed to use selected match'
+            setMatchNotice({
+                tone: 'error',
+                message: `Could not match "${fileName}". ${message}`,
+            })
+            setScanStatus(message)
         },
         onSettled: () => {
             setMatchingFileId(null)
@@ -275,8 +273,8 @@ export function useBookMutations(deps: {
         matchingFileId,
         matchDrafts,
         isMatchAllPending,
-        attemptMatchMutation,
         previewMatchMutation,
+        confirmMatchCandidateMutation,
         createManualBookMutation,
         saveDetailMutation,
         previewRescanMetadataMutation,

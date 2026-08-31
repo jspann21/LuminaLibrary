@@ -9,7 +9,7 @@ import type { MatchPreview, MatchResult, MetadataCandidate } from '../../../lib/
 
 type MatchPreviewModalProps = {
     preview: MatchPreview
-    onConfirm: (input: { fileId: string; title?: string; author?: string; isbn?: string }) => Promise<MatchResult>
+    onConfirm: (input: { fileId: string; candidate: MetadataCandidate }) => Promise<MatchResult>
     onClose: () => void
     onConfirmed: () => void
 }
@@ -101,14 +101,10 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
         setIsApplying(true)
         setError(null)
         try {
-            const input: { fileId: string; title?: string; author?: string; isbn?: string } = {
+            const input: { fileId: string; candidate: MetadataCandidate } = {
                 fileId: preview.fileId,
+                candidate: selected,
             }
-            // Pass the candidate's key fields so attempt_match can find and link it
-            if (selected.title) input.title = selected.title
-            if (selected.authors?.length) input.author = selected.authors[0]
-            if (selected.isbn13) input.isbn = selected.isbn13
-            else if (selected.isbn10) input.isbn = selected.isbn10
 
             const result = await onConfirm(input)
             if (result.matched) {
@@ -182,6 +178,7 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
                                             <button
                                                 key={c.id}
                                                 type="button"
+                                                aria-pressed={isActive}
                                                 onClick={() => setSelectedIdx(i)}
                                                 className={cx(
                                                     'flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
@@ -278,7 +275,7 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
                             ) : (
                                 <>
                                     <Check size={14} />
-                                    Approve Match
+                                    Use selected match
                                 </>
                             )}
                         </button>

@@ -3,7 +3,7 @@ use tauri::{AppHandle, State};
 use crate::library::types::{
   ApiKeyTestResult, AppSettings, AppState, BookCard, BookDetail, BookFilters, BookPatch, BulkMatchInput,
   BulkMatchResult, CoverCandidate, DiscoveredFile, DiscoveredFileFilters, DiscoveredFileSort, ExportResult, FileRecord, FolderRemovalPreview, ImportResult,
-  LibraryFolder, LibraryMaintenanceResult, LibraryThingImportResult, MatchPreview, MatchResult, MetadataFieldSelection, MetadataLockUpdate,
+  LibraryFolder, LibraryMaintenanceResult, LibraryThingImportResult, MatchPreview, MatchResult, MetadataCandidate, MetadataFieldSelection, MetadataLockUpdate,
   MetadataRescanPreview, Paged, ScanSummary, SortSpec, TagCount, TagDeleteResult, TagMergeResult,
 };
 
@@ -235,6 +235,19 @@ pub async fn apply_manual_book_edit(
   tauri::async_runtime::spawn_blocking(move || service.apply_manual_book_edit(book_id, patch, tags))
     .await
     .map_err(|err| format!("manual edit task join error: {err}"))?
+    .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+pub async fn confirm_match_candidate(
+  state: State<'_, AppState>,
+  file_id: String,
+  candidate: MetadataCandidate,
+) -> Result<MatchResult, String> {
+  let service = state.service.clone();
+  tauri::async_runtime::spawn_blocking(move || service.confirm_match_candidate(file_id, candidate))
+    .await
+    .map_err(|err| format!("candidate confirmation task join error: {err}"))?
     .map_err(|err| err.to_string())
 }
 

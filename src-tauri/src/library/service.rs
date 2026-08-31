@@ -751,6 +751,112 @@ impl LibraryService {
     })
   }
 
+  pub fn confirm_match_candidate(
+    &self,
+    file_id: String,
+    candidate: MetadataCandidate,
+  ) -> anyhow::Result<MatchResult> {
+    let file = self
+      .repository
+      .get_file_by_id(&file_id)?
+      .ok_or_else(|| anyhow!("file not found"))?;
+    ensure!(
+      matches!(file.status.as_str(), "discovered" | "error"),
+      "file no longer unresolved"
+    );
+
+    let now = now_iso();
+    if candidate.source == "local_library" {
+      let book_id = candidate
+        .id
+        .strip_prefix("local:")
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| anyhow!("invalid local match candidate"))?;
+      self.repository.get_book_detail(book_id)?;
+      self
+        .repository
+        .link_unresolved_file_to_book(&file.id, book_id, &file.ext.to_lowercase(), false, &now)?;
+      self.run_post_match_maintenance()?;
+      return Ok(MatchResult {
+        file_id,
+        matched: true,
+        book_id: Some(book_id.to_string()),
+        confidence: candidate.confidence,
+        reason: "user_confirmed_candidate".to_string(),
+      });
+    }
+
+    ensure!(
+      matches!(candidate.source.as_str(), "open_library" | "google_books"),
+      "unsupported match candidate source"
+    );
+    ensure!(!candidate.id.trim().is_empty(), "invalid match candidate");
+    if let Some(confidence) = candidate.confidence {
+      ensure!(
+        confidence.is_finite() && (0.0..=1.0).contains(&confidence),
+        "invalid match confidence"
+      );
+    }
+
+    let mut patch = BookPatch {
+      title: candidate.title,
+      subtitle: candidate.subtitle,
+      authors: candidate.authors,
+      publisher: candidate.publisher,
+      publish_date: candidate.publish_date,
+      isbn10: candidate.isbn10,
+      isbn13: candidate.isbn13,
+      description: candidate.description,
+      language: candidate.language,
+      page_count: candidate.page_count,
+      series: candidate.series,
+      series_index: candidate.series_index,
+      cover_url: candidate.cover_url,
+    };
+    normalize_book_patch_isbns(&mut patch);
+    validate_book_patch_cover_url(&mut patch)?;
+    normalize_manual_create_patch(&mut patch)?;
+
+    let title = patch.title.clone().ok_or_else(|| anyhow!("candidate title is required"))?;
+    let book_id = self.repository.upsert_book(
+      UpsertBookInput {
+        title,
+        subtitle: patch.subtitle,
+        authors: patch.authors.unwrap_or_default(),
+        publisher: patch.publisher,
+        publish_date: patch.publish_date,
+        isbn10: patch.isbn10,
+        isbn13: patch.isbn13,
+        description: patch.description,
+        language: patch.language,
+        page_count: patch.page_count,
+        series: patch.series,
+        series_index: patch.series_index,
+        cover_url: patch.cover_url,
+        metadata_source: candidate.source,
+        confidence: candidate.confidence,
+      },
+      &now,
+    )?;
+    if let Err(err) = self
+      .repository
+      .link_unresolved_file_to_book(&file.id, &book_id, &file.ext.to_lowercase(), true, &now)
+    {
+      let _ = self.run_post_match_maintenance();
+      return Err(err);
+    }
+    let _ = self.cache_book_cover_if_needed(&book_id)?;
+    self.run_post_match_maintenance()?;
+
+    Ok(MatchResult {
+      file_id,
+      matched: true,
+      book_id: Some(book_id),
+      confidence: candidate.confidence,
+      reason: "user_confirmed_candidate".to_string(),
+    })
+  }
+
   pub fn apply_manual_book_edit(
     &self,
     book_id: String,
@@ -828,9 +934,13 @@ impl LibraryService {
       &now,
     )?;
 
-    self
+    if let Err(err) = self
       .repository
-      .link_file_to_book(&file.id, &book_id, &file.ext.to_lowercase(), true, &now)?;
+      .link_unresolved_file_to_book(&file.id, &book_id, &file.ext.to_lowercase(), true, &now)
+    {
+      let _ = self.repository.cleanup_orphan_books();
+      return Err(err);
+    }
     self.repository.apply_manual_book_edit(&book_id, patch, &now)?;
     if !tags.is_empty() {
       self.repository.set_book_tags(&book_id, tags, &now)?;

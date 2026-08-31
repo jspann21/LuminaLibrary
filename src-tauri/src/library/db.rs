@@ -1843,16 +1843,49 @@ impl Repository {
     is_primary: bool,
     now: &str,
   ) -> anyhow::Result<()> {
+    self.link_file_to_book_guarded(file_id, book_id, format, is_primary, now, false)
+  }
+
+  pub fn link_unresolved_file_to_book(
+    &self,
+    file_id: &str,
+    book_id: &str,
+    format: &str,
+    is_primary: bool,
+    now: &str,
+  ) -> anyhow::Result<()> {
+    self.link_file_to_book_guarded(file_id, book_id, format, is_primary, now, true)
+  }
+
+  fn link_file_to_book_guarded(
+    &self,
+    file_id: &str,
+    book_id: &str,
+    format: &str,
+    is_primary: bool,
+    now: &str,
+    require_unresolved: bool,
+  ) -> anyhow::Result<()> {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
     // Make the first operation a write so SQLite obtains the writer lock before
     // this transaction has a read snapshot. A deferred read followed by a write
     // can otherwise fail with SQLITE_BUSY_SNAPSHOT under concurrent scan workers
     // without invoking the configured busy timeout.
-    let updated = tx.execute(
-      "UPDATE files SET status = 'matched', parser_error = NULL, last_seen_at = ?1 WHERE id = ?2 AND status <> 'missing'",
-      params![now, file_id],
-    )?;
+    let updated = if require_unresolved {
+      tx.execute(
+        "UPDATE files SET status = 'matched', parser_error = NULL, last_seen_at = ?1
+         WHERE id = ?2
+           AND status IN ('discovered', 'error')
+           AND NOT EXISTS (SELECT 1 FROM book_files WHERE file_id = ?2)",
+        params![now, file_id],
+      )?
+    } else {
+      tx.execute(
+        "UPDATE files SET status = 'matched', parser_error = NULL, last_seen_at = ?1 WHERE id = ?2 AND status <> 'missing'",
+        params![now, file_id],
+      )?
+    };
     if updated == 0 {
       return Err(anyhow!("file no longer available for matching"));
     }

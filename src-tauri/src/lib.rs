@@ -8,7 +8,7 @@ use library::{
   commands::{
     add_library_folder, apply_curated_metadata, apply_manual_book_edit, attempt_match, batch_attempt_match,
     cache_book_covers,
-    clear_brave_search_api_key, clear_google_books_api_key, clear_library_thing_integration, create_manual_book, delete_book,
+    clear_brave_search_api_key, clear_google_books_api_key, clear_library_thing_integration, confirm_match_candidate, create_manual_book, delete_book,
     delete_tags, export_unresolved_csv, get_app_settings, get_book_detail, get_discovered_files,
     get_folder_removal_preview, get_hidden_books, get_library_books, get_library_folders, get_library_tags,
     hide_books, import_enrichment_csv, import_library_thing_export, mark_file_missing, merge_tags, open_library_thing_url, open_local_file, open_local_file_folder,
@@ -88,6 +88,7 @@ pub fn run() {
       delete_tags,
       get_discovered_files,
       attempt_match,
+      confirm_match_candidate,
       batch_attempt_match,
       preview_match,
       apply_manual_book_edit,

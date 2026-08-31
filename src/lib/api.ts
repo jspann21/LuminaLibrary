@@ -27,6 +27,7 @@ import type {
   LibraryThingImportResult,
   MatchPreview,
   MatchResult,
+  MetadataCandidate,
   MetadataFieldSelection,
   MetadataLockUpdate,
   MetadataRescanPreview,
@@ -118,6 +119,8 @@ export const api = {
     }),
   attemptMatch: (args: { fileId: string; isbn?: string; title?: string; author?: string }) =>
     invokeOrThrow<MatchResult>('attempt_match', args),
+  confirmMatchCandidate: (fileId: string, candidate: MetadataCandidate) =>
+    invokeOrThrow<MatchResult>('confirm_match_candidate', { fileId, candidate }),
   batchAttemptMatch: (items: BulkMatchInput[]) =>
     invokeOrThrow<BulkMatchResult>('batch_attempt_match', { items }),
   previewMatch: (args: { fileId: string; isbn?: string; title?: string; author?: string }) =>
