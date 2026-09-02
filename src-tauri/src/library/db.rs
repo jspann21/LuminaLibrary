@@ -602,12 +602,19 @@ impl Repository {
   pub fn get_library_tags(&self) -> anyhow::Result<Vec<TagCount>> {
     let conn = self.conn()?;
     let mut stmt = conn.prepare(
-      "SELECT t.label, COUNT(bt.book_id) AS book_count
+      // ⚡ Bolt Performance Optimization:
+      // Early aggregation prevents building and sorting a large intermediate result set.
+      // By grouping book counts first and then joining with tags, we avoid O(N) memory expansion.
+      "WITH tag_counts AS (
+         SELECT bt.tag_id, COUNT(bt.book_id) as book_count
+         FROM book_tags bt
+         JOIN books b ON b.id = bt.book_id
+         WHERE b.hidden = 0
+         GROUP BY bt.tag_id
+       )
+       SELECT t.label, tc.book_count
        FROM tags t
-       JOIN book_tags bt ON bt.tag_id = t.id
-       JOIN books b ON b.id = bt.book_id
-       WHERE b.hidden = 0
-       GROUP BY t.id, t.label
+       JOIN tag_counts tc ON tc.tag_id = t.id
        ORDER BY lower(t.label) ASC",
     )?;
     let mut out = Vec::new();
