@@ -601,13 +601,18 @@ impl Repository {
 
   pub fn get_library_tags(&self) -> anyhow::Result<Vec<TagCount>> {
     let conn = self.conn()?;
+    // ⚡ Bolt optimization: Push GROUP BY aggregation into a subquery before joining
+    // to avoid building and sorting a massive intermediate result set in memory.
     let mut stmt = conn.prepare(
-      "SELECT t.label, COUNT(bt.book_id) AS book_count
+      "SELECT t.label, tag_counts.book_count
        FROM tags t
-       JOIN book_tags bt ON bt.tag_id = t.id
-       JOIN books b ON b.id = bt.book_id
-       WHERE b.hidden = 0
-       GROUP BY t.id, t.label
+       JOIN (
+         SELECT bt.tag_id, COUNT(bt.book_id) AS book_count
+         FROM book_tags bt
+         JOIN books b ON b.id = bt.book_id
+         WHERE b.hidden = 0
+         GROUP BY bt.tag_id
+       ) tag_counts ON tag_counts.tag_id = t.id
        ORDER BY lower(t.label) ASC",
     )?;
     let mut out = Vec::new();

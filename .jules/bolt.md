@@ -1,0 +1,3 @@
+## 2024-05-15 - Early Aggregation for Large SQL Joins
+**Learning:** In SQLite, to optimize queries with `JOIN` and `GROUP BY` across large datasets (like counting relationships), push the `GROUP BY` aggregation into a subquery/derived table before joining it with the main table (e.g., `JOIN (SELECT parent_id, COUNT(*) GROUP BY parent_id)`). This 'early aggregation' prevents building and sorting a large intermediate result set and can be dramatically faster than both post-join grouping and correlated scalar subqueries.
+**Action:** When writing queries that aggregate over joined tables, apply aggregation to the inner joined table first, and then join that aggregated table.
