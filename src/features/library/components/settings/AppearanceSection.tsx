@@ -48,8 +48,12 @@ export function AppearanceSection({
                     <h4 className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">Accent Color</h4>
                     <div className="relative inline-block">
                         <button
+                            type="button"
                             onClick={onToggleAccentOpen}
                             onBlur={() => setTimeout(onCloseAccentOpen, 200)}
+                            aria-controls="accent-color-options"
+                            aria-expanded={isAccentOpen}
+                            aria-haspopup="listbox"
                             className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                         >
                             <span className="h-6 w-6 rounded-full border border-slate-200 dark:border-slate-600" style={{ backgroundColor: accentSwatch[accentColor] }} />
@@ -57,10 +61,14 @@ export function AppearanceSection({
                             <ChevronDown size={16} className="text-slate-400" />
                         </button>
                         {isAccentOpen ? (
-                            <div className="absolute left-0 top-full z-30 mt-2 grid w-64 grid-cols-5 gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+                            <div id="accent-color-options" role="listbox" aria-label="Accent colors" className="absolute left-0 top-full z-30 mt-2 grid w-64 grid-cols-5 gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-800">
                                 {accentColors.map((color) => (
                                     <button
                                         key={color}
+                                        type="button"
+                                        role="option"
+                                        aria-label={`${color} accent color`}
+                                        aria-selected={accentColor === color}
                                         onClick={() => onSetAccentColor(color)}
                                         className={cx('flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700', accentColor === color ? 'ring-2 ring-accent-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-800' : '')}
                                         style={{ backgroundColor: accentSwatch[color] }}
