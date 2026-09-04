@@ -261,24 +261,29 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
                         Cancel
                     </button>
                     {!noCandidates && (
-                        <button
-                            type="button"
-                            onClick={handleApprove}
-                            disabled={isApplying || !selected}
-                            className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 dark:focus-visible:ring-offset-slate-800"
+                        <span
+                            className={cx('inline-flex', (isApplying || !selected) && 'cursor-not-allowed')}
+                            title={isApplying ? 'Applying match...' : !selected ? 'Select a match to continue' : undefined}
                         >
-                            {isApplying ? (
-                                <>
-                                    <Loader2 size={14} className="animate-spin" />
-                                    Applying...
-                                </>
-                            ) : (
-                                <>
-                                    <Check size={14} />
-                                    Use selected match
-                                </>
-                            )}
-                        </button>
+                            <button
+                                type="button"
+                                onClick={handleApprove}
+                                disabled={isApplying || !selected}
+                                className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-slate-800"
+                            >
+                                {isApplying ? (
+                                    <>
+                                        <Loader2 size={14} className="animate-spin" />
+                                        Applying...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Check size={14} />
+                                        Use selected match
+                                    </>
+                                )}
+                            </button>
+                        </span>
                     )}
                 </div>
             </div>
