@@ -623,7 +623,7 @@ export function UnresolvedFilesSection({
               title="First page"
               disabled={discoveredPage <= 1}
               onClick={() => onSetDiscoveredPage(1)}
-              className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-900"
             >
               <ChevronFirst size={16} />
             </button>
@@ -633,7 +633,7 @@ export function UnresolvedFilesSection({
               title="Previous page"
               disabled={discoveredPage <= 1}
               onClick={() => onSetDiscoveredPage(Math.max(1, discoveredPage - 1))}
-              className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-900"
             >
               <ChevronLeft size={16} />
             </button>
@@ -646,7 +646,7 @@ export function UnresolvedFilesSection({
               title="Next page"
               disabled={discoveredPage >= discoveredPages}
               onClick={() => onSetDiscoveredPage(Math.min(discoveredPages, discoveredPage + 1))}
-              className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-900"
             >
               <ChevronRight size={16} />
             </button>
@@ -656,7 +656,7 @@ export function UnresolvedFilesSection({
               title="Last page"
               disabled={discoveredPage >= discoveredPages}
               onClick={() => onSetDiscoveredPage(discoveredPages)}
-              className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-900"
             >
               <ChevronLast size={16} />
             </button>
