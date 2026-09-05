@@ -53,3 +53,5 @@ apple-native-keyring-store = { version = "1.0", features = ["keychain"] }
 
 [target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
 dbus-secret-service-keyring-store = { version = "1.0", features = ["crypto-rust"] }
+[patch.crates-io]
+glib = { path = "vendor/glib-0.18.5" }
