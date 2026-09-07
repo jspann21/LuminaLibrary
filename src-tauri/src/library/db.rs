@@ -945,6 +945,7 @@ impl Repository {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
 
+    // ⚡ Bolt Optimization: Use early aggregation in a derived table instead of a correlated scalar subquery for unpaginated full-table scan.
     let mut stmt = tx.prepare(
       "SELECT
          b.id,
@@ -954,8 +955,13 @@ impl Repository {
          b.isbn13,
          b.updated_at,
          EXISTS(SELECT 1 FROM manual_overrides mo WHERE mo.book_id = b.id) AS has_manual_overrides,
-         (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = b.id) AS file_count
-       FROM books b",
+         COALESCE(fc.file_count, 0) AS file_count
+       FROM books b
+       LEFT JOIN (
+         SELECT book_id, COUNT(*) AS file_count
+         FROM book_files
+         GROUP BY book_id
+       ) fc ON fc.book_id = b.id",
     )?;
 
     let mut candidates = Vec::new();
@@ -1339,9 +1345,15 @@ impl Repository {
          (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = lb.id) AS file_count
        FROM limited_books lb"
     } else {
+      // ⚡ Bolt Optimization: Use early aggregation in a derived table instead of a correlated scalar subquery for unpaginated full-table scan.
       "SELECT b.id, b.title, b.authors_json,
-         (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = b.id) AS file_count
-       FROM books b"
+         COALESCE(fc.file_count, 0) AS file_count
+       FROM books b
+       LEFT JOIN (
+         SELECT book_id, COUNT(*) AS file_count
+         FROM book_files
+         GROUP BY book_id
+       ) fc ON fc.book_id = b.id"
     };
     let mut stmt = conn.prepare(query)?;
 
