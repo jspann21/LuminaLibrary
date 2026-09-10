@@ -126,10 +126,11 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
             {/* Modal */}
-            <div
+            <form
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
+                onSubmit={(e) => { e.preventDefault(); void handleApprove(); }}
                 className="relative z-10 mx-4 flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
             >
                 {/* Header */}
@@ -266,8 +267,7 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
                             title={isApplying ? 'Applying match...' : !selected ? 'Select a match to continue' : undefined}
                         >
                             <button
-                                type="button"
-                                onClick={handleApprove}
+                                type="submit"
                                 disabled={isApplying || !selected}
                                 className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-slate-800"
                             >
@@ -286,7 +286,7 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
                         </span>
                     )}
                 </div>
-            </div>
+            </form>
         </div>
     )
 }

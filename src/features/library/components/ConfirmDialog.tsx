@@ -35,11 +35,12 @@ export function ConfirmDialog({ dialog, onCancel, onConfirm }: ConfirmDialogProp
         transition={{ type: 'spring', stiffness: 240, damping: 24 }}
         className="fixed inset-0 z-[71] flex items-center justify-center p-4"
       >
-        <div
+        <form
           role="alertdialog"
           aria-modal="true"
           aria-labelledby={titleId}
           aria-describedby={descriptionId}
+          onSubmit={(e) => { e.preventDefault(); onConfirm(); }}
           className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
         >
           <div className="border-b border-slate-100 p-5 dark:border-slate-800">
@@ -56,8 +57,7 @@ export function ConfirmDialog({ dialog, onCancel, onConfirm }: ConfirmDialogProp
               {dialog.cancelLabel ?? 'Cancel'}
             </button>
             <button
-              type="button"
-              onClick={onConfirm}
+              type="submit"
               autoFocus={dialog.tone !== 'danger'}
               className={cx(
                 'rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
@@ -69,7 +69,7 @@ export function ConfirmDialog({ dialog, onCancel, onConfirm }: ConfirmDialogProp
               {dialog.confirmLabel}
             </button>
           </div>
-        </div>
+        </form>
       </motion.div>
     </>
   )
