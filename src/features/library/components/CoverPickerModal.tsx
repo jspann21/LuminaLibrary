@@ -415,7 +415,7 @@ export function CoverPickerModal({
                 <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-6 py-3 dark:border-slate-800">
                     <button
                         onClick={() => { void handleUpload() }}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-900"
                     >
                         <Upload size={14} />
                         Upload Image
@@ -423,7 +423,7 @@ export function CoverPickerModal({
                     <button
                         onClick={handleToggleUrlInput}
                         className={cx(
-                            'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                            'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
                             showUrlInput
                                 ? 'border-accent-300 bg-accent-50 text-accent-700 dark:border-accent-700 dark:bg-accent-900/20 dark:text-accent-300'
                                 : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700',
@@ -435,7 +435,7 @@ export function CoverPickerModal({
                     <button
                         onClick={handleToggleImageSearch}
                         className={cx(
-                            'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                            'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
                             showImageSearch
                                 ? 'border-accent-300 bg-accent-50 text-accent-700 dark:border-accent-700 dark:bg-accent-900/20 dark:text-accent-300'
                                 : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700',
@@ -446,7 +446,7 @@ export function CoverPickerModal({
                     </button>
                     <button
                         onClick={handleRemoveCover}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50 dark:border-rose-800 dark:bg-slate-800 dark:text-rose-400 dark:hover:bg-rose-900/20"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-rose-800 dark:bg-slate-800 dark:text-rose-400 dark:hover:bg-rose-900/20 dark:focus-visible:ring-offset-slate-900"
                     >
                         <Trash2 size={14} />
                         Remove Cover
@@ -474,7 +474,7 @@ export function CoverPickerModal({
                                             onClick={() => handleToggleImageSearchField(field)}
                                             title={value || `${IMAGE_SEARCH_FIELD_LABELS[field]} is unavailable`}
                                             className={cx(
-                                                'inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40',
+                                                'inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-40 dark:focus-visible:ring-offset-slate-900',
                                                 isSelected
                                                     ? 'border-accent-300 bg-accent-50 text-accent-700 dark:border-accent-700 dark:bg-accent-900/20 dark:text-accent-300'
                                                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700',
@@ -501,7 +501,7 @@ export function CoverPickerModal({
                                         type="button"
                                         onClick={() => { void handleImageSearch() }}
                                         disabled={!imageSearchQuery || isSearchingImages}
-                                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-50"
+                                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
                                     >
                                         {isSearchingImages ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
                                         {isSearchingImages ? 'Searching' : 'Search'}
@@ -543,7 +543,7 @@ export function CoverPickerModal({
                                     type="button"
                                     onClick={() => { void handleCustomUrl() }}
                                     disabled={!customUrl.trim() || isCheckingCustomUrl}
-                                    className="rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-50"
+                                    className="rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
                                 >
                                     {isCheckingCustomUrl ? 'Checking' : 'Add'}
                                 </button>
@@ -586,7 +586,7 @@ export function CoverPickerModal({
                                         key={candidate.url}
                                         onClick={() => setSelectedUrl(candidate.url)}
                                         className={cx(
-                                            'group relative flex flex-col overflow-hidden rounded-xl border-2 transition-all',
+                                            'group relative flex flex-col overflow-hidden rounded-xl border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
                                             isSelected
                                                 ? 'border-accent-500 shadow-lg shadow-accent-500/20 ring-2 ring-accent-500/30'
                                                 : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600',
@@ -631,7 +631,7 @@ export function CoverPickerModal({
                 <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4 dark:border-slate-800">
                     <button
                         onClick={onClose}
-                        className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                        className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-slate-400 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
                     >
                         Cancel
                     </button>
@@ -643,7 +643,7 @@ export function CoverPickerModal({
                             type="button"
                             onClick={handleApply}
                             disabled={selectedUrl === currentCoverUrl}
-                            className="inline-flex items-center gap-2 rounded-xl bg-accent-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded-xl bg-accent-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
                         >
                             <Check size={16} />
                             Apply
