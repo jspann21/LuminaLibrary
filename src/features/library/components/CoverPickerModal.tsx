@@ -516,14 +516,19 @@ export function CoverPickerModal({
                 {/* URL Input */}
                 {showUrlInput ? (
                     <div className="border-b border-slate-100 px-6 py-3 dark:border-slate-800">
-                        <div className="flex items-center gap-2">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault()
+                                void handleCustomUrl()
+                            }}
+                            className="flex items-center gap-2"
+                        >
                             <input
                                 aria-label="Cover image URL"
                                 type="url"
                                 value={customUrl}
                                 onChange={(e) => handleCustomUrlChange(e.target.value)}
                                 onPaste={handleCustomUrlPaste}
-                                onKeyDown={(e) => { if (e.key === 'Enter') void handleCustomUrl() }}
                                 placeholder="https://example.com/cover.jpg"
                                 aria-invalid={customUrlError ? true : undefined}
                                 aria-describedby={customUrlError || isCheckingCustomUrl ? 'cover-url-status' : undefined}
@@ -540,15 +545,14 @@ export function CoverPickerModal({
                                 title={!customUrl.trim() ? 'Enter a valid image URL' : isCheckingCustomUrl ? 'Checking image link...' : undefined}
                             >
                                 <button
-                                    type="button"
-                                    onClick={() => { void handleCustomUrl() }}
+                                    type="submit"
                                     disabled={!customUrl.trim() || isCheckingCustomUrl}
                                     className="rounded-lg bg-accent-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
                                 >
                                     {isCheckingCustomUrl ? 'Checking' : 'Add'}
                                 </button>
                             </span>
-                        </div>
+                        </form>
                         {customUrlError ? (
                             <p id="cover-url-status" role="alert" className="mt-2 text-sm text-rose-600 dark:text-rose-400">
                                 {customUrlError}

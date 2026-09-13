@@ -1,0 +1,3 @@
+## 2024-05-18 - Wrap Inputs in Forms for Native Submit
+**Learning:** Wrapping `<input>` and a corresponding `<button>` in a `<form onSubmit={...}>` provides highly reliable, accessible native Enter-to-submit behavior and eliminates the need for manual, brittle `onKeyDown` listeners (which often fail to account for assistive tech or autofill).
+**Action:** When creating or modifying inputs designed to execute a single action, always prefer a native `<form>` element over a standalone input with an `onKeyDown` Enter listener. Remember to set the button to `type="submit"` and use `e.preventDefault()` in the `onSubmit` handler to prevent page reloads.
