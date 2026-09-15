@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BookPlus, Check, Loader2, X } from 'lucide-react'
 import type { BookDetail, BookPatch, DiscoveredFile } from '../../../lib/types'
+import { cx } from '../lib/cx'
 import { formatDisplayPath } from '../../../lib/format'
 
 type ManualBookModalProps = {
@@ -257,14 +258,19 @@ export function ManualBookModal({
                     >
                         Cancel
                     </button>
-                    <button
-                        type="submit"
-                        disabled={isSaving}
-                        className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 dark:focus-visible:ring-offset-slate-800"
+                    <span
+                        className={cx('inline-flex', isSaving && 'cursor-not-allowed')}
+                        title={isSaving ? 'Adding book...' : undefined}
                     >
-                        {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                        {isSaving ? 'Adding...' : 'Add to Library'}
-                    </button>
+                        <button
+                            type="submit"
+                            disabled={isSaving}
+                            className="flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-slate-800"
+                        >
+                            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                            {isSaving ? 'Adding...' : 'Add to Library'}
+                        </button>
+                    </span>
                 </div>
             </form>
         </div>

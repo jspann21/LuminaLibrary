@@ -482,18 +482,23 @@ export function RescanMetadataModal({
             <div className="flex items-center gap-3">
               <button
                 onClick={onClose}
-                className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-slate-400 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
               >
                 Cancel
               </button>
-              <button
-                onClick={() => { void handleApply() }}
-                disabled={isApplying}
-                className="inline-flex items-center gap-2 rounded-xl bg-accent-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-accent-700 disabled:opacity-50"
+              <span
+                className={cx('inline-flex', isApplying && 'cursor-not-allowed')}
+                title={isApplying ? 'Applying changes...' : undefined}
               >
-                {isApplying ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                {isApplying ? 'Applying…' : 'Apply Changes'}
-              </button>
+                <button
+                  onClick={() => { void handleApply() }}
+                  disabled={isApplying}
+                  className="inline-flex items-center gap-2 rounded-xl bg-accent-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
+                >
+                  {isApplying ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                  {isApplying ? 'Applying…' : 'Apply Changes'}
+                </button>
+              </span>
             </div>
           </div>
         )}

@@ -1,0 +1,3 @@
+## 2025-01-01 - Add tooltips and context to disabled primary action buttons
+**Learning:** When a button is disabled (e.g. during a form submission or applying state), adding a `title` tooltip and `cursor-not-allowed` provides crucial context on why it is disabled. However, applying `pointer-events-none` to a disabled button prevents it from triggering hover states like tooltips and cursors.
+**Action:** Wrap disabled buttons in a `span` with `inline-flex` and apply `cursor-not-allowed` and `title` to the wrapper. Retain `disabled:pointer-events-none` on the button itself. Ensure all interactive elements have explicit `focus-visible` ring styles.
