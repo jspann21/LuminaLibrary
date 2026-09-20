@@ -954,8 +954,9 @@ impl Repository {
          b.isbn13,
          b.updated_at,
          EXISTS(SELECT 1 FROM manual_overrides mo WHERE mo.book_id = b.id) AS has_manual_overrides,
-         (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = b.id) AS file_count
-       FROM books b",
+         COALESCE(fc.count, 0) AS file_count
+       FROM books b
+       LEFT JOIN (SELECT book_id, COUNT(*) as count FROM book_files GROUP BY book_id) fc ON fc.book_id = b.id",
     )?;
 
     let mut candidates = Vec::new();
@@ -1340,8 +1341,9 @@ impl Repository {
        FROM limited_books lb"
     } else {
       "SELECT b.id, b.title, b.authors_json,
-         (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = b.id) AS file_count
-       FROM books b"
+         COALESCE(fc.count, 0) AS file_count
+       FROM books b
+       LEFT JOIN (SELECT book_id, COUNT(*) as count FROM book_files GROUP BY book_id) fc ON fc.book_id = b.id"
     };
     let mut stmt = conn.prepare(query)?;
 
