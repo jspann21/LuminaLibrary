@@ -945,6 +945,7 @@ impl Repository {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
 
+    // ⚡ Bolt Optimization: Early aggregation to prevent N+1 query overhead during full table scan
     let mut stmt = tx.prepare(
       "SELECT
          b.id,
@@ -953,9 +954,11 @@ impl Repository {
          b.isbn10,
          b.isbn13,
          b.updated_at,
-         EXISTS(SELECT 1 FROM manual_overrides mo WHERE mo.book_id = b.id) AS has_manual_overrides,
-         (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = b.id) AS file_count
-       FROM books b",
+         COALESCE(mo.has_manual_overrides, 0) AS has_manual_overrides,
+         COALESCE(bf.file_count, 0) AS file_count
+       FROM books b
+       LEFT JOIN (SELECT book_id, 1 AS has_manual_overrides FROM manual_overrides GROUP BY book_id) mo ON mo.book_id = b.id
+       LEFT JOIN (SELECT book_id, COUNT(*) AS file_count FROM book_files GROUP BY book_id) bf ON bf.book_id = b.id",
     )?;
 
     let mut candidates = Vec::new();
@@ -1339,9 +1342,11 @@ impl Repository {
          (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = lb.id) AS file_count
        FROM limited_books lb"
     } else {
+      // ⚡ Bolt Optimization: Early aggregation to prevent N+1 overhead
       "SELECT b.id, b.title, b.authors_json,
-         (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = b.id) AS file_count
-       FROM books b"
+         COALESCE(bf.file_count, 0) AS file_count
+       FROM books b
+       LEFT JOIN (SELECT book_id, COUNT(*) AS file_count FROM book_files GROUP BY book_id) bf ON bf.book_id = b.id"
     };
     let mut stmt = conn.prepare(query)?;
 
