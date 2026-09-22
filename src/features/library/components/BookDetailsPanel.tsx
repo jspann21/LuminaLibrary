@@ -17,13 +17,13 @@ type DraftState = {
 }
 
 const detailSecondaryButtonClass =
-  'transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-slate-700 dark:hover:text-slate-200'
+  'transition-colors hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-offset-slate-900'
 
 const detailDangerButtonClass =
-  'transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-rose-900/20 dark:hover:text-rose-400'
+  'transition-colors hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-rose-900/20 dark:hover:text-rose-400 dark:focus-visible:ring-offset-slate-900'
 
 const detailWarningButtonClass =
-  'transition-colors hover:bg-amber-50 hover:text-amber-700 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-amber-900/20 dark:hover:text-amber-300'
+  'transition-colors hover:bg-amber-50 hover:text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-amber-900/20 dark:hover:text-amber-300 dark:focus-visible:ring-offset-slate-900'
 
 function buildPatchFromDetail(detail: BookDetail): BookPatch {
   return {
@@ -246,18 +246,18 @@ export function BookDetailsPanel({
 
           <div className="space-y-6">
             <div className="flex items-center gap-3">
-              {isEditing ? <span className={cx('flex flex-1', isSaving && 'cursor-not-allowed')} title={isSaving ? 'Saving changes' : 'Save changes'}><button onClick={saveChanges} disabled={isSaving} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent-600 py-2.5 font-medium text-white transition-colors hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500">{isSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}{isSaving ? 'Saving...' : 'Save Changes'}</button></span> : <button onClick={startEdit} className={cx('flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 font-medium text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300', detailSecondaryButtonClass)}>Edit Metadata</button>}
+              {isEditing ? <span className={cx('flex flex-1', isSaving && 'cursor-not-allowed')} title={isSaving ? 'Saving changes' : 'Save changes'}><button onClick={saveChanges} disabled={isSaving} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent-600 py-2.5 font-medium text-white transition-colors hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-60 dark:focus-visible:ring-offset-slate-900">{isSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}{isSaving ? 'Saving...' : 'Save Changes'}</button></span> : <button onClick={startEdit} className={cx('flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300', detailSecondaryButtonClass)}>Edit Metadata</button>}
               <span className={cx('flex', !canRescanMetadata && 'cursor-not-allowed')} title={canRescanMetadata ? 'Rescan metadata' : 'Requires a linked file or LibraryThing source'}>
-                <button aria-label="Rescan metadata" onClick={() => { if (isEditing) { setRescanNotice({ tone: 'warning', message: 'Save changes first. Rescan uses saved metadata and does not include unsaved edits.' }); return } setShowRescanModal(true) }} disabled={!canRescanMetadata} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-slate-700', detailSecondaryButtonClass)}><RefreshCw size={20} /></button>
+                <button aria-label="Rescan metadata" onClick={() => { if (isEditing) { setRescanNotice({ tone: 'warning', message: 'Save changes first. Rescan uses saved metadata and does not include unsaved edits.' }); return } setShowRescanModal(true) }} disabled={!canRescanMetadata} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 dark:border-slate-700', detailSecondaryButtonClass)}><RefreshCw size={20} /></button>
               </span>
               <span className={cx('flex', !primaryFile && 'cursor-not-allowed')} title={primaryFile ? 'Open file' : 'Requires a linked local file'}>
-                <button aria-label="Open file" onClick={() => { if (primaryFile) void onOpenFile(primaryFile.absPath) }} disabled={!primaryFile} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-slate-700', detailSecondaryButtonClass)}><ExternalLink size={20} /></button>
+                <button aria-label="Open file" onClick={() => { if (primaryFile) void onOpenFile(primaryFile.absPath) }} disabled={!primaryFile} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 dark:border-slate-700', detailSecondaryButtonClass)}><ExternalLink size={20} /></button>
               </span>
               <span className={cx('flex', isHiding && 'cursor-not-allowed')} title={isHiding ? 'Hiding book' : 'Hide from library'}>
-                <button aria-label="Hide from library" onClick={() => onRequestHide(book.id)} disabled={isHiding} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-slate-700', detailWarningButtonClass)}><EyeOff size={20} /></button>
+                <button aria-label="Hide from library" onClick={() => onRequestHide(book.id)} disabled={isHiding} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 dark:border-slate-700', detailWarningButtonClass)}><EyeOff size={20} /></button>
               </span>
               <span className={cx('flex', isDeleting && 'cursor-not-allowed')} title={isDeleting ? 'Deleting book' : 'Delete book'}>
-                <button aria-label="Delete book" onClick={() => onRequestDelete(book.id)} disabled={isDeleting} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:border-slate-700', detailDangerButtonClass)}><Trash2 size={20} /></button>
+                <button aria-label="Delete book" onClick={() => onRequestDelete(book.id)} disabled={isDeleting} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 dark:border-slate-700', detailDangerButtonClass)}><Trash2 size={20} /></button>
               </span>
             </div>
 
@@ -280,7 +280,7 @@ export function BookDetailsPanel({
                     <button
                       onClick={() => { void undoCurated() }}
                       disabled={isUndoing}
-                      className="rounded-lg border border-amber-400 px-2.5 py-1 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50 disabled:pointer-events-none disabled:opacity-60 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/20"
+                      className="rounded-lg border border-amber-400 px-2.5 py-1 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-60 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/20 dark:focus-visible:ring-offset-slate-900"
                     >
                       {isUndoing ? 'Undoing...' : 'Undo'}
                     </button>
