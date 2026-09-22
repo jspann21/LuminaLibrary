@@ -660,7 +660,7 @@ function StepPickEdition({
           <p className="text-sm text-slate-500 dark:text-slate-400">No metadata candidates found.</p>
           <button
             onClick={onSkip}
-            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
           >
             Continue to Fine-Tune
           </button>
@@ -733,7 +733,7 @@ function StepPickEdition({
           <div className="flex justify-center pt-2">
             <button
               onClick={onSkip}
-              className="text-sm font-medium text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              className="rounded-lg px-2 py-1 text-sm font-medium text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200 dark:focus-visible:ring-offset-slate-900"
             >
               Skip — compare all fields directly →
             </button>
