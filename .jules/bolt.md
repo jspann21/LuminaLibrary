@@ -1,0 +1,3 @@
+## 2024-05-24 - N+1 Query in Book Consolidation
+**Learning:** Correlated scalar subqueries (like `(SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = b.id)`) cause severe N+1 performance bottlenecks during unpaginated full-table scans. In SQLite, a derived table using `LEFT JOIN (SELECT book_id, COUNT(*) GROUP BY book_id)` evaluates the counts via early aggregation in one pass, resulting in dramatically better performance (e.g., 53ms vs 19321ms for 10k rows).
+**Action:** When executing unpaginated full-table scans, use early aggregation via derived tables for counts/exist checks rather than correlated scalar subqueries.
