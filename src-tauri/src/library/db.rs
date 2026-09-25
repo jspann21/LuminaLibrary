@@ -945,6 +945,8 @@ impl Repository {
     let mut conn = self.conn()?;
     let tx = conn.transaction()?;
 
+    // Bolt: Optimized full-table scan by replacing correlated subqueries with early aggregation.
+    // Joining pre-aggregated subqueries prevents O(N) repetitive index lookups, yielding a massive speedup on large libraries.
     let mut stmt = tx.prepare(
       "SELECT
          b.id,
@@ -953,9 +955,11 @@ impl Repository {
          b.isbn10,
          b.isbn13,
          b.updated_at,
-         EXISTS(SELECT 1 FROM manual_overrides mo WHERE mo.book_id = b.id) AS has_manual_overrides,
-         (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = b.id) AS file_count
-       FROM books b",
+         mo.book_id IS NOT NULL AS has_manual_overrides,
+         COALESCE(bf_counts.file_count, 0) AS file_count
+       FROM books b
+       LEFT JOIN (SELECT book_id FROM manual_overrides GROUP BY book_id) mo ON mo.book_id = b.id
+       LEFT JOIN (SELECT book_id, COUNT(*) AS file_count FROM book_files GROUP BY book_id) bf_counts ON bf_counts.book_id = b.id",
     )?;
 
     let mut candidates = Vec::new();
