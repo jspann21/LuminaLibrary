@@ -331,22 +331,19 @@ impl Repository {
 
   pub fn count_books_orphaned_by_folder_removal(&self, folder_id: &str) -> anyhow::Result<u64> {
     let count: i64 = self.conn()?.query_row(
-      "SELECT COUNT(DISTINCT b.id)
-       FROM books b
-       WHERE EXISTS (
-         SELECT 1
-         FROM book_files bf
-         JOIN files f ON f.id = bf.file_id
-         WHERE bf.book_id = b.id
-           AND f.folder_id = ?1
-       )
-       AND NOT EXISTS (
-         SELECT 1
-         FROM book_files bf2
-         JOIN files f2 ON f2.id = bf2.file_id
-         WHERE bf2.book_id = b.id
-           AND f2.folder_id <> ?1
-       )",
+      // Performance: We drive this query from the relationship table `book_files` rather than scanning the parent table `books`.
+      // This avoids a full O(N) table scan on books, turning it into a fast index lookup via the highly selective `folder_id`.
+      "SELECT COUNT(DISTINCT bf.book_id)
+       FROM book_files bf
+       JOIN files f ON f.id = bf.file_id
+       WHERE f.folder_id = ?1
+         AND NOT EXISTS (
+           SELECT 1
+           FROM book_files bf2
+           JOIN files f2 ON f2.id = bf2.file_id
+           WHERE bf2.book_id = bf.book_id
+             AND f2.folder_id <> ?1
+         )",
       params![folder_id],
       |row| row.get(0),
     )?;
