@@ -2198,8 +2198,10 @@ impl Repository {
        )
        SELECT lb.id, lb.title, lb.authors_json, lb.publisher, lb.publish_date, lb.cover_url, lb.cover_local_path, lb.confidence,
         (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = lb.id),
-        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = lb.id),
-        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = lb.id AND f.status = 'missing'),
+        /* Performance: bf.file_id has a UNIQUE constraint. COUNT(*) avoids building a temp B-Tree per row in this correlated subquery */
+        (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = lb.id),
+        /* Performance: f.id is the primary key. COUNT(*) avoids building a temp B-Tree per row in this correlated subquery */
+        (SELECT COUNT(*) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = lb.id AND f.status = 'missing'),
         (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = lb.id),
         CASE WHEN {library_thing_url_enabled} THEN (SELECT external_url FROM book_external_sources bes WHERE bes.book_id = lb.id AND bes.source = 'librarything' LIMIT 1) ELSE NULL END
        FROM limited_books lb
@@ -2340,8 +2342,10 @@ impl Repository {
        )
        SELECT lb.id, lb.title, lb.authors_json, lb.publisher, lb.publish_date, lb.cover_url, lb.cover_local_path, lb.confidence,
         (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = lb.id),
-        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = lb.id),
-        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = lb.id AND f.status = 'missing'),
+        /* Performance: bf.file_id has a UNIQUE constraint. COUNT(*) avoids building a temp B-Tree per row in this correlated subquery */
+        (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = lb.id),
+        /* Performance: f.id is the primary key. COUNT(*) avoids building a temp B-Tree per row in this correlated subquery */
+        (SELECT COUNT(*) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = lb.id AND f.status = 'missing'),
         (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = lb.id),
         CASE WHEN {library_thing_url_enabled} THEN (SELECT external_url FROM book_external_sources bes WHERE bes.book_id = lb.id AND bes.source = 'librarything' LIMIT 1) ELSE NULL END
        FROM limited_books lb
