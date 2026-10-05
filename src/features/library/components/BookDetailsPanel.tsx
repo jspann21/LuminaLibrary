@@ -195,8 +195,8 @@ export function BookDetailsPanel({
         <div className="flex items-center justify-between border-b border-slate-100 p-6 dark:border-slate-800">
           <h2 className="font-semibold text-slate-900 dark:text-white">Book Details</h2>
           <div className="flex items-center gap-2">
-            {isEditing ? <button onClick={cancelEdit} className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200">Cancel</button> : null}
-            <button aria-label="Close book details" title="Close book details" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:bg-slate-800"><X size={20} className="text-slate-500 dark:text-slate-400" /></button>
+            {isEditing ? <button type="button" onClick={cancelEdit} className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200">Cancel</button> : null}
+            <button type="button" aria-label="Close book details" title="Close book details" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:bg-slate-800"><X size={20} className="text-slate-500 dark:text-slate-400" /></button>
           </div>
         </div>
 
