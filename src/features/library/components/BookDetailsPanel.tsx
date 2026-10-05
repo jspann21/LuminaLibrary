@@ -14,6 +14,7 @@ type DraftState = {
   form: DetailFormState
   tags: string[]
   newTag: string
+  coverChanged: boolean
 }
 
 const detailSecondaryButtonClass =
@@ -64,6 +65,7 @@ export function BookDetailsPanel({
   const [isUndoing, setIsUndoing] = useState(false)
   const [showCoverPicker, setShowCoverPicker] = useState(false)
   const [showRescanModal, setShowRescanModal] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -96,16 +98,19 @@ export function BookDetailsPanel({
   }
 
   const startEdit = () => {
+    setSaveError(null)
     setSavedPrimaryFile(primaryFile)
     setDraft({
       form: buildDetailForm(book),
       tags: [...book.tags],
       newTag: '',
+      coverChanged: false,
     })
   }
 
   const cancelEdit = () => {
     setDraft(null)
+    setSaveError(null)
   }
 
   const updateForm = (update: (current: DetailFormState) => DetailFormState) => {
@@ -131,6 +136,12 @@ export function BookDetailsPanel({
   }
 
   const saveChanges = async () => {
+    if (isSaving) return
+    if (!form.title.trim()) {
+      setSaveError('Title is required.')
+      return
+    }
+    setSaveError(null)
     setSavedPrimaryFile(primaryFile)
     const authors = form.authors
       .split(',')
@@ -154,16 +165,20 @@ export function BookDetailsPanel({
 
     const pageCount = Number.parseInt(form.pageCount, 10)
     const seriesIndex = Number.parseInt(form.seriesIndex, 10)
-    await onSave({
-      bookId: book.id,
-      patch: {
-        ...patch,
-        ...(Number.isNaN(pageCount) ? {} : { pageCount }),
-        ...(Number.isNaN(seriesIndex) ? {} : { seriesIndex }),
-      },
-      tags,
-    })
-    setDraft(null)
+    try {
+      await onSave({
+        bookId: book.id,
+        patch: {
+          ...patch,
+          ...(Number.isNaN(pageCount) ? {} : { pageCount }),
+          ...(Number.isNaN(seriesIndex) ? {} : { seriesIndex }),
+        },
+        tags,
+      })
+      setDraft(null)
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Failed to save book metadata.')
+    }
   }
 
   const undoCurated = async () => {
@@ -210,8 +225,8 @@ export function BookDetailsPanel({
               aria-label="Change cover image"
             >
               <CoverThumb
-                coverUrl={form.coverUrl || book.coverUrl}
-                coverLocalPath={form.coverUrl ? undefined : book.coverLocalPath}
+                coverUrl={form.coverUrl || undefined}
+                coverLocalPath={!draft?.coverChanged && form.coverUrl === (book.coverUrl ?? '') ? book.coverLocalPath : undefined}
                 libraryThingBadge={Boolean(book.libraryThingUrl)}
                 title={book.title}
                 className="h-44 w-32"
@@ -233,14 +248,19 @@ export function BookDetailsPanel({
                   <h1 className="mb-2 text-2xl font-bold leading-tight text-slate-900 dark:text-white">{book.title}</h1>
                   {book.subtitle ? <p className="mb-2 text-base text-slate-500 dark:text-slate-400">{book.subtitle}</p> : null}
                   <p className="mb-4 text-lg text-slate-500 dark:text-slate-400">{book.authors.join(', ') || 'Unknown Author'}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {tags.map((tag) => (
-                      <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-accent-50 px-2.5 py-1 text-xs font-medium text-accent-700 dark:bg-accent-900/20 dark:text-accent-300">{tag}{isEditing ? <button aria-label={`Remove tag ${tag}`} title={`Remove tag ${tag}`} onClick={() => removeTag(tag)} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"><X size={12} /></button> : null}</span>
-                    ))}
-                    {isEditing ? <input className="w-28 rounded-full border border-accent-300 bg-white px-3 py-1.5 text-xs dark:border-accent-700 dark:bg-slate-800" value={newTag} onChange={(event) => setNewTag(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addTag(newTag) } }} /> : null}
-                  </div>
                 </>
               )}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-accent-50 px-2.5 py-1 text-xs font-medium text-accent-700 dark:bg-accent-900/20 dark:text-accent-300">{tag}{isEditing ? <button aria-label={`Remove tag ${tag}`} title={`Remove tag ${tag}`} onClick={() => removeTag(tag)} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"><X size={12} /></button> : null}</span>
+                ))}
+                {isEditing ? (
+                  <>
+                    <input aria-label="New tag" placeholder="New tag" className="w-28 rounded-full border border-accent-300 bg-white px-3 py-1.5 text-xs dark:border-accent-700 dark:bg-slate-800" value={newTag} onChange={(event) => setNewTag(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addTag(newTag) } }} />
+                    <button type="button" onClick={() => addTag(newTag)} disabled={!newTag.trim()} className={cx('rounded-full border border-accent-300 px-2.5 py-1 text-xs font-medium text-accent-700 dark:border-accent-700 dark:text-accent-300', detailSecondaryButtonClass)}>Add tag</button>
+                  </>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -260,6 +280,12 @@ export function BookDetailsPanel({
                 <button aria-label="Delete book" onClick={() => onRequestDelete(book.id)} disabled={isDeleting} className={cx('rounded-xl border border-slate-200 p-2.5 text-slate-400 dark:border-slate-700', detailDangerButtonClass)}><Trash2 size={20} /></button>
               </span>
             </div>
+
+            {saveError ? (
+              <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-300">
+                {saveError}
+              </div>
+            ) : null}
 
             {rescanNotice ? (
               <div
@@ -398,7 +424,7 @@ export function BookDetailsPanel({
       {showCoverPicker ? (
         <CoverPickerModal
           bookId={book.id}
-          currentCoverUrl={form.coverUrl || book.coverUrl || ''}
+          currentCoverUrl={form.coverUrl}
           bookTitle={form.title}
           bookAuthors={form.authors}
           bookIsbn10={form.isbn10}
@@ -406,10 +432,17 @@ export function BookDetailsPanel({
           onSelect={(url) => {
             setShowCoverPicker(false)
             if (isEditing) {
-              updateForm((current) => ({ ...current, coverUrl: url }))
+              setDraft((current) => current ? {
+                ...current,
+                form: { ...current.form, coverUrl: url },
+                coverChanged: true,
+              } : current)
             } else {
               const patch = { coverUrl: url }
-              void onSave({ bookId: book.id, patch, tags: book.tags })
+              setSaveError(null)
+              void onSave({ bookId: book.id, patch, tags: book.tags }).catch((error: unknown) => {
+                setSaveError(error instanceof Error ? error.message : 'Failed to save the cover image.')
+              })
             }
           }}
           onClose={() => setShowCoverPicker(false)}

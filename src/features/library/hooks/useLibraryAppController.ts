@@ -145,7 +145,6 @@ export function useLibraryAppController() {
         sort: { field: 'createdAt', direction: 'desc' },
         filters: { formats: [], tags: [], authors: [], folderIds: [] },
       }),
-    enabled: activeView !== 'library',
   })
   const tagsQuery = useQuery({ queryKey: libraryQueryKeys.tags(), queryFn: () => api.getLibraryTags() })
   const discoveredQueryResult = useQuery({
@@ -318,10 +317,7 @@ export function useLibraryAppController() {
     if (!discoveredQueryResult.data || discoveredPage <= discoveredPages) return
     setDiscoveredPage(discoveredPages)
   }, [discoveredPage, discoveredPages, discoveredQueryResult.data, setDiscoveredPage])
-  const totalBooks =
-    activeView === 'library'
-      ? booksQuery.data?.total ?? totalBooksQuery.data?.total ?? 0
-      : totalBooksQuery.data?.total ?? booksQuery.data?.total ?? 0
+  const totalBooks = totalBooksQuery.data?.total ?? 0
   const progressPercent = progressPercentForPhase(scanProgress)
   const bulkMatchProgressPercent =
     bulkMatchProgress.phase === 'completed'

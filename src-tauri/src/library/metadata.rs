@@ -1840,7 +1840,8 @@ pub fn infer_metadata_from_filename(path: &Path) -> ParsedMetadata {
       .collect::<Vec<_>>()
       .join(" ");
 
-    let lower = cleaned.to_lowercase();
+    // Preserve byte offsets when locating the ASCII separator in Unicode filenames.
+    let lower = cleaned.to_ascii_lowercase();
     if let Some(index) = lower.find(" by ") {
       let title_part = cleaned[..index].trim();
       let author_part = cleaned[index + 4..].trim();
@@ -1947,8 +1948,8 @@ pub fn compute_sha256(path: &Path) -> anyhow::Result<String> {
 
 pub fn extract_isbn(input: &str) -> Option<String> {
   ISBN_PATTERN
-    .find(input)
-    .and_then(|matched| normalize_valid_isbn(matched.as_str()))
+    .find_iter(input)
+    .find_map(|matched| normalize_valid_isbn(matched.as_str()))
 }
 
 pub fn normalize_isbn(input: &str) -> String {

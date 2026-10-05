@@ -105,6 +105,7 @@ export function ManualBookModal({
     }
 
     const submit = async () => {
+        if (isSaving) return
         const title = textValue(form.title)
         if (!title) {
             setError('Title is required.')
@@ -168,6 +169,7 @@ export function ManualBookModal({
                         </p>
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
                         aria-label="Close manual book form"
                         title="Close"

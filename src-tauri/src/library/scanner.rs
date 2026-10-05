@@ -15,7 +15,7 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter};
 use walkdir::WalkDir;
 
-const WATCHER_EVENT_QUEUE_CAPACITY: usize = 256;
+const WATCHER_EVENT_QUEUE_CAPACITY: usize = 1;
 
 use crate::library::cover_cache::CoverCache;
 use crate::library::db::Repository;
@@ -513,6 +513,14 @@ impl Scanner {
   }
 
   pub(crate) fn scan_folder(&self, folder: &LibraryFolder) -> anyhow::Result<ScanSummary> {
+    self.scan_folder_with_profile(folder, ScanComputeProfile::BulkSafe)
+  }
+
+  fn scan_folder_with_profile(
+    &self,
+    folder: &LibraryFolder,
+    profile: ScanComputeProfile,
+  ) -> anyhow::Result<ScanSummary> {
     let mut summary = ScanSummary::default();
     let mut seen_paths: HashSet<String> = HashSet::new();
     let mut processed_since_emit = 0usize;
@@ -548,8 +556,12 @@ impl Scanner {
       prepare_error_known
     );
     log::info!(
-      "scan_folder_profile folder_id={} profile=bulk_safe note='pdf metadata parsing and hashing are minimized during bulk indexing'",
-      folder.id
+      "scan_folder_profile folder_id={} profile={}",
+      folder.id,
+      match profile {
+        ScanComputeProfile::BulkSafe => "bulk_safe",
+        ScanComputeProfile::Full => "full",
+      }
     );
 
     let _ = self.app_handle.emit(
@@ -604,7 +616,15 @@ impl Scanner {
       }
 
       if candidate.is_unchanged() {
-        summary.unchanged_files += 1;
+        if let Some(existing) = existing_by_path
+          .get(&candidate.abs_path)
+          .filter(|existing| existing.status == "missing")
+        {
+          self.repository.mark_file_missing(&existing.id, false, &now_iso())?;
+          summary.updated_files += 1;
+        } else {
+          summary.unchanged_files += 1;
+        }
         processed_files += 1;
         processed_since_emit += 1;
         if processed_since_emit >= PROGRESS_BATCH_SIZE || last_emit.elapsed() >= PROGRESS_EMIT_INTERVAL {
@@ -664,7 +684,7 @@ impl Scanner {
             &folder,
             &candidate,
             existing,
-            ScanComputeProfile::BulkSafe,
+            profile,
             false,
             None,
           );
@@ -1230,6 +1250,16 @@ impl Scanner {
     if !force {
       if let Some(existing_file) = existing_file.as_ref() {
         if existing_file.size_bytes == size_bytes && existing_file.mtime_utc == mtime_utc {
+          if existing_file.status == "missing" {
+            self.repository.mark_file_missing(&existing_file.id, false, &now_iso())?;
+            return Ok(FileProcessingOutcome {
+              file: self.repository.get_file_by_id(&existing_file.id)?
+                .ok_or_else(|| anyhow!("file disappeared after restoring missing status"))?,
+              book_id: self.repository.find_book_id_for_file(&existing_file.id)?,
+              confidence: None,
+              reason: "updated".to_string(),
+            });
+          }
           return Ok(FileProcessingOutcome {
             file: existing_file.clone(),
             book_id: None,
@@ -1723,24 +1753,60 @@ impl Scanner {
 #[derive(Clone)]
 pub(crate) struct FolderWatcher {
   watched_paths: Arc<Mutex<HashMap<String, String>>>,
-  last_scan_by_folder: Arc<Mutex<HashMap<String, Instant>>>,
+  pending_changes: Arc<Mutex<HashMap<String, String>>>,
   watcher: Arc<Mutex<RecommendedWatcher>>,
 }
 
 impl FolderWatcher {
   pub(crate) fn new(scanner: Scanner, repository: Repository, app_handle: AppHandle) -> anyhow::Result<Self> {
     let watched_paths = Arc::new(Mutex::new(HashMap::<String, String>::new()));
-    let watched_paths_for_thread = watched_paths.clone();
-    let last_scan_by_folder = Arc::new(Mutex::new(HashMap::<String, Instant>::new()));
-    let last_scan_by_folder_for_thread = last_scan_by_folder.clone();
+    let watched_paths_for_callback = watched_paths.clone();
+    let pending_changes = Arc::new(Mutex::new(HashMap::<String, String>::new()));
+    let pending_changes_for_callback = pending_changes.clone();
+    let pending_changes_for_thread = pending_changes.clone();
 
-    let (tx, rx) = mpsc::sync_channel::<notify::Result<Event>>(WATCHER_EVENT_QUEUE_CAPACITY);
+    let (tx, rx) = mpsc::sync_channel::<()>(WATCHER_EVENT_QUEUE_CAPACITY);
     let watcher = RecommendedWatcher::new(
-      move |event| {
-        // A scan reconciles the complete folder, so events that arrive during a
-        // burst are redundant. Keep notify's callback non-blocking and prevent
-        // an unbounded backlog while a scan is in progress.
-        let _ = tx.try_send(event);
+      move |event: notify::Result<Event>| {
+        let Ok(event) = event else {
+          return;
+        };
+        // Reading books during a scan must not schedule another scan.
+        if event.kind.is_access() {
+          return;
+        }
+        let watched = watched_paths_for_callback.lock();
+        let mut pending = pending_changes_for_callback.lock();
+        for path in &event.paths {
+          let changed_path = canonicalize_watcher_path(path);
+          let changed_ext = changed_path
+            .extension()
+            .and_then(OsStr::to_str)
+            .map(|ext| ext.to_ascii_lowercase());
+          let supported_file = matches!(changed_ext.as_deref(), Some("pdf" | "epub"));
+          // Removed or renamed directories no longer pass is_dir(). Reconcile
+          // their folders as well so files beneath the old path become missing.
+          let removed_or_renamed = matches!(
+            event.kind,
+            notify::EventKind::Remove(_)
+              | notify::EventKind::Modify(notify::event::ModifyKind::Name(_))
+          );
+          if !supported_file && !changed_path.is_dir() && !removed_or_renamed {
+            continue;
+          }
+          if let Some((_, folder_id)) = watched
+            .iter()
+            .filter(|(path, _)| changed_path.starts_with(Path::new(path.as_str())))
+            .max_by_key(|(path, _)| Path::new(path.as_str()).components().count())
+          {
+            pending.insert(folder_id.clone(), changed_path.to_string_lossy().to_string());
+          }
+        }
+        if !pending.is_empty() {
+          // The map retains every affected folder, even when a wakeup is already
+          // queued or a scan is running. Memory is bounded by watched folders.
+          let _ = tx.try_send(());
+        }
       },
       Config::default().with_poll_interval(Duration::from_secs(2)),
     )?;
@@ -1750,67 +1816,22 @@ impl FolderWatcher {
     let app_for_thread = app_handle.clone();
 
     thread::spawn(move || {
-      while let Ok(event) = rx.recv() {
-        let Ok(event) = event else {
-          continue;
-        };
-        if event.paths.is_empty() {
-          continue;
-        }
-
-        let changed = event.paths[0]
-          .canonicalize()
-          .unwrap_or_else(|_| event.paths[0].clone())
-          .to_string_lossy()
-          .to_string();
-        let changed_ext = Path::new(&changed)
-          .extension()
-          .and_then(OsStr::to_str)
-          .map(|ext| ext.to_ascii_lowercase());
-        let looks_like_supported_file = matches!(changed_ext.as_deref(), Some("pdf" | "epub"));
-        let looks_like_directory = Path::new(&changed).is_dir();
-        if !looks_like_supported_file && !looks_like_directory {
-          continue;
-        }
-
-        let folder_match = {
-          let map = watched_paths_for_thread.lock();
-          map.iter()
-            .filter(|(path, _)| Path::new(&changed).starts_with(Path::new(path.as_str())))
-            .max_by_key(|(path, _)| Path::new(path.as_str()).components().count())
-            .map(|(_, folder_id)| folder_id.clone())
-        };
-
-        if let Some(folder_id) = folder_match {
-          let now = Instant::now();
-          {
-            let mut last_scans = last_scan_by_folder_for_thread.lock();
-            if let Some(previous) = last_scans.get(&folder_id) {
-              if now.duration_since(*previous) < Duration::from_secs(2) {
-                continue;
-              }
-            }
-            last_scans.insert(folder_id.clone(), now);
-          }
-
+      while rx.recv().is_ok() {
+        thread::sleep(Duration::from_secs(2));
+        let changes = std::mem::take(&mut *pending_changes_for_thread.lock());
+        for (folder_id, changed) in changes {
           let _ = app_for_thread.emit(
             "watcher_file_changed",
             json!({ "folderId": folder_id, "path": changed }),
           );
           if let Ok(Some(folder)) = repository_for_thread.get_folder(&folder_id) {
-            let changed_path = Path::new(&changed);
-            if looks_like_supported_file && changed_path.is_file() {
-              match scanner_for_thread.scan_single_file(changed_path, &folder, false, true, None) {
-                Ok(outcome) => {
-                  let summary = scan_summary_for_single_file_outcome(&outcome);
-                  let _ = app_for_thread.emit("scan_completed", summary);
-                }
-                Err(err) => {
-                  log::warn!("watcher_single_file_scan_failed path={} error={err}", changed);
-                }
+            match scanner_for_thread.scan_folder_with_profile(&folder, ScanComputeProfile::Full) {
+              Ok(summary) => {
+                let _ = app_for_thread.emit("scan_completed", summary);
               }
-            } else if let Ok(summary) = scanner_for_thread.scan_folder(&folder) {
-              let _ = app_for_thread.emit("scan_completed", summary);
+              Err(err) => {
+                log::warn!("watcher_folder_scan_failed folder_id={} error={err}", folder_id);
+              }
             }
           }
         }
@@ -1819,7 +1840,7 @@ impl FolderWatcher {
 
     Ok(Self {
       watched_paths,
-      last_scan_by_folder,
+      pending_changes,
       watcher: Arc::new(Mutex::new(watcher)),
     })
   }
@@ -1840,7 +1861,7 @@ impl FolderWatcher {
       .lock()
       .insert(folder.path.clone(), folder.id.clone());
     if let Some(replaced_folder_id) = replaced_folder_id.filter(|id| id != &folder.id) {
-      self.last_scan_by_folder.lock().remove(&replaced_folder_id);
+      self.pending_changes.lock().remove(&replaced_folder_id);
     }
     Ok(())
   }
@@ -1849,31 +1870,26 @@ impl FolderWatcher {
     let path = Path::new(folder_path);
     let _ = self.watcher.lock().unwatch(path);
     if let Some(folder_id) = self.watched_paths.lock().remove(folder_path) {
-      self.last_scan_by_folder.lock().remove(&folder_id);
+      self.pending_changes.lock().remove(&folder_id);
     }
     Ok(())
   }
 }
 
-fn scan_summary_for_single_file_outcome(outcome: &FileProcessingOutcome) -> ScanSummary {
-  let mut summary = ScanSummary {
-    scanned_files: 1,
-    ..ScanSummary::default()
-  };
-  match outcome.reason.as_str() {
-    "unchanged" => summary.unchanged_files = 1,
-    "new" => summary.new_files = 1,
-    "updated" => summary.updated_files = 1,
-    _ => {}
+fn canonicalize_watcher_path(path: &Path) -> PathBuf {
+  if let Ok(canonical) = path.canonicalize() {
+    return canonical;
   }
-  if outcome.reason != "unchanged" {
-    if outcome.book_id.is_some() {
-      summary.matched_files = 1;
-    } else {
-      summary.discovered_files = 1;
+  // A removed path cannot be canonicalized directly. Reuse the nearest surviving
+  // ancestor so Windows paths retain the same verbatim prefix as watched roots.
+  for ancestor in path.ancestors().skip(1) {
+    if let Ok(canonical) = ancestor.canonicalize() {
+      if let Ok(suffix) = path.strip_prefix(ancestor) {
+        return canonical.join(suffix);
+      }
     }
   }
-  summary
+  path.to_path_buf()
 }
 
 fn merge_with_filename_guess(
