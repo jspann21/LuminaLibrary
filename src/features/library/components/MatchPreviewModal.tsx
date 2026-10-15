@@ -143,6 +143,7 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
                         </p>
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
                         aria-label="Close"
                         title="Close"
