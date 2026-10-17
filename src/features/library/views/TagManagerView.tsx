@@ -89,9 +89,10 @@ export function TagManagerView({
               title={selectedCount === 0 ? 'Select tags to merge' : !tagMergeTarget.trim() ? 'Enter a target tag name' : isMerging ? 'Merging tags' : isDeleting ? 'Cannot merge while deleting tags' : undefined}
             >
               <button
+                type="button"
                 onClick={onMergeSelectedTags}
                 disabled={selectedCount === 0 || !tagMergeTarget.trim() || isMerging || isDeleting}
-                className="w-full rounded-xl bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 disabled:pointer-events-none disabled:opacity-50"
+                className="w-full rounded-xl bg-accent-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
               >
                 {isMerging ? 'Merging...' : 'Merge Selected'}
               </button>
@@ -102,9 +103,10 @@ export function TagManagerView({
               title={selectedCount === 0 ? 'Select tags to delete' : isDeleting ? 'Deleting tags' : isMerging ? 'Cannot delete while merging tags' : undefined}
             >
               <button
+                type="button"
                 onClick={onDeleteSelectedTags}
                 disabled={selectedCount === 0 || isDeleting || isMerging}
-                className="w-full rounded-xl border border-rose-300 px-4 py-2 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-50 disabled:pointer-events-none disabled:opacity-50 dark:border-rose-900/50 dark:text-rose-300 dark:hover:bg-rose-900/20"
+                className="w-full rounded-xl border border-rose-300 px-4 py-2 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:border-rose-900/50 dark:text-rose-300 dark:hover:bg-rose-900/20 dark:focus-visible:ring-offset-slate-900"
               >
                 {isDeleting ? 'Deleting...' : 'Delete Selected'}
               </button>
@@ -117,9 +119,10 @@ export function TagManagerView({
             </span>
             <span className={cx('flex', selectedCount === 0 && 'cursor-not-allowed')} title={selectedCount === 0 ? 'No tags selected' : undefined}>
               <button
+                type="button"
                 onClick={onClearSelection}
                 disabled={selectedCount === 0}
-                className="rounded-md border border-slate-300 px-2 py-1 text-slate-600 transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
+                className="rounded-md border border-slate-300 px-2 py-1 text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-900"
               >
                 Clear Selection
               </button>
