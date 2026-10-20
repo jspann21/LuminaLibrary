@@ -1230,7 +1230,8 @@ impl Repository {
 
   pub fn count_library_thing_books(&self) -> anyhow::Result<i64> {
     self.conn()?.query_row(
-      "SELECT COUNT(DISTINCT book_id) FROM book_external_sources WHERE source = 'librarything'",
+      // Optimization: source='librarything' combined with UNIQUE(book_id, source) guarantees book_id uniqueness. COUNT(*) avoids temp B-Tree.
+      "SELECT COUNT(*) FROM book_external_sources WHERE source = 'librarything'",
       [],
       |row| row.get(0),
     ).map_err(Into::into)
@@ -2204,8 +2205,10 @@ impl Repository {
        )
        SELECT lb.id, lb.title, lb.authors_json, lb.publisher, lb.publish_date, lb.cover_url, lb.cover_local_path, lb.confidence,
         (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = lb.id),
-        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = lb.id),
-        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = lb.id AND f.status = 'missing'),
+        /* Optimization: file_id is globally UNIQUE in book_files, so COUNT(*) avoids temp B-Tree. */
+        (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = lb.id),
+        /* Optimization: f.id is 1-to-1 with file_id which is UNIQUE, so COUNT(*) avoids temp B-Tree. */
+        (SELECT COUNT(*) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = lb.id AND f.status = 'missing'),
         (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = lb.id),
         CASE WHEN {library_thing_url_enabled} THEN (SELECT external_url FROM book_external_sources bes WHERE bes.book_id = lb.id AND bes.source = 'librarything' LIMIT 1) ELSE NULL END
        FROM limited_books lb
@@ -2346,8 +2349,10 @@ impl Repository {
        )
        SELECT lb.id, lb.title, lb.authors_json, lb.publisher, lb.publish_date, lb.cover_url, lb.cover_local_path, lb.confidence,
         (SELECT COALESCE(group_concat(DISTINCT bf.format), '') FROM book_files bf WHERE bf.book_id = lb.id),
-        (SELECT COUNT(DISTINCT bf.file_id) FROM book_files bf WHERE bf.book_id = lb.id),
-        (SELECT COUNT(DISTINCT f.id) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = lb.id AND f.status = 'missing'),
+        /* Optimization: file_id is globally UNIQUE in book_files, so COUNT(*) avoids temp B-Tree. */
+        (SELECT COUNT(*) FROM book_files bf WHERE bf.book_id = lb.id),
+        /* Optimization: f.id is 1-to-1 with file_id which is UNIQUE, so COUNT(*) avoids temp B-Tree. */
+        (SELECT COUNT(*) FROM book_files bf JOIN files f ON f.id = bf.file_id WHERE bf.book_id = lb.id AND f.status = 'missing'),
         (SELECT COALESCE(group_concat(DISTINCT t.label), '') FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = lb.id),
         CASE WHEN {library_thing_url_enabled} THEN (SELECT external_url FROM book_external_sources bes WHERE bes.book_id = lb.id AND bes.source = 'librarything' LIMIT 1) ELSE NULL END
        FROM limited_books lb
