@@ -1,0 +1,3 @@
+## 2024-05-15 - Replace COUNT(DISTINCT) with COUNT(*) when uniqueness is guaranteed
+**Learning:** SQLite's `COUNT(DISTINCT column)` forces the query planner to build a temporary B-Tree for deduplication, even when the underlying data is already guaranteed to be unique by table constraints (e.g., `PRIMARY KEY` or `UNIQUE` constraints). This adds unnecessary execution overhead.
+**Action:** When performing counts on columns that are part of a `UNIQUE` constraint or are otherwise guaranteed unique (especially in correlated subqueries), use `COUNT(*)` instead. For indexes, this also allows SQLite to potentially use a covering index scan, further improving performance by avoiding full row lookups.
