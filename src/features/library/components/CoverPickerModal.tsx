@@ -406,7 +406,7 @@ export function CoverPickerModal({
                         <p className="mt-1 truncate text-sm text-slate-600 dark:text-slate-300" title={bookTitle || 'Untitled'}>{bookTitle || 'Untitled'}</p>
                         <p className="truncate text-xs text-slate-500 dark:text-slate-400" title={bookAuthors || 'Unknown Author'}>{bookAuthors || 'Unknown Author'}</p>
                     </div>
-                    <button aria-label="Close" title="Close" onClick={onClose} className="rounded-full p-2 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:bg-slate-800">
+                    <button type="button" aria-label="Close" title="Close" onClick={onClose} className="rounded-full p-2 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:bg-slate-800">
                         <X size={18} className="text-slate-500 dark:text-slate-400" />
                     </button>
                 </div>
@@ -414,6 +414,7 @@ export function CoverPickerModal({
                 {/* Toolbar */}
                 <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-6 py-3 dark:border-slate-800">
                     <button
+                        type="button"
                         onClick={() => { void handleUpload() }}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-900"
                     >
@@ -421,6 +422,7 @@ export function CoverPickerModal({
                         Upload Image
                     </button>
                     <button
+                        type="button"
                         onClick={handleToggleUrlInput}
                         className={cx(
                             'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
@@ -433,6 +435,7 @@ export function CoverPickerModal({
                         Paste URL
                     </button>
                     <button
+                        type="button"
                         onClick={handleToggleImageSearch}
                         className={cx(
                             'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
@@ -445,6 +448,7 @@ export function CoverPickerModal({
                         Search Images
                     </button>
                     <button
+                        type="button"
                         onClick={handleRemoveCover}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-rose-800 dark:bg-slate-800 dark:text-rose-400 dark:hover:bg-rose-900/20 dark:focus-visible:ring-offset-slate-900"
                     >
@@ -588,6 +592,7 @@ export function CoverPickerModal({
                                 const isSelected = selectedUrl === candidate.url
                                 return (
                                     <button
+                                        type="button"
                                         key={candidate.url}
                                         onClick={() => setSelectedUrl(candidate.url)}
                                         className={cx(
@@ -635,6 +640,7 @@ export function CoverPickerModal({
                 {/* Footer */}
                 <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4 dark:border-slate-800">
                     <button
+                        type="button"
                         onClick={onClose}
                         className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-slate-400 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
                     >

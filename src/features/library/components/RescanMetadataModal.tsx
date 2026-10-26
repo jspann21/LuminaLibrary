@@ -415,6 +415,7 @@ export function RescanMetadataModal({
           <div className="flex min-w-0 flex-1 items-center gap-4">
             {step !== 'lock' && step !== 'searching' && (
               <button
+                type="button"
                 aria-label="Back"
                 onClick={() => {
                   if (step === 'fine-tune') setStep('pick-edition')
@@ -435,7 +436,7 @@ export function RescanMetadataModal({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <StepIndicator currentStep={step} />
-            <button aria-label="Close" title="Close" onClick={onClose} className="rounded-full p-2 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:bg-slate-800">
+            <button type="button" aria-label="Close" title="Close" onClick={onClose} className="rounded-full p-2 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 dark:hover:bg-slate-800">
               <X size={18} className="text-slate-500 dark:text-slate-400" />
             </button>
           </div>
@@ -481,6 +482,7 @@ export function RescanMetadataModal({
             </div>
             <div className="flex items-center gap-3">
               <button
+                type="button"
                 onClick={onClose}
                 className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-slate-400 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
               >
