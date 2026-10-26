@@ -1,0 +1,3 @@
+## 2024-05-30 - Avoid COUNT(DISTINCT) on unique columns in SQLite
+**Learning:** Using `COUNT(DISTINCT column)` on a column that already has a `UNIQUE` constraint incurs unnecessary performance overhead because SQLite builds a temporary B-Tree for deduplication. In our schema, `file_id` is unique. Using `COUNT(*)` allows SQLite to use a covering index scan, removing the B-Tree generation.
+**Action:** Always substitute `COUNT(DISTINCT)` with `COUNT(*)` when querying columns that are guaranteed unique by schema constraints to eliminate the temporary B-Tree overhead and enable covering index scans.
