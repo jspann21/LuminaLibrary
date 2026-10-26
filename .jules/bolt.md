@@ -1,0 +1,3 @@
+## 2023-10-12 - SQLite COUNT(DISTINCT) Performance Bottleneck
+**Learning:** In SQLite, running `COUNT(DISTINCT column)` on a column that already has a `UNIQUE` constraint (or is guaranteed unique by query filters combined with composite unique constraints) incurs severe and unnecessary performance overhead because SQLite builds a temporary B-Tree for deduplication, failing to infer uniqueness natively in correlated subqueries. In cases where the column is part of an index, `COUNT(*)` can often utilize a covering index scan, whereas `COUNT(DISTINCT)` forces full row lookups.
+**Action:** Always substitute `COUNT(DISTINCT column)` with `COUNT(*)` when uniqueness is already guaranteed by schema constraints.
