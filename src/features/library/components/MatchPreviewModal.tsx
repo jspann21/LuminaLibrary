@@ -134,11 +134,11 @@ export function MatchPreviewModal({ preview, onConfirm, onClose, onConfirmed }: 
             >
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700/60">
-                    <div>
+                    <div className="min-w-0">
                         <h2 id={titleId} className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                             Match Preview
                         </h2>
-                        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                        <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400" title={preview.fileName}>
                             {preview.fileName}
                         </p>
                     </div>
