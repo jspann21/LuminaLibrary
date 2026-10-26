@@ -1,0 +1,3 @@
+## 2025-01-01 - Avoid temporary B-Trees by removing redundant DISTINCT in COUNT()
+**Learning:** SQLite builds a temporary B-Tree for deduplication when running `COUNT(DISTINCT column)`. If the target column already has a `UNIQUE` or `PRIMARY KEY` constraint, the DISTINCT operation is logically redundant but computationally expensive, adding unnecessary overhead (especially in correlated subqueries).
+**Action:** Always verify schema constraints before writing `COUNT(DISTINCT)`. If the column is unique within the context of the query (e.g., counting unique rows in a bridge table joined on its primary/unique key), substitute it with `COUNT(*)` for measurable performance gains.
