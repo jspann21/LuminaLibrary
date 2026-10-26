@@ -1,0 +1,3 @@
+## 2024-10-10 - SQLite COUNT(DISTINCT) Overhead on UNIQUE columns
+**Learning:** In SQLite, running `COUNT(DISTINCT column)` on a column that already has a `UNIQUE` constraint (like `file_id` in `book_files`) incurs unnecessary performance overhead because SQLite still builds a temporary B-Tree for deduplication, even though the data is intrinsically distinct.
+**Action:** Always substitute `COUNT(DISTINCT column)` with `COUNT(*)` or `COUNT(column)` when the column is guaranteed unique by schema constraints to improve query performance, especially within correlated scalar subqueries executed per row.
